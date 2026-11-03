@@ -1,8 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  installGoogleInitializeGuard,
-  resetGoogleInitializeGuardForTests,
-} from "../google";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { createGoogleInitializeGuard } from "../google";
 
 type Initialize = (config: {
   client_id?: string;
@@ -17,11 +14,7 @@ function buildFakeGoogle() {
   return { initialize, idApi };
 }
 
-describe("installGoogleInitializeGuard", () => {
-  beforeEach(() => {
-    resetGoogleInitializeGuardForTests();
-  });
-
+describe("Google initialize guard", () => {
   afterEach(() => {
     delete window.google;
   });
@@ -30,8 +23,9 @@ describe("installGoogleInitializeGuard", () => {
     const { initialize } = buildFakeGoogle();
     const first = vi.fn();
     const latest = vi.fn();
+    const guard = createGoogleInitializeGuard();
 
-    installGoogleInitializeGuard();
+    guard.install();
 
     window.google?.accounts?.id?.initialize({
       client_id: "client-a",
@@ -53,8 +47,9 @@ describe("installGoogleInitializeGuard", () => {
 
   it("initializes again when the client id changes", () => {
     const { initialize } = buildFakeGoogle();
+    const guard = createGoogleInitializeGuard();
 
-    installGoogleInitializeGuard();
+    guard.install();
 
     window.google?.accounts?.id?.initialize({ client_id: "client-a" });
     window.google?.accounts?.id?.initialize({ client_id: "client-b" });
@@ -65,8 +60,9 @@ describe("installGoogleInitializeGuard", () => {
 
   it("initializes again when a non-callback option changes", () => {
     const { initialize } = buildFakeGoogle();
+    const guard = createGoogleInitializeGuard();
 
-    installGoogleInitializeGuard();
+    guard.install();
 
     window.google?.accounts?.id?.initialize({
       client_id: "client-a",
@@ -82,6 +78,7 @@ describe("installGoogleInitializeGuard", () => {
   });
 
   it("is a no-op when the Google script has not loaded", () => {
-    expect(() => installGoogleInitializeGuard()).not.toThrow();
+    const guard = createGoogleInitializeGuard();
+    expect(() => guard.install()).not.toThrow();
   });
 });

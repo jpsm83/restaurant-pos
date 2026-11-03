@@ -4,16 +4,12 @@
 import { useTranslation } from "react-i18next";
 
 import { useFormatting } from "@/hooks/useFormatting";
+import { calendarDatePart } from "@/lib/calendarDate";
 import type { VenueMembership } from "@/services/employees/employeesService";
 import {
   roleLabelKey,
   statusLabelKey,
 } from "./peopleLabels";
-
-/** API timestamps are ISO date-times; display the stored calendar day. */
-function calendarDatePart(value: string): string {
-  return /^(\d{4}-\d{2}-\d{2})/.exec(value)?.[1] ?? value;
-}
 
 export default function MembershipTable({ rows }: { rows: VenueMembership[] }) {
   const { t } = useTranslation("business");
@@ -42,35 +38,38 @@ export default function MembershipTable({ rows }: { rows: VenueMembership[] }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((member) => (
-            <tr key={member._id} className="border-t border-border align-top">
-              <td className="px-3 py-2 font-medium text-foreground">
-                {member.displayName}
-              </td>
-              <td className="px-3 py-2 text-muted-foreground">
-                {member.email}
-              </td>
-              <td className="px-3 py-2 text-muted-foreground">
-                {member.allEmployeeRoles.length > 0
-                  ? member.allEmployeeRoles
-                      .map((role) =>
-                        t(`people.roles.${roleLabelKey(role)}`),
-                      )
-                      .join(", ")
-                  : t("people.notSet")}
-              </td>
-              <td className="px-3 py-2 text-muted-foreground">
-                {member.employmentStatus
-                  ? t(`people.statuses.${statusLabelKey(member.employmentStatus)}`)
-                  : t("people.notSet")}
-              </td>
-              <td className="px-3 py-2 text-muted-foreground">
-                {member.joinDate
-                  ? formatDate(calendarDatePart(member.joinDate))
-                  : t("people.notSet")}
-              </td>
-            </tr>
-          ))}
+          {rows.map((member) => {
+            const joinDate = member.joinDate
+              ? calendarDatePart(member.joinDate)
+              : null;
+            return (
+              <tr key={member._id} className="border-t border-border align-top">
+                <td className="px-3 py-2 font-medium text-foreground">
+                  {member.displayName}
+                </td>
+                <td className="px-3 py-2 text-muted-foreground">
+                  {member.email}
+                </td>
+                <td className="px-3 py-2 text-muted-foreground">
+                  {member.allEmployeeRoles.length > 0
+                    ? member.allEmployeeRoles
+                        .map((role) =>
+                          t(`people.roles.${roleLabelKey(role)}`),
+                        )
+                        .join(", ")
+                    : t("people.notSet")}
+                </td>
+                <td className="px-3 py-2 text-muted-foreground">
+                  {member.employmentStatus
+                    ? t(`people.statuses.${statusLabelKey(member.employmentStatus)}`)
+                    : t("people.notSet")}
+                </td>
+                <td className="px-3 py-2 text-muted-foreground">
+                  {joinDate ? formatDate(joinDate) : t("people.notSet")}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

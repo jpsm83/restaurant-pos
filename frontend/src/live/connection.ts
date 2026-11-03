@@ -443,6 +443,15 @@ export function createLiveConnection(
 
 let shared: LiveConnection = createLiveConnection();
 
+/**
+ * Replace the module-level live connection. The module creates its connection
+ * eagerly; tests install their own socket harness through this seam.
+ */
+export function installLiveConnection(connection: LiveConnection): void {
+  shared.close();
+  shared = connection;
+}
+
 export function syncLiveConnection(accessToken: string | null): void {
   shared.sync(accessToken);
 }
@@ -466,11 +475,4 @@ export function subscribeLiveNotifications(
   listener: (event: LiveNotificationEvent) => void,
 ): () => void {
   return shared.subscribeNotifications(listener);
-}
-
-export function resetLiveConnectionForTests(
-  options: LiveConnectionOptions = {},
-): void {
-  shared.close();
-  shared = createLiveConnection(options);
 }

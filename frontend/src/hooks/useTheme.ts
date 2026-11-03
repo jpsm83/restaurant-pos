@@ -11,11 +11,18 @@ export type ResolvedThemeMode = "light" | "dark";
 export const THEME_STORAGE_KEY = "pos.theme";
 export const MODE_STORAGE_KEY = "pos.mode";
 
-type ThemeState = {
+export type ThemeState = {
   theme: ThemeId;
   mode: ThemeMode;
   resolvedMode: ResolvedThemeMode;
 };
+
+export interface ThemeStore {
+  subscribe(listener: () => void): () => void;
+  getSnapshot(): ThemeState;
+  setTheme(theme: ThemeId): void;
+  setMode(mode: ThemeMode): void;
+}
 
 const SYSTEM_DARK_QUERY = "(prefers-color-scheme: dark)";
 
@@ -88,90 +95,109 @@ function applyThemeToDocument(state: ThemeState): void {
   );
 }
 
-let state = createInitialState();
-const listeners = new Set<() => void>();
-let mediaQuery: MediaQueryList | null = null;
-let mediaListener: ((event: MediaQueryListEvent) => void) | null = null;
+/**
+ * A theme store owns its own state, listeners, and system-mode listener, so the
+ * app and a test can each install one without sharing module state.
+ */
+export function createThemeStore(): ThemeStore {
+  let state = createInitialState();
+  const listeners = new Set<() => void>();
+  let mediaQuery: MediaQueryList | null = null;
+  let mediaListener: ((event: MediaQueryListEvent) => void) | null = null;
 
-function notify(): void {
-  for (const listener of listeners) listener();
-}
-
-function handleSystemModeChange(event: MediaQueryListEvent): void {
-  if (state.mode !== "system") return;
-  const resolvedMode: ResolvedThemeMode = event.matches ? "dark" : "light";
-  if (resolvedMode === state.resolvedMode) return;
-  state = { ...state, resolvedMode };
-  applyThemeToDocument(state);
-  notify();
-}
-
-function startSystemListener(): void {
-  if (mediaQuery || state.mode !== "system") return;
-  if (
-    typeof window === "undefined" ||
-    typeof window.matchMedia !== "function"
-  ) {
-    return;
+  function notify(): void {
+    for (const listener of listeners) listener();
   }
-  mediaQuery = window.matchMedia(SYSTEM_DARK_QUERY);
-  mediaListener = handleSystemModeChange;
-  mediaQuery.addEventListener("change", mediaListener);
-}
 
-function stopSystemListener(): void {
-  if (!mediaQuery || !mediaListener) return;
-  mediaQuery.removeEventListener("change", mediaListener);
-  mediaQuery = null;
-  mediaListener = null;
-}
-
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  if (listeners.size === 1) {
+  function handleSystemModeChange(event: MediaQueryListEvent): void {
+    if (state.mode !== "system") return;
+    const resolvedMode: ResolvedThemeMode = event.matches ? "dark" : "light";
+    if (resolvedMode === state.resolvedMode) return;
+    state = { ...state, resolvedMode };
     applyThemeToDocument(state);
-    startSystemListener();
+    notify();
   }
-  return () => {
-    listeners.delete(listener);
-    if (listeners.size === 0) stopSystemListener();
-  };
+
+  function startSystemListener(): void {
+    if (mediaQuery || state.mode !== "system") return;
+    if (
+      typeof window === "undefined" ||
+      typeof window.matchMedia !== "function"
+    ) {
+      return;
+    }
+    mediaQuery = window.matchMedia(SYSTEM_DARK_QUERY);
+    mediaListener = handleSystemModeChange;
+    mediaQuery.addEventListener("change", mediaListener);
+  }
+
+  function stopSystemListener(): void {
+    if (!mediaQuery || !mediaListener) return;
+    mediaQuery.removeEventListener("change", mediaListener);
+    mediaQuery = null;
+    mediaListener = null;
+  }
+
+  function subscribe(listener: () => void): () => void {
+    listeners.add(listener);
+    if (listeners.size === 1) {
+      applyThemeToDocument(state);
+      startSystemListener();
+    }
+    return () => {
+      listeners.delete(listener);
+      if (listeners.size === 0) stopSystemListener();
+    };
+  }
+
+  function getSnapshot(): ThemeState {
+    return state;
+  }
+
+  function setTheme(theme: ThemeId): void {
+    const nextTheme = isThemeId(theme) ? theme : DEFAULT_THEME_ID;
+    state = { ...state, theme: nextTheme };
+    persist(THEME_STORAGE_KEY, nextTheme);
+    applyThemeToDocument(state);
+    notify();
+  }
+
+  function setMode(mode: ThemeMode): void {
+    const nextMode = isThemeMode(mode) ? mode : "system";
+    state = {
+      theme: state.theme,
+      mode: nextMode,
+      resolvedMode: resolveMode(nextMode),
+    };
+    persist(MODE_STORAGE_KEY, nextMode);
+    applyThemeToDocument(state);
+    if (nextMode === "system") {
+      startSystemListener();
+    } else {
+      stopSystemListener();
+    }
+    notify();
+  }
+
+  return { subscribe, getSnapshot, setTheme, setMode };
 }
 
-function getSnapshot(): ThemeState {
-  return state;
+let themeStore = createThemeStore();
+
+/**
+ * Replace the module-level theme store used by `useTheme`. The module creates
+ * its store eagerly; tests install a fresh store through this seam.
+ */
+export function installThemeStore(store: ThemeStore): void {
+  themeStore = store;
 }
 
 export function setTheme(theme: ThemeId): void {
-  const nextTheme = isThemeId(theme) ? theme : DEFAULT_THEME_ID;
-  state = { ...state, theme: nextTheme };
-  persist(THEME_STORAGE_KEY, nextTheme);
-  applyThemeToDocument(state);
-  notify();
+  themeStore.setTheme(theme);
 }
 
 export function setMode(mode: ThemeMode): void {
-  const nextMode = isThemeMode(mode) ? mode : "system";
-  state = {
-    theme: state.theme,
-    mode: nextMode,
-    resolvedMode: resolveMode(nextMode),
-  };
-  persist(MODE_STORAGE_KEY, nextMode);
-  applyThemeToDocument(state);
-  if (nextMode === "system") {
-    startSystemListener();
-  } else {
-    stopSystemListener();
-  }
-  notify();
-}
-
-export function resetThemeStore(): void {
-  stopSystemListener();
-  state = createInitialState();
-  applyThemeToDocument(state);
-  notify();
+  themeStore.setMode(mode);
 }
 
 export type UseThemeResult = {
@@ -183,7 +209,11 @@ export type UseThemeResult = {
 };
 
 export function useTheme(): UseThemeResult {
-  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const snapshot = useSyncExternalStore(
+    themeStore.subscribe,
+    themeStore.getSnapshot,
+    themeStore.getSnapshot,
+  );
   return {
     theme: snapshot.theme,
     mode: snapshot.mode,

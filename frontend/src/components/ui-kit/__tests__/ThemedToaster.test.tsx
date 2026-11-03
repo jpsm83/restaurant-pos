@@ -1,6 +1,10 @@
 import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MODE_STORAGE_KEY, resetThemeStore } from "@/hooks/useTheme";
+import {
+  createThemeStore,
+  installThemeStore,
+  MODE_STORAGE_KEY,
+} from "@/hooks/useTheme";
 import { ThemedToaster } from "../ThemedToaster";
 
 const { toasterProps } = vi.hoisted(() => ({
@@ -32,12 +36,12 @@ describe("ThemedToaster", () => {
     toasterProps.length = 0;
     localStorage.clear();
     installMatchMedia(false);
-    resetThemeStore();
+    installThemeStore(createThemeStore());
   });
 
   it("passes the resolved mode to Sonner without richColors", () => {
     localStorage.setItem(MODE_STORAGE_KEY, "dark");
-    resetThemeStore();
+    installThemeStore(createThemeStore());
 
     render(<ThemedToaster />);
 

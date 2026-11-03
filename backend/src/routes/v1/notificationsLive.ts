@@ -3,7 +3,7 @@ import { Types } from "mongoose";
 
 import liveConnectionRegistry from "../../communications/live/connectionRegistry.ts";
 import { toLiveConnectedMessage } from "../../communications/live/contracts.ts";
-import { consumeLiveTicket } from "../../auth/liveTicketStore.ts";
+import type { LiveTicketStore } from "../../auth/liveTicketStore.ts";
 import {
   assertAccessTokenRefreshSessionLive,
   assertAccountCanUseSession,
@@ -21,8 +21,11 @@ const parseTicketFromQuery = (url?: string): string | null => {
   return ticket && ticket.length > 0 ? ticket : null;
 };
 
-async function sessionForTicket(ticket: string): Promise<AuthSession> {
-  const record = consumeLiveTicket(ticket);
+async function sessionForTicket(
+  liveTicketStore: LiveTicketStore,
+  ticket: string,
+): Promise<AuthSession> {
+  const record = liveTicketStore.consumeLiveTicket(ticket);
   if (!record) {
     throw unauthorized("Invalid or expired live ticket");
   }
@@ -42,7 +45,14 @@ async function sessionForTicket(ticket: string): Promise<AuthSession> {
   return session;
 }
 
-export const notificationsLiveRoutes: FastifyPluginAsync = async (app) => {
+export interface NotificationsLiveRoutesOptions {
+  liveTicketStore: LiveTicketStore;
+}
+
+export const notificationsLiveRoutes: FastifyPluginAsync<
+  NotificationsLiveRoutesOptions
+> = async (app, options) => {
+  const { liveTicketStore } = options;
   // Route boundary:
   // - Connection/authentication/registry concerns only.
   // - The URL carries a one-minute, single-use ticket, never the access JWT.
@@ -71,7 +81,7 @@ export const notificationsLiveRoutes: FastifyPluginAsync = async (app) => {
       void (async () => {
         let session: AuthSession;
         try {
-          session = await sessionForTicket(ticket);
+          session = await sessionForTicket(liveTicketStore, ticket);
         } catch (error) {
           if (!isRejectedCredential(error)) {
             app.log.error({

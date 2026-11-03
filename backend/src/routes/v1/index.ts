@@ -23,10 +23,12 @@ import { printersRoutes } from "./printers.ts";
 import { weeklyBusinessReportRoutes } from "./weeklyBusinessReport.ts";
 import { monthlyBusinessReportRoutes } from "./monthlyBusinessReport.ts";
 import type { GoogleVerifier } from "../../auth/google.ts";
+import type { LiveTicketStore } from "../../auth/liveTicketStore.ts";
 import { createAuthorizationGate } from "../../auth/authorization.ts";
 
 export interface V1RoutesOptions {
   googleVerifier?: GoogleVerifier | null;
+  liveTicketStore: LiveTicketStore;
 }
 
 export const registerV1Routes: FastifyPluginAsync<V1RoutesOptions> = async (
@@ -42,6 +44,7 @@ export const registerV1Routes: FastifyPluginAsync<V1RoutesOptions> = async (
   await app.register(authRoutes, {
     prefix: "/auth",
     googleVerifier: options.googleVerifier ?? null,
+    liveTicketStore: options.liveTicketStore,
   });
 
   await app.register(businessRoutes, { prefix: "/business" });
@@ -62,7 +65,10 @@ export const registerV1Routes: FastifyPluginAsync<V1RoutesOptions> = async (
   await app.register(reservationsRoutes, { prefix: "/reservations" });
   await app.register(ratingsRoutes, { prefix: "/ratings" });
   await app.register(notificationsRoutes, { prefix: "/notifications" });
-  await app.register(notificationsLiveRoutes, { prefix: "/notifications" });
+  await app.register(notificationsLiveRoutes, {
+    prefix: "/notifications",
+    liveTicketStore: options.liveTicketStore,
+  });
   await app.register(printersRoutes, { prefix: "/printers" });
   await app.register(weeklyBusinessReportRoutes, {
     prefix: "/weeklyBusinessReport",

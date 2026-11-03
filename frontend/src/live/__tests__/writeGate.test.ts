@@ -4,7 +4,6 @@ import { queryClient } from "@/services/queryClient";
 import {
   createLiveConnection,
   getLiveStatus,
-  resetLiveConnectionForTests,
   syncLiveConnection,
 } from "../connection";
 import {
@@ -13,6 +12,7 @@ import {
   WriteBlockedError,
 } from "../writeGate";
 import { HarnessSocket, liveAckAndBecomeLive } from "./socketHarness";
+import { installTestLiveConnection } from "@/test/installTestLiveConnection";
 
 function deferred<T = void>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
@@ -29,7 +29,7 @@ describe("live connection write gate", () => {
     HarnessSocket.reset();
     localStorage.clear();
     sessionStorage.clear();
-    resetLiveConnectionForTests({
+    installTestLiveConnection({
       WebSocket: HarnessSocket,
       requestTicket: (token) => `ticket-${token}`,
       scheduleReconnect: (attempt) => attempt(),
@@ -37,7 +37,7 @@ describe("live connection write gate", () => {
   });
 
   afterEach(() => {
-    resetLiveConnectionForTests();
+    installTestLiveConnection();
     HarnessSocket.reset();
     localStorage.clear();
     sessionStorage.clear();
@@ -81,7 +81,7 @@ describe("live connection write gate", () => {
   });
 
   it("shows disconnected while the socket is down and not yet reconnecting", () => {
-    resetLiveConnectionForTests({
+    installTestLiveConnection({
       WebSocket: HarnessSocket,
       requestTicket: (token) => `ticket-${token}`,
       scheduleReconnect: () => {
@@ -100,7 +100,7 @@ describe("live connection write gate", () => {
   it("treats a heartbeat-dead socket as disconnected and resyncs before writes", async () => {
     const resync = deferred();
     let resyncCalls = 0;
-    resetLiveConnectionForTests({
+    installTestLiveConnection({
       WebSocket: HarnessSocket,
       requestTicket: (token) => `ticket-${token}`,
       scheduleReconnect: (attempt) => attempt(),
@@ -135,7 +135,7 @@ describe("live connection write gate", () => {
 
   it("keeps writes blocked for the whole query resync after reconnect", async () => {
     const resync = deferred();
-    resetLiveConnectionForTests({
+    installTestLiveConnection({
       WebSocket: HarnessSocket,
       requestTicket: (token) => `ticket-${token}`,
       scheduleReconnect: (attempt) => attempt(),
@@ -159,7 +159,7 @@ describe("live connection write gate", () => {
 
   it("does not retry or queue a blocked write after the tab is live again", async () => {
     const resync = deferred();
-    resetLiveConnectionForTests({
+    installTestLiveConnection({
       WebSocket: HarnessSocket,
       requestTicket: (token) => `ticket-${token}`,
       scheduleReconnect: (attempt) => attempt(),
@@ -186,7 +186,7 @@ describe("live connection write gate", () => {
 
   it("keeps writes blocked when query resync fails", async () => {
     const resync = deferred();
-    resetLiveConnectionForTests({
+    installTestLiveConnection({
       WebSocket: HarnessSocket,
       requestTicket: (token) => `ticket-${token}`,
       scheduleReconnect: (attempt) => attempt(),
@@ -238,7 +238,7 @@ describe("live connection write gate", () => {
     const refetch = vi
       .spyOn(queryClient, "refetchQueries")
       .mockResolvedValue([] as never);
-    resetLiveConnectionForTests({
+    installTestLiveConnection({
       WebSocket: HarnessSocket,
       requestTicket: (token) => `ticket-${token}`,
       scheduleReconnect: (attempt) => attempt(),

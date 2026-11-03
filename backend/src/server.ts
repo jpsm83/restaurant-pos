@@ -30,12 +30,18 @@ import {
 import { buildCorsOptions } from "./config/cors.ts";
 import liveConnectionRegistry from "./communications/live/connectionRegistry.ts";
 import { registerLiveInAppBridge } from "./communications/live/liveBridge.ts";
+import {
+  createLiveTicketStore,
+  type LiveTicketStore,
+} from "./auth/liveTicketStore.ts";
 
 export interface BuildAppOptions {
   logger?: boolean;
   skipDb?: boolean;
   /** Test seam; `undefined` builds the verifier from `GOOGLE_CLIENT_ID`. */
   googleVerifier?: GoogleVerifier | null;
+  /** Session-state store; `undefined` builds a fresh store for this app. */
+  liveTicketStore?: LiveTicketStore;
 }
 
 /**
@@ -66,6 +72,9 @@ export async function buildApp(
     options.googleVerifier !== undefined
       ? options.googleVerifier
       : createGoogleVerifier(process.env.GOOGLE_CLIENT_ID);
+
+  const liveTicketStore =
+    options.liveTicketStore ?? createLiveTicketStore();
 
   const server = Fastify({
     logger: logger
@@ -158,6 +167,7 @@ export async function buildApp(
   await server.register(registerV1Routes, {
     prefix: "/api/v1",
     googleVerifier,
+    liveTicketStore,
   });
 
   registerLiveInAppBridge(server);

@@ -198,10 +198,8 @@ export function findProfileFieldsAboveLayer(params: {
 }
 
 export interface AccessCapabilityDefinition {
-  /** Stable machine key. Never reworded with the label. */
+  /** Stable machine key. User-facing labels live with the frontend copy. */
   readonly key: AccessCapabilityKey;
-  /** Canonical English label. */
-  readonly label: string;
 }
 
 export type AccessCapabilityKey =
@@ -215,20 +213,14 @@ export type AccessCapabilityKey =
   | "viewWeeklyAndMonthlyBusinessReports";
 
 const CAPABILITY_CATALOGUE = [
-  { key: "openPrepScreens", label: "Open prep screens" },
-  { key: "openDeliveryScreen", label: "Open delivery screen" },
-  { key: "openCustomerPickupBoard", label: "Open customer pickup board" },
-  { key: "printPermission", label: "Print permission" },
-  {
-    key: "markClearManualUnavailability",
-    label: "Mark / clear manual unavailability",
-  },
-  { key: "viewInventory", label: "View inventory" },
-  { key: "viewDailySalesReport", label: "View daily sales report" },
-  {
-    key: "viewWeeklyAndMonthlyBusinessReports",
-    label: "View weekly and monthly business reports",
-  },
+  { key: "openPrepScreens" },
+  { key: "openDeliveryScreen" },
+  { key: "openCustomerPickupBoard" },
+  { key: "printPermission" },
+  { key: "markClearManualUnavailability" },
+  { key: "viewInventory" },
+  { key: "viewDailySalesReport" },
+  { key: "viewWeeklyAndMonthlyBusinessReports" },
 ] as const satisfies readonly AccessCapabilityDefinition[];
 
 /** The closed platform capability catalogue. Adding one is a product amendment. */

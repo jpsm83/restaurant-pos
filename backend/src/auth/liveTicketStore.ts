@@ -6,6 +6,9 @@
  * of request logs, proxies, and browser tooling, the client exchanges it over
  * authenticated HTTP for a random ticket that expires in one minute and is
  * consumed on first use. The ticket is session state, not a domain document.
+ *
+ * Each store owns its own tickets, so the app and a test build their own store
+ * at the app boundary instead of resetting shared module state.
  */
 import crypto from "node:crypto";
 
@@ -22,63 +25,68 @@ interface StoredLiveTicket extends LiveTicketRecord {
 export const LIVE_TICKET_TTL_MS = 60_000;
 export const MAX_ACTIVE_LIVE_TICKETS = 10_000;
 
-const tickets = new Map<string, StoredLiveTicket>();
-
-function pruneExpired(now: number): void {
-  for (const [ticket, record] of tickets) {
-    if (record.expiresAt <= now) {
-      tickets.delete(ticket);
-    }
-  }
-}
-
 export interface IssuedLiveTicket {
   ticket: string;
   expiresAt: Date;
 }
 
-export function issueLiveTicket(input: LiveTicketRecord): IssuedLiveTicket {
-  const now = Date.now();
-  pruneExpired(now);
+export interface LiveTicketStore {
+  issueLiveTicket(input: LiveTicketRecord): IssuedLiveTicket;
+  consumeLiveTicket(ticket: string | null | undefined): LiveTicketRecord | null;
+}
 
-  // A flood of tickets must not grow the process without bound; drop the
-  // oldest entry because the newest tabs are the ones still connecting.
-  if (tickets.size >= MAX_ACTIVE_LIVE_TICKETS) {
-    const oldest = tickets.keys().next().value;
-    if (oldest !== undefined) {
-      tickets.delete(oldest);
+export function createLiveTicketStore(): LiveTicketStore {
+  const tickets = new Map<string, StoredLiveTicket>();
+
+  function pruneExpired(now: number): void {
+    for (const [ticket, record] of tickets) {
+      if (record.expiresAt <= now) {
+        tickets.delete(ticket);
+      }
     }
   }
 
-  const ticket = crypto.randomBytes(32).toString("hex");
-  const expiresAt = now + LIVE_TICKET_TTL_MS;
-  tickets.set(ticket, { ...input, expiresAt });
-  return { ticket, expiresAt: new Date(expiresAt) };
-}
+  function issueLiveTicket(input: LiveTicketRecord): IssuedLiveTicket {
+    const now = Date.now();
+    pruneExpired(now);
 
-/** Consume a ticket once. An unknown, used, or expired ticket returns `null`. */
-export function consumeLiveTicket(
-  ticket: string | null | undefined,
-): LiveTicketRecord | null {
-  if (!ticket) return null;
+    // A flood of tickets must not grow the process without bound; drop the
+    // oldest entry because the newest tabs are the ones still connecting.
+    if (tickets.size >= MAX_ACTIVE_LIVE_TICKETS) {
+      const oldest = tickets.keys().next().value;
+      if (oldest !== undefined) {
+        tickets.delete(oldest);
+      }
+    }
 
-  const now = Date.now();
-  pruneExpired(now);
+    const ticket = crypto.randomBytes(32).toString("hex");
+    const expiresAt = now + LIVE_TICKET_TTL_MS;
+    tickets.set(ticket, { ...input, expiresAt });
+    return { ticket, expiresAt: new Date(expiresAt) };
+  }
 
-  const record = tickets.get(ticket);
-  if (!record) return null;
+  /** Consume a ticket once. An unknown, used, or expired ticket returns `null`. */
+  function consumeLiveTicket(
+    ticket: string | null | undefined,
+  ): LiveTicketRecord | null {
+    if (!ticket) return null;
 
-  tickets.delete(ticket);
+    const now = Date.now();
+    pruneExpired(now);
 
-  if (record.expiresAt <= now) return null;
+    const record = tickets.get(ticket);
+    if (!record) return null;
 
-  return {
-    sessionId: record.sessionId,
-    accountId: record.accountId,
-    accountType: record.accountType,
-  };
-}
+    tickets.delete(ticket);
 
-export function resetLiveTicketStoreForTests(): void {
-  tickets.clear();
+    if (record.expiresAt <= now) return null;
+
+    return {
+      sessionId: record.sessionId,
+      accountId: record.accountId,
+      accountType: record.accountType,
+    };
+  }
+
+  return { issueLiveTicket, consumeLiveTicket };
 }

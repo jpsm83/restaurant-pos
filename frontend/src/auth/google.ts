@@ -35,8 +35,6 @@ export function getGoogleClientId(): string | null {
     : null;
 }
 
-let patchedIdApi: GoogleIdApi | null = null;
-
 /**
  * Make `google.accounts.id.initialize` idempotent for identical configuration.
  *
@@ -45,34 +43,45 @@ let patchedIdApi: GoogleIdApi | null = null;
  * supports one initialization and logs a warning for each repeat. Keep the
  * first initialization and forward the latest callback so remounts keep the
  * current handler; a genuinely different configuration still initializes.
+ *
+ * Each guard owns its own state, so the app and a test can install independent
+ * guards against their own Google Identity Services fake.
  */
-export function installGoogleInitializeGuard(): void {
-  const idApi = window.google?.accounts?.id;
-  if (!idApi || idApi === patchedIdApi) return;
+export function createGoogleInitializeGuard(): { install: () => void } {
+  let patchedIdApi: GoogleIdApi | null = null;
 
-  const originalInitialize = idApi.initialize.bind(idApi);
-  let activeConfigKey: string | null = null;
-  let activeCallback: GoogleIdConfiguration["callback"];
+  return {
+    install() {
+      const idApi = window.google?.accounts?.id;
+      if (!idApi || idApi === patchedIdApi) return;
 
-  idApi.initialize = (config) => {
-    activeCallback = config.callback ?? activeCallback;
+      const originalInitialize = idApi.initialize.bind(idApi);
+      let activeConfigKey: string | null = null;
+      let activeCallback: GoogleIdConfiguration["callback"];
 
-    const rest = { ...config };
-    delete rest.callback;
-    const configKey = JSON.stringify(rest);
-    if (configKey === activeConfigKey) return;
-    activeConfigKey = configKey;
+      idApi.initialize = (config) => {
+        activeCallback = config.callback ?? activeCallback;
 
-    originalInitialize({
-      ...config,
-      callback: (response) => activeCallback?.(response),
-    });
+        const rest = { ...config };
+        delete rest.callback;
+        const configKey = JSON.stringify(rest);
+        if (configKey === activeConfigKey) return;
+        activeConfigKey = configKey;
+
+        originalInitialize({
+          ...config,
+          callback: (response) => activeCallback?.(response),
+        });
+      };
+
+      patchedIdApi = idApi;
+    },
   };
-
-  patchedIdApi = idApi;
 }
 
-/** Restore a fresh guard between tests that build their own GSI fake. */
-export function resetGoogleInitializeGuardForTests(): void {
-  patchedIdApi = null;
+const googleInitializeGuard = createGoogleInitializeGuard();
+
+/** Install the app-wide Google initialize guard. */
+export function installGoogleInitializeGuard(): void {
+  googleInitializeGuard.install();
 }

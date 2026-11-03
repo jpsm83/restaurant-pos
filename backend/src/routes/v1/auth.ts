@@ -21,7 +21,7 @@ import {
   requireLiveAccessSession,
   requireLiveAccessSessionWithRefreshId,
 } from "../../auth/middleware.ts";
-import { issueLiveTicket } from "../../auth/liveTicketStore.ts";
+import type { LiveTicketStore } from "../../auth/liveTicketStore.ts";
 import type { AuthUser } from "../../auth/types.ts";
 import { canUseBusinessMode } from "../../auth/canLogAsEmployee.ts";
 import {
@@ -89,6 +89,7 @@ import {
 
 export interface AuthRoutesOptions {
   googleVerifier?: GoogleVerifier | null;
+  liveTicketStore: LiveTicketStore;
 }
 
 /** Refresh cookie the browser presented, if any; a sign-in retires it. */
@@ -101,6 +102,7 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
   options,
 ) => {
   const googleVerifier = options.googleVerifier ?? null;
+  const { liveTicketStore } = options;
 
   /**
    * GET /auth/config
@@ -659,7 +661,7 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
         app,
         authHeader.slice(7),
       );
-      const issued = issueLiveTicket({
+      const issued = liveTicketStore.issueLiveTicket({
         sessionId,
         accountId: session.id,
         accountType: session.type,

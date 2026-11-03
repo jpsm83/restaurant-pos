@@ -17,6 +17,7 @@ import {
 import { useAuthMode } from "@/context/AuthModeContext";
 import { useErrorMessage, type ErrorFailure } from "@/i18n/errorCopy";
 import { findFirstEnterableVenue } from "@/lib/accessibleVenues";
+import { formatCalendarDate } from "@/lib/calendarDate";
 import { SessionLoading } from "@/routes/AuthRouteGuards";
 import { toServiceRequestError } from "@/services/serviceErrors";
 import { useAccessibleVenuesQuery } from "@/services/authVenues";
@@ -24,7 +25,6 @@ import { queryKeys } from "@/services/queryKeys";
 import { useNextShiftForEmployee } from "@/services/schedulesService";
 import {
   deriveEmployeeModeFromSchedule,
-  formatDayKeyLocal,
 } from "@/lib/employeeModeSchedule";
 import {
   canonicalBusinessDashboardRoutePath,
@@ -127,10 +127,10 @@ export default function SelectUserModePage() {
   const [submitFailure, setSubmitFailure] = useState<ErrorFailure | null>(null);
   const resolveError = useErrorMessage();
 
-  const [dayKey, setDayKey] = useState(() => formatDayKeyLocal(new Date()));
+  const [dayKey, setDayKey] = useState(() => formatCalendarDate(new Date()));
   useEffect(() => {
     const id = window.setInterval(() => {
-      setDayKey(formatDayKeyLocal(new Date()));
+      setDayKey(formatCalendarDate(new Date()));
     }, 60_000);
     return () => window.clearInterval(id);
   }, []);

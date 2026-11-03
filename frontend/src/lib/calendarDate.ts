@@ -43,6 +43,15 @@ export function parseCalendarDate(value: string): Date | null {
   return createCalendarDate(year, month, day);
 }
 
+/**
+ * The calendar-date portion of an API date-time, or a plain calendar date
+ * as-is. Returns `null` when the leading day is not a real calendar date.
+ */
+export function calendarDatePart(value: string): string | null {
+  const candidate = value.slice(0, 10);
+  return isValidCalendarDate(candidate) ? candidate : null;
+}
+
 function createCalendarDate(year: number, month: number, day: number): Date {
   // `new Date(year, ...)` maps years 0-99 to 1900-1999, so set the full year
   // explicitly to preserve four-digit calendar years.

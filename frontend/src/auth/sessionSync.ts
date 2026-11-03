@@ -4,82 +4,41 @@
  * The browser's refresh cookie stays authoritative; tabs exchange only a
  * content-free signal, then rehydrate or clear their own auth state. The
  * message carries no access token, refresh token, email, User id, mode, or
- * credential. This module is transport only and never reads or writes auth state.
- *
- * BroadcastChannel is preferred, with a `storage` event as the fallback.
+ * credential. This module owns the signal shape and never reads or writes auth
+ * state.
  */
-const CHANNEL_NAME = "restaurant-pos:auth-session";
-const STORAGE_KEY = "restaurant-pos:auth-session-change";
+import {
+  createCrossTabTransport,
+  type CrossTabMessage,
+} from "@/lib/crossTabTransport";
 
 export type AuthSessionSignal = "sign-in" | "sign-out";
 
-type AuthSessionChangeMessage = {
-  type: "auth-session-changed";
-  signal: AuthSessionSignal;
-  nonce: string;
+type AuthSessionChangeSignal = {
+  readonly type: "auth-session-changed";
+  readonly signal: AuthSessionSignal;
 };
 
-function createMessage(signal: AuthSessionSignal): AuthSessionChangeMessage {
-  return {
-    type: "auth-session-changed",
-    signal,
-    nonce: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-  };
-}
+const transport = createCrossTabTransport<AuthSessionChangeSignal>({
+  channelName: "restaurant-pos:auth-session",
+  storageKey: "restaurant-pos:auth-session-change",
+});
 
 function isAuthSessionSignal(value: unknown): value is AuthSessionSignal {
   return value === "sign-in" || value === "sign-out";
 }
 
 function isAuthSessionChangeMessage(
-  value: unknown,
-): value is AuthSessionChangeMessage {
-  if (!value || typeof value !== "object") return false;
-  const candidate = value as {
-    type?: unknown;
-    signal?: unknown;
-    nonce?: unknown;
-  };
+  message: CrossTabMessage<AuthSessionChangeSignal>,
+): boolean {
   return (
-    candidate.type === "auth-session-changed" &&
-    isAuthSessionSignal(candidate.signal) &&
-    typeof candidate.nonce === "string" &&
-    candidate.nonce.length > 0
+    message.type === "auth-session-changed" &&
+    isAuthSessionSignal(message.signal)
   );
 }
 
-function openChannel(): BroadcastChannel | null {
-  const Constructor = globalThis.BroadcastChannel;
-  if (typeof Constructor !== "function") return null;
-  try {
-    return new Constructor(CHANNEL_NAME);
-  } catch {
-    return null;
-  }
-}
-
 function publish(signal: AuthSessionSignal): void {
-  const message = createMessage(signal);
-  const channel = openChannel();
-  if (channel) {
-    let sent = false;
-    try {
-      channel.postMessage(message);
-      sent = true;
-    } catch {
-      // Fall through to the storage fallback.
-    } finally {
-      channel.close();
-    }
-    if (sent) return;
-  }
-
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(message));
-  } catch {
-    // Storage can be blocked; the browser cookie remains authoritative.
-  }
+  transport.publish({ type: "auth-session-changed", signal });
 }
 
 /** Tell other same-origin tabs that a sign-in happened. */
@@ -99,29 +58,7 @@ export function publishAuthSignOut(): void {
 export function subscribeToAuthSessionChanges(
   onSignal: (signal: AuthSessionSignal) => void,
 ): () => void {
-  const channel = openChannel();
-  if (channel) {
-    const listener = (event: MessageEvent) => {
-      if (isAuthSessionChangeMessage(event.data)) onSignal(event.data.signal);
-    };
-    channel.addEventListener("message", listener);
-    return () => {
-      channel.removeEventListener("message", listener);
-      channel.close();
-    };
-  }
-
-  if (typeof window === "undefined") return () => {};
-
-  const listener = (event: StorageEvent) => {
-    if (event.key !== STORAGE_KEY || !event.newValue) return;
-    try {
-      const message: unknown = JSON.parse(event.newValue);
-      if (isAuthSessionChangeMessage(message)) onSignal(message.signal);
-    } catch {
-      // A malformed value from another version is ignored.
-    }
-  };
-  window.addEventListener("storage", listener);
-  return () => window.removeEventListener("storage", listener);
+  return transport.subscribe((message) => {
+    if (isAuthSessionChangeMessage(message)) onSignal(message.signal);
+  });
 }

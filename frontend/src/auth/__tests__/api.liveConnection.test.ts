@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { canCommitWrite } from "@/live/writeGate";
-import { resetLiveConnectionForTests } from "@/live/connection";
+import { installTestLiveConnection } from "@/test/installTestLiveConnection";
 import {
   login,
   logout,
@@ -40,7 +40,7 @@ class RecordingSocket {
 describe("access session opens and closes the live connection", () => {
   beforeEach(() => {
     RecordingSocket.reset();
-    resetLiveConnectionForTests({
+    installTestLiveConnection({
       WebSocket: RecordingSocket,
       requestTicket: (token) => `ticket-${token}`,
     });
@@ -50,7 +50,7 @@ describe("access session opens and closes the live connection", () => {
 
   afterEach(() => {
     setAccessToken(null);
-    resetLiveConnectionForTests();
+    installTestLiveConnection();
   });
 
   it("setAccessToken opens the live connection with the access session just received", () => {

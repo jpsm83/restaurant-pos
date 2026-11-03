@@ -19,7 +19,7 @@ import {
   setAccessToken,
   signup,
 } from "../api";
-import { resetLiveConnectionForTests } from "@/live/connection";
+import { installTestLiveConnection } from "@/test/installTestLiveConnection";
 
 const publishAuthSignIn = vi.fn();
 const publishAuthSignOut = vi.fn();
@@ -62,7 +62,7 @@ describe("auth api — email / password-reset endpoints", () => {
     fetchMock.mockReset();
     vi.stubGlobal("fetch", fetchMock);
     // Keep the live-ticket exchange out of these HTTP-contract assertions.
-    resetLiveConnectionForTests({
+    installTestLiveConnection({
       requestTicket: () => null,
       scheduleReconnect: () => undefined,
     });

@@ -2,7 +2,8 @@ import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   MODE_STORAGE_KEY,
-  resetThemeStore,
+  createThemeStore,
+  installThemeStore,
   THEME_STORAGE_KEY,
   useTheme,
   type ThemeMode,
@@ -53,7 +54,7 @@ describe("useTheme", () => {
     installMatchMedia(false);
     document.documentElement.removeAttribute("data-theme");
     document.documentElement.classList.remove("dark");
-    resetThemeStore();
+    installThemeStore(createThemeStore());
   });
 
   it("defaults to the default theme and system mode", () => {
@@ -69,7 +70,7 @@ describe("useTheme", () => {
   it("loads valid stored preferences", () => {
     localStorage.setItem(THEME_STORAGE_KEY, "default");
     localStorage.setItem(MODE_STORAGE_KEY, "dark");
-    resetThemeStore();
+    installThemeStore(createThemeStore());
 
     const { result } = renderHook(() => useTheme());
 
@@ -82,7 +83,7 @@ describe("useTheme", () => {
   it("falls back from unknown stored theme and mode values", () => {
     localStorage.setItem(THEME_STORAGE_KEY, "missing-theme");
     localStorage.setItem(MODE_STORAGE_KEY, "neon");
-    resetThemeStore();
+    installThemeStore(createThemeStore());
 
     const { result } = renderHook(() => useTheme());
 
@@ -127,7 +128,7 @@ describe("useTheme", () => {
   it("follows the OS media query live and cleans up its listener", () => {
     const media = installMatchMedia(false);
     localStorage.setItem(MODE_STORAGE_KEY, "system");
-    resetThemeStore();
+    installThemeStore(createThemeStore());
 
     const { result, unmount } = renderHook(() => useTheme());
 
@@ -149,7 +150,7 @@ describe("useTheme", () => {
   it("does not listen to the OS outside system mode", () => {
     const media = installMatchMedia(true);
     localStorage.setItem(MODE_STORAGE_KEY, "light");
-    resetThemeStore();
+    installThemeStore(createThemeStore());
 
     const { result } = renderHook(() => useTheme());
 
@@ -164,7 +165,7 @@ describe("useTheme", () => {
       value: undefined,
     });
     localStorage.setItem(MODE_STORAGE_KEY, "system");
-    resetThemeStore();
+    installThemeStore(createThemeStore());
 
     const { result } = renderHook(() => useTheme());
 

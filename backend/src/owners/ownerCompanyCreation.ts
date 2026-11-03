@@ -234,10 +234,6 @@ const ownerCompanyCreation = async (
     };
   });
 
-  if (outcome.type === "http") {
-    throw new Error("Owner/Company creation failed!");
-  }
-
   return outcome.value;
 };
 

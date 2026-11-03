@@ -30,20 +30,14 @@ const OPS_KEYS = [
 ] as const;
 
 const EXPECTED_CAPABILITIES = [
-  { key: "openPrepScreens", label: "Open prep screens" },
-  { key: "openDeliveryScreen", label: "Open delivery screen" },
-  { key: "openCustomerPickupBoard", label: "Open customer pickup board" },
-  { key: "printPermission", label: "Print permission" },
-  {
-    key: "markClearManualUnavailability",
-    label: "Mark / clear manual unavailability",
-  },
-  { key: "viewInventory", label: "View inventory" },
-  { key: "viewDailySalesReport", label: "View daily sales report" },
-  {
-    key: "viewWeeklyAndMonthlyBusinessReports",
-    label: "View weekly and monthly business reports",
-  },
+  { key: "openPrepScreens" },
+  { key: "openDeliveryScreen" },
+  { key: "openCustomerPickupBoard" },
+  { key: "printPermission" },
+  { key: "markClearManualUnavailability" },
+  { key: "viewInventory" },
+  { key: "viewDailySalesReport" },
+  { key: "viewWeeklyAndMonthlyBusinessReports" },
 ] as const;
 
 describe("access layer ordering", () => {
@@ -170,9 +164,9 @@ describe("job-role set resolution", () => {
 });
 
 describe("capability catalogue", () => {
-  it("exports exactly the eight stable capabilities with canonical labels", () => {
+  it("exports exactly the eight stable capabilities without user-facing labels", () => {
     expect(
-      ACCESS_CAPABILITY_CATALOGUE.map(({ key, label }) => ({ key, label })),
+      ACCESS_CAPABILITY_CATALOGUE.map(({ key }) => ({ key })),
     ).toEqual(EXPECTED_CAPABILITIES);
   });
 

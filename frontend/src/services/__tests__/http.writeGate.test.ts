@@ -1,9 +1,7 @@
 import type { AxiosRequestConfig, InternalAxiosRequestConfig } from "axios";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import {
-  resetLiveConnectionForTests,
-  syncLiveConnection,
-} from "@/live/connection";
+import { syncLiveConnection } from "@/live/connection";
+import { installTestLiveConnection } from "@/test/installTestLiveConnection";
 import { liveAckAndBecomeLive, HarnessSocket } from "@/live/__tests__/socketHarness";
 import { WriteBlockedError } from "@/live/writeGate";
 import { http } from "../http";
@@ -25,7 +23,7 @@ describe("http write gate", () => {
   beforeEach(() => {
     requests.length = 0;
     HarnessSocket.reset();
-    resetLiveConnectionForTests({
+    installTestLiveConnection({
       WebSocket: HarnessSocket,
       requestTicket: (token) => `ticket-${token}`,
       scheduleReconnect: () => undefined,
@@ -38,7 +36,7 @@ describe("http write gate", () => {
 
   afterEach(() => {
     http.defaults.adapter = originalAdapter;
-    resetLiveConnectionForTests();
+    installTestLiveConnection();
     HarnessSocket.reset();
   });
 

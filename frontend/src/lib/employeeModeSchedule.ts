@@ -14,8 +14,9 @@ import type { IScheduleShiftEntry } from "restaurant-pos-packages/interfaces/ISc
  *
  * ## Wiring
  * 1. **`services/schedulesService.ts`** types API rows as `IScheduleShiftEntry` and fetches today’s data.
- * 2. **`pages/SelectUserModePage.tsx`** calls `deriveEmployeeModeFromSchedule` + `formatDayKeyLocal`
- *    with `Date.now()` / poll tick and schedule query results to drive countdown and copy.
+ * 2. **`pages/SelectUserModePage.tsx`** calls `deriveEmployeeModeFromSchedule` with the local
+ *    day key from `@/lib/calendarDate` and `Date.now()` / poll tick and schedule query results to
+ *    drive countdown and copy.
  * 3. Backend remains authoritative; this module only previews windows so users see “unlocks in …”
  *    before the next accessible-venue read grants entry.
  */
@@ -78,11 +79,4 @@ export function deriveEmployeeModeFromSchedule(
   }
 
   return { scheduleAllowsEmployeeNow, countdownTargetMs };
-}
-
-export function formatDayKeyLocal(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
 }

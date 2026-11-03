@@ -4,7 +4,11 @@ import { MemoryRouter, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthSession } from "@/auth/types";
 import { AccountMenuPopover } from "@/components/AccountMenuPopover";
-import { MODE_STORAGE_KEY, resetThemeStore } from "@/hooks/useTheme";
+import {
+  createThemeStore,
+  installThemeStore,
+  MODE_STORAGE_KEY,
+} from "@/hooks/useTheme";
 import type { AuthMode } from "@/services/authMode";
 import { renderWithI18n } from "@/test/i18nTestUtils";
 
@@ -71,7 +75,7 @@ describe("AccountMenuPopover (single-User handoff surface)", () => {
     });
     document.documentElement.removeAttribute("data-theme");
     document.documentElement.classList.remove("dark");
-    resetThemeStore();
+    installThemeStore(createThemeStore());
   });
 
   it("shows the Customer summary, Account, language, and log out", async () => {

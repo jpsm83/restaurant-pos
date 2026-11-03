@@ -8,10 +8,10 @@ import { updateBusinessProfile } from "@/services/business/businessProfileApi";
 import { http } from "@/services/http";
 import { useTableConfigData } from "@/features/advancedTable/hooks/useTableConfigData";
 import {
-  resetLiveConnectionForTests,
   syncLiveConnection,
 } from "../connection";
 import { HarnessSocket } from "./socketHarness";
+import { installTestLiveConnection } from "@/test/installTestLiveConnection";
 
 const requests: Array<{ method?: string; url?: string }> = [];
 const originalAdapter = http.defaults.adapter;
@@ -30,7 +30,7 @@ describe("signed-in mutations obey the write gate", () => {
   beforeEach(() => {
     requests.length = 0;
     HarnessSocket.reset();
-    resetLiveConnectionForTests({
+    installTestLiveConnection({
       WebSocket: HarnessSocket,
       requestTicket: (token) => `ticket-${token}`,
       scheduleReconnect: () => undefined,
@@ -44,7 +44,7 @@ describe("signed-in mutations obey the write gate", () => {
 
   afterEach(() => {
     http.defaults.adapter = originalAdapter;
-    resetLiveConnectionForTests();
+    installTestLiveConnection();
     HarnessSocket.reset();
   });
 

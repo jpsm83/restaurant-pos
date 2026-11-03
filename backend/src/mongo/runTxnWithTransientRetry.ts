@@ -9,12 +9,20 @@ export type TxnHttpAbort = {
   body: Record<string, unknown>;
 };
 
-export type TxnRunOutcome<T> = TxnHttpAbort | { type: "commit"; value: T };
+export type TxnCommit<T> = { type: "commit"; value: T };
+
+export type TxnRunOutcome<T> = TxnHttpAbort | TxnCommit<T>;
 
 /**
  * Runs work in a transaction; retries only on transient MongoDB cluster errors.
  * Caller maps business exits to `{ type: "http", ... }` so those are not retried.
  */
+export function runTxnWithTransientRetry<T>(
+  run: (session: ClientSession) => Promise<TxnCommit<T>>,
+): Promise<TxnCommit<T>>;
+export function runTxnWithTransientRetry<T>(
+  run: (session: ClientSession) => Promise<TxnRunOutcome<T>>,
+): Promise<TxnRunOutcome<T>>;
 export async function runTxnWithTransientRetry<T>(
   run: (session: ClientSession) => Promise<TxnRunOutcome<T>>,
 ): Promise<TxnRunOutcome<T>> {

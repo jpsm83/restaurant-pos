@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import WebSocket from "ws";
 import type { AddressInfo } from "node:net";
 import { Types } from "mongoose";
@@ -8,7 +8,6 @@ import { createTestBusiness as createCompanyAwareBusiness } from "../helpers/fix
 import RefreshSession from "../../src/models/refreshSession.ts";
 import User from "../../src/models/user.ts";
 import { getCommunicationsMetricsSnapshot } from "../../src/communications/observability/metrics.ts";
-import { resetLiveTicketStoreForTests } from "../../src/auth/liveTicketStore.ts";
 import { signAccessTokenForLiveSession } from "../setup.ts";
 import notificationService from "../../src/communications/services/notificationService.ts";
 
@@ -61,10 +60,6 @@ const withLiveServer = async <T>(
 };
 
 describe("Notifications Live Route", () => {
-  beforeEach(() => {
-    resetLiveTicketStoreForTests();
-  });
-
   const validAddress = {
     country: "USA",
     state: "CA",

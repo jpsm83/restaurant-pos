@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createLiveConnection,
-  resetLiveConnectionForTests,
   subscribeLiveNotifications,
   syncLiveConnection,
 } from "../connection";
 import { HarnessSocket, liveAckAndBecomeLive } from "./socketHarness";
+import { installTestLiveConnection } from "@/test/installTestLiveConnection";
 
 class RecordingSocket {
   static urls: string[] = [];
@@ -37,14 +37,14 @@ class RecordingSocket {
 describe("live connection", () => {
   beforeEach(() => {
     RecordingSocket.reset();
-    resetLiveConnectionForTests({
+    installTestLiveConnection({
       WebSocket: RecordingSocket,
       requestTicket: (token) => `ticket-${token}`,
     });
   });
 
   afterEach(() => {
-    resetLiveConnectionForTests();
+    installTestLiveConnection();
   });
 
   it("does not open a connection for a guest (no access session)", () => {
@@ -128,14 +128,14 @@ describe("live connection", () => {
 describe("live notification events", () => {
   beforeEach(() => {
     HarnessSocket.reset();
-    resetLiveConnectionForTests({
+    installTestLiveConnection({
       WebSocket: HarnessSocket,
       requestTicket: (token) => `ticket-${token}`,
     });
   });
 
   afterEach(() => {
-    resetLiveConnectionForTests();
+    installTestLiveConnection();
     HarnessSocket.reset();
   });
 
