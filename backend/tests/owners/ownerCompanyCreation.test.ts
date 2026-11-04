@@ -503,6 +503,88 @@ describe("ownerCompanyCreation", () => {
     await expect(Company.countDocuments({ ownerId: first.owner._id })).resolves.toBe(1);
   });
 
+  it("lets one Owner add venues to either of two Companies in the portfolio country", async () => {
+    const user = await createUser("multi-company-portfolio");
+
+    const companyA = await ownerCompanyCreation({
+      userId: user._id,
+      business: venue("Spain"),
+      company: { legalName: "Company A SL", taxNumber: "ES-A" },
+    });
+    const companyB = await ownerCompanyCreation({
+      userId: user._id,
+      business: venue("Spain"),
+      company: { legalName: "Company B SL", taxNumber: "ES-B" },
+    });
+    const joinedA = await ownerCompanyCreation({
+      userId: user._id,
+      business: venue("Spain"),
+      companyId: companyA.company._id,
+    });
+    const joinedB = await ownerCompanyCreation({
+      userId: user._id,
+      business: venue("Spain"),
+      companyId: companyB.company._id,
+    });
+
+    expect(joinedA.owner._id.toString()).toBe(companyA.owner._id.toString());
+    expect(joinedB.owner._id.toString()).toBe(companyA.owner._id.toString());
+    expect(companyA.business.companyId?.toString()).toBe(
+      companyA.company._id.toString(),
+    );
+    expect(companyB.business.companyId?.toString()).toBe(
+      companyB.company._id.toString(),
+    );
+    expect(joinedA.company._id.toString()).toBe(
+      companyA.company._id.toString(),
+    );
+    expect(joinedA.company.legalName).toBe("Company A SL");
+    expect(joinedA.company.taxNumber).toBe("ES-A");
+    expect(joinedA.business.companyId?.toString()).toBe(
+      companyA.company._id.toString(),
+    );
+    expect(joinedB.company._id.toString()).toBe(
+      companyB.company._id.toString(),
+    );
+    expect(joinedB.company.legalName).toBe("Company B SL");
+    expect(joinedB.company.taxNumber).toBe("ES-B");
+    expect(joinedB.business.companyId?.toString()).toBe(
+      companyB.company._id.toString(),
+    );
+
+    const businessIds = [
+      companyA.business._id,
+      companyB.business._id,
+      joinedA.business._id,
+      joinedB.business._id,
+    ];
+    await expect(Owner.countDocuments({ userId: user._id })).resolves.toBe(1);
+    await expect(
+      Company.countDocuments({ ownerId: companyA.owner._id }),
+    ).resolves.toBe(2);
+    await expect(
+      Business.countDocuments({ _id: { $in: businessIds } }),
+    ).resolves.toBe(4);
+    await expect(Employee.countDocuments({ userId: user._id })).resolves.toBe(0);
+    await expect(
+      Employee.countDocuments({ businessId: { $in: businessIds } }),
+    ).resolves.toBe(0);
+
+    const owner = await Owner.findById(companyA.owner._id).lean();
+    const companies = await Company.find({
+      ownerId: companyA.owner._id,
+    }).lean();
+    const businesses = await Business.find({
+      companyId: { $in: [companyA.company._id, companyB.company._id] },
+    }).lean();
+    expect(owner?.country).toBe("Spain");
+    expect(companies.every((company) => company.country === "Spain")).toBe(true);
+    expect(businesses).toHaveLength(4);
+    expect(
+      businesses.every((business) => business.address?.country === "Spain"),
+    ).toBe(true);
+  });
+
   it("refuses to adopt an existing Business that has no owning Company", async () => {
     const user = await createUser("orphan-business");
     const businessId = new Types.ObjectId();

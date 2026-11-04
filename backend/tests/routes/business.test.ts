@@ -300,8 +300,9 @@ describe("Business Routes", () => {
       expect(second.statusCode).toBe(201);
       const firstBody = JSON.parse(first.body);
       const secondBody = JSON.parse(second.body);
-      expect(secondBody.business._id).not.toBe(firstBody.business._id);
       expect(secondBody.company._id).not.toBe(firstBody.company._id);
+      expect(firstBody.business.companyId).toBe(firstBody.company._id);
+      expect(secondBody.business.companyId).toBe(secondBody.company._id);
       expect(secondBody.company.legalName).toBeUndefined();
       expect(secondBody.company.taxNumber).toBeUndefined();
       await expect(Owner.countDocuments({ userId })).resolves.toBe(1);
@@ -575,6 +576,102 @@ describe("Business Routes", () => {
       expect(secondBody.business.companyId).toBe(firstBody.company._id);
       await expect(Owner.countDocuments({ userId })).resolves.toBe(1);
       await expect(Company.countDocuments()).resolves.toBe(1);
+    });
+
+    it("adds a third venue to a second Company under the same Owner", async () => {
+      const app = await getTestApp();
+      const { auth, userId } = await customerAuthToken();
+
+      const first = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { authorization: auth },
+        payload: {
+          ...draft,
+          tradeName: "First Venue",
+          company: { legalName: "Company A SL", taxNumber: "TAX-A" },
+        },
+      });
+      const second = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { authorization: auth },
+        payload: {
+          ...draft,
+          tradeName: "Second Venue",
+          company: { legalName: "Company B SL", taxNumber: "TAX-B" },
+        },
+      });
+
+      expect(first.statusCode).toBe(201);
+      expect(second.statusCode).toBe(201);
+      const firstBody = JSON.parse(first.body);
+      const secondBody = JSON.parse(second.body);
+      expect(secondBody.company._id).not.toBe(firstBody.company._id);
+
+      const third = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { authorization: auth },
+        payload: {
+          ...draft,
+          tradeName: "Third Venue",
+          companyId: secondBody.company._id,
+        },
+      });
+
+      expect(third.statusCode).toBe(201);
+      const thirdBody = JSON.parse(third.body);
+      expect(thirdBody.company._id).toBe(secondBody.company._id);
+      expect(thirdBody.company).toMatchObject({
+        legalName: "Company B SL",
+        taxNumber: "TAX-B",
+      });
+      expect(thirdBody.business.companyId).toBe(secondBody.company._id);
+      expect(thirdBody.business.address.country).toBe("USA");
+
+      const owner = await Owner.findOne({ userId });
+      await expect(Owner.countDocuments({ userId })).resolves.toBe(1);
+      await expect(Company.countDocuments({ ownerId: owner?._id })).resolves.toBe(
+        2,
+      );
+
+      const companies = await Company.find({ ownerId: owner?._id }).lean();
+      const businesses = await Business.find({
+        companyId: { $in: companies.map((company) => company._id) },
+      }).lean();
+      expect(owner?.country).toBe("USA");
+      expect(companies.every((company) => company.country === "USA")).toBe(true);
+      expect(businesses).toHaveLength(3);
+      expect(
+        businesses.every((business) => business.address?.country === "USA"),
+      ).toBe(true);
+      expect(new Set(businesses.map((business) => String(business.companyId)))).toEqual(
+        new Set([firstBody.company._id, secondBody.company._id]),
+      );
+
+      await expect(Employee.countDocuments({ userId })).resolves.toBe(0);
+      for (const businessId of [
+        firstBody.business._id,
+        secondBody.business._id,
+        thirdBody.business._id,
+      ]) {
+        await expect(
+          Employee.countDocuments({ businessId }),
+        ).resolves.toBe(0);
+        const access = await app.inject({
+          method: "GET",
+          url: `/api/v1/business/${businessId}/access`,
+          headers: { authorization: auth },
+        });
+        expect(access.statusCode).toBe(200);
+        expect(JSON.parse(access.body)).toMatchObject({
+          businessId,
+          effectiveLayer: "admin",
+          source: "ownership",
+          canEnterBusiness: true,
+        });
+      }
     });
 
     it("rejects both Company choices in one request", async () => {
