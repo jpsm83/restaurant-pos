@@ -301,6 +301,7 @@ describe("Business Routes", () => {
       const firstBody = JSON.parse(first.body);
       const secondBody = JSON.parse(second.body);
       expect(secondBody.company._id).not.toBe(firstBody.company._id);
+      expect(secondBody.business._id).not.toBe(firstBody.business._id);
       expect(firstBody.business.companyId).toBe(firstBody.company._id);
       expect(secondBody.business.companyId).toBe(secondBody.company._id);
       expect(secondBody.company.legalName).toBeUndefined();
@@ -811,6 +812,9 @@ describe("Business Routes", () => {
       expect(response.statusCode).toBe(403);
       expect(response.headers["content-type"]).toContain(
         "application/problem+json",
+      );
+      expect(JSON.parse(response.body).type).toBe(
+        "https://restaurant-pos.app/errors/forbidden",
       );
       await expect(Business.countDocuments()).resolves.toBe(0);
     });
