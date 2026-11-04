@@ -69,7 +69,7 @@ export type OwnerCompanyChoice =
   | {
       companyId?: never;
       /** Fields for a newly formed Company; an empty payload is a choice. */
-      company?: {
+      company: {
         legalName?: string;
         taxNumber?: string;
       };
