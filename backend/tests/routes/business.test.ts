@@ -778,7 +778,14 @@ describe("Business Routes", () => {
       });
 
       expect(response.statusCode).toBe(403);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      expect(JSON.parse(response.body).type).toBe(
+        "https://restaurant-pos.app/errors/forbidden",
+      );
       await expect(Business.countDocuments()).resolves.toBe(0);
+      await expect(Owner.countDocuments({ userId })).resolves.toBe(1);
     });
 
     it("rejects a Company that does not belong to the caller's Owner", async () => {
