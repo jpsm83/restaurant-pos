@@ -105,7 +105,7 @@ describe("CustomerDashboardPage portfolio scope", () => {
     mockPost.mockReset();
   });
 
-  it("does not switch mode or navigate for a Business id absent from the portfolio", async () => {
+  it("ignores Open business callbacks for a Business id absent from the portfolio", async () => {
     mockGet.mockResolvedValue({ data: populatedPortfolio });
     const user = userEvent.setup();
 
