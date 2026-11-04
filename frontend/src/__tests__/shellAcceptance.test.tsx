@@ -574,6 +574,45 @@ describe("Customer chrome and Business shell acceptance", () => {
     expect(server.mode).toBe("business");
   });
 
+  it("opens the addressed venue in Business mode from the Customer dashboard", async () => {
+    server = createServer({
+      venues: [
+        venue({ businessId: "b1", tradeName: "Alpha Bar" }),
+        venue({ businessId: "b2", tradeName: "Beta Bar" }),
+      ],
+      portfolio: portfolio([
+        { _id: "b1", tradeName: "Alpha Bar" },
+        { _id: "b2", tradeName: "Beta Bar" },
+      ]),
+    });
+    const user = userEvent.setup();
+
+    await renderShell("/dashboard");
+
+    expect(
+      await screen.findByRole("heading", { name: "Dashboard" }),
+    ).toBeInTheDocument();
+    const betaCard = (await screen.findByText("Beta Bar")).closest("li");
+    expect(betaCard).not.toBeNull();
+    await user.click(
+      within(betaCard as HTMLElement).getByRole("button", {
+        name: "Open business",
+      }),
+    );
+
+    expect(await findBusinessDashboard()).toBeInTheDocument();
+    await expectLocation("/business/b2/dashboard");
+    expect(server.mode).toBe("business");
+
+    const tabs = await findVenueTabs();
+    expect(
+      within(tabs).getByRole("link", { name: "Beta Bar" }),
+    ).toHaveAttribute("aria-current", "page");
+    expect(
+      within(tabs).getByRole("link", { name: "Alpha Bar" }),
+    ).toBeInTheDocument();
+  });
+
   it("switches venues from a tab without leaving Business mode", async () => {
     server = createServer({
       mode: "business",
