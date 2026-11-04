@@ -145,6 +145,14 @@ describe("BusinessCompanyPage", () => {
 
     expect(await screen.findByDisplayValue("Demo Bistro SL")).toBeInTheDocument();
     expect(screen.getByDisplayValue("B12345678")).toBeInTheDocument();
+    expect(screen.getByLabelText("Company legal name")).toBeInTheDocument();
+    expect(screen.getByLabelText("Company tax number")).toBeInTheDocument();
+    expect(
+      screen.getAllByText("Optional now; required before go-live."),
+    ).toHaveLength(2);
+    expect(
+      screen.getByRole("button", { name: "Save company" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Demo Bistro")).toBeInTheDocument();
     expect(screen.getByText("Corner Cafe")).toBeInTheDocument();
   });
@@ -281,6 +289,47 @@ describe("BusinessCompanyPage", () => {
     expect(await screen.findByRole("heading", { name: "Empresa" })).toBeInTheDocument();
     expect(screen.getByText("Locales de esta empresa")).toBeInTheDocument();
     expect(screen.getAllByText("Spain · EUR")).toHaveLength(2);
+  });
+
+  it("renders the editable identity fields and save action in Spanish", async () => {
+    mockGet.mockResolvedValue({ data: portfolio });
+
+    await renderPage("es");
+
+    const legalName = await screen.findByLabelText(
+      "Razón social de la empresa",
+    );
+    const taxNumber = screen.getByLabelText(
+      "Número de identificación fiscal de la empresa",
+    );
+    expect(
+      within(legalName.closest("div") as HTMLElement).getByText(
+        "Opcional ahora; obligatorio antes de publicar.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(taxNumber.closest("div") as HTMLElement).getByText(
+        "Opcional ahora; obligatorio antes de publicar.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Guardar empresa" }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the saving state in Spanish while the update is pending", async () => {
+    mockGet.mockResolvedValue({ data: portfolio });
+    mockPatch.mockReturnValue(new Promise(() => {}));
+    const user = userEvent.setup();
+
+    await renderPage("es");
+
+    await user.click(
+      await screen.findByRole("button", { name: "Guardar empresa" }),
+    );
+
+    const saving = await screen.findByRole("button", { name: "Guardando..." });
+    expect(saving).toBeDisabled();
   });
 
   it("adds a venue to the pre-selected Company and shows it after the portfolio refresh", async () => {
