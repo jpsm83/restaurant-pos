@@ -469,20 +469,41 @@ describe("PATCH /api/v1/owners/companies/:companyId", () => {
   async function ownerWithCompany(identity?: {
     legalName?: string;
     taxNumber?: string;
+    country?: string;
   }): Promise<{
     auth: string;
     userId: string;
+    ownerId: Types.ObjectId;
     companyId: string;
   }> {
     const { auth, userId } = await customerAuthToken();
-    const owner = await Owner.create({ userId, country: "USA" });
+    const country = identity?.country ?? "USA";
+    const owner = await Owner.create({ userId, country });
     const company = await Company.create({
       ownerId: owner._id,
-      country: "USA",
+      country,
       legalName: identity?.legalName ?? "Old Legal Name",
       taxNumber: identity?.taxNumber ?? "OLD-TAX",
     });
-    return { auth, userId, companyId: company._id.toString() };
+    return {
+      auth,
+      userId,
+      ownerId: owner._id,
+      companyId: company._id.toString(),
+    };
+  }
+
+  async function createDeletedCompany(
+    ownerId: Types.ObjectId,
+    identity: { legalName: string; taxNumber: string },
+  ) {
+    return Company.create({
+      ownerId,
+      country: "USA",
+      ...identity,
+      deleted: true,
+      deletedAt: new Date(),
+    });
   }
 
   it("requires authentication", async () => {
@@ -643,7 +664,7 @@ describe("PATCH /api/v1/owners/companies/:companyId", () => {
       method: "PATCH",
       url: `/api/v1/owners/companies/${caller.companyId}`,
       headers: { authorization: caller.auth },
-      payload: { legalName: "Taken Name SL" },
+      payload: { legalName: "Taken Name SL", taxNumber: "FRESH-TAX" },
     });
 
     expect(duplicateName.statusCode).toBe(409);
@@ -651,18 +672,138 @@ describe("PATCH /api/v1/owners/companies/:companyId", () => {
       "application/problem+json",
     );
     expect(JSON.parse(duplicateName.body).title).toBe("Conflict");
+    await expect(Company.findById(caller.companyId)).resolves.toMatchObject({
+      legalName: "Old Legal Name",
+      taxNumber: "OLD-TAX",
+    });
 
     const duplicateTax = await app.inject({
       method: "PATCH",
       url: `/api/v1/owners/companies/${caller.companyId}`,
       headers: { authorization: caller.auth },
-      payload: { taxNumber: "TAKEN-TAX" },
+      payload: { taxNumber: "TAKEN-TAX", legalName: "Fresh Name" },
     });
 
     expect(duplicateTax.statusCode).toBe(409);
+    expect(duplicateTax.headers["content-type"]).toContain(
+      "application/problem+json",
+    );
+    expect(JSON.parse(duplicateTax.body).title).toBe("Conflict");
     await expect(Company.findById(caller.companyId)).resolves.toMatchObject({
       legalName: "Old Legal Name",
       taxNumber: "OLD-TAX",
+    });
+  });
+
+  it("accepts the same identity when the other active Company is in a different country", async () => {
+    const app = await getTestApp();
+    await Company.syncIndexes();
+    const caller = await ownerWithCompany();
+    await ownerWithCompany({
+      country: "Canada",
+      legalName: "Shared Identity Ltd",
+      taxNumber: "SHARED-TAX",
+    });
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/owners/companies/${caller.companyId}`,
+      headers: { authorization: caller.auth },
+      payload: { legalName: "Shared Identity Ltd", taxNumber: "SHARED-TAX" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body)).toEqual({
+      _id: caller.companyId,
+      country: "USA",
+      legalName: "Shared Identity Ltd",
+      taxNumber: "SHARED-TAX",
+    });
+    await expect(Company.findById(caller.companyId)).resolves.toMatchObject({
+      legalName: "Shared Identity Ltd",
+      taxNumber: "SHARED-TAX",
+    });
+  });
+
+  it("does not let a soft-deleted Company reserve an identity", async () => {
+    const app = await getTestApp();
+    await Company.syncIndexes();
+    const caller = await ownerWithCompany();
+    await createDeletedCompany(caller.ownerId, {
+      legalName: "Retired Identity Ltd",
+      taxNumber: "RETIRED-TAX",
+    });
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/owners/companies/${caller.companyId}`,
+      headers: { authorization: caller.auth },
+      payload: { legalName: "Retired Identity Ltd", taxNumber: "RETIRED-TAX" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    await expect(Company.findById(caller.companyId)).resolves.toMatchObject({
+      legalName: "Retired Identity Ltd",
+      taxNumber: "RETIRED-TAX",
+    });
+  });
+
+  it("returns 404 when asked to update a soft-deleted Company", async () => {
+    const app = await getTestApp();
+    const caller = await ownerWithCompany();
+    const deletedCompany = await createDeletedCompany(caller.ownerId, {
+      legalName: "Retired Identity Ltd",
+      taxNumber: "RETIRED-TAX",
+    });
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/owners/companies/${deletedCompany._id}`,
+      headers: { authorization: caller.auth },
+      payload: { legalName: "Resurrected Name" },
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.headers["content-type"]).toContain(
+      "application/problem+json",
+    );
+    expect(JSON.parse(response.body).title).toBe("Not Found");
+    await expect(
+      Company.findOne({ _id: deletedCompany._id, deleted: true }),
+    ).resolves.toMatchObject({
+      legalName: "Retired Identity Ltd",
+      taxNumber: "RETIRED-TAX",
+    });
+  });
+
+  it("leaves an omitted identity field unchanged", async () => {
+    const app = await getTestApp();
+    const { auth, companyId } = await ownerWithCompany();
+
+    const nameOnly = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/owners/companies/${companyId}`,
+      headers: { authorization: auth },
+      payload: { legalName: "Only The Name" },
+    });
+
+    expect(nameOnly.statusCode).toBe(200);
+    await expect(Company.findById(companyId)).resolves.toMatchObject({
+      legalName: "Only The Name",
+      taxNumber: "OLD-TAX",
+    });
+
+    const taxOnly = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/owners/companies/${companyId}`,
+      headers: { authorization: auth },
+      payload: { taxNumber: "ONLY-TAX" },
+    });
+
+    expect(taxOnly.statusCode).toBe(200);
+    await expect(Company.findById(companyId)).resolves.toMatchObject({
+      legalName: "Only The Name",
+      taxNumber: "ONLY-TAX",
     });
   });
 
