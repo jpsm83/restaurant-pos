@@ -72,6 +72,28 @@ const populatedPortfolio = {
   ],
 };
 
+const blankIdentityPortfolio = {
+  owner: { _id: "o1", country: "Spain", subscription: "Free" },
+  country: "Spain",
+  subscription: "Free",
+  companies: [
+    {
+      _id: "c1",
+      country: "Spain",
+      businesses: [
+        {
+          _id: "b1",
+          tradeName: "Demo Bistro",
+          currencyTrade: "USD",
+          companyId: "c1",
+          profileComplete: false,
+          address: { country: "Spain" },
+        },
+      ],
+    },
+  ],
+};
+
 const completePortfolio = {
   ...populatedPortfolio,
   companies: [
@@ -309,6 +331,49 @@ describe("CustomerDashboardPage", () => {
     expect(
       screen.queryByRole("button", { name: "Add your venue" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("submits the first venue with a blank Company identity and omits the blank fields", async () => {
+    mockGet
+      .mockResolvedValueOnce({ data: emptyPortfolio })
+      .mockResolvedValue({ data: blankIdentityPortfolio });
+    mockPost.mockResolvedValue({
+      data: {
+        business: {
+          _id: "b1",
+          tradeName: "Demo Bistro",
+          currencyTrade: "USD",
+          companyId: "c1",
+        },
+        company: { _id: "c1", country: "Spain" },
+      },
+    });
+    const user = userEvent.setup();
+    await renderPage();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Add your venue" }),
+    );
+    await user.type(screen.getByLabelText("Trade name"), "Demo Bistro");
+    await user.type(screen.getByLabelText("Country"), "Spain");
+    await user.click(screen.getByRole("button", { name: "Create venue" }));
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith("/api/v1/business", {
+        tradeName: "Demo Bistro",
+        country: "Spain",
+        currencyTrade: "USD",
+        company: {},
+      });
+    });
+    expect(await screen.findByText("Demo Bistro")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Add your venue" }),
+    ).not.toBeInTheDocument();
+    expect(mockPost).not.toHaveBeenCalledWith(
+      "/api/v1/auth/set-mode",
+      expect.anything(),
+    );
   });
 
   it("opens an owned venue in business mode and navigates to its Business dashboard", async () => {
