@@ -596,6 +596,8 @@ describe("Business Routes", () => {
       expect(response.headers["content-type"]).toContain(
         "application/problem+json",
       );
+      await expect(Owner.countDocuments()).resolves.toBe(0);
+      await expect(Company.countDocuments()).resolves.toBe(0);
       await expect(Business.countDocuments()).resolves.toBe(0);
     });
 

@@ -26,6 +26,7 @@ export type OwnerCompanyCreationErrorCode =
   | "company-not-owned"
   | "company-duplicate"
   | "company-choice-required"
+  | "company-choice-conflict"
   | "country-required"
   | "currency-unsupported"
   | "owner-country-mismatch"
@@ -54,18 +55,35 @@ export type BusinessCreationInput = {
   country: string;
 };
 
+/**
+ * A venue registration makes at most one Company choice. The union makes
+ * supplying both an existing Company and a new-Company payload impossible to
+ * represent; the runtime guard still refuses an untyped caller that does.
+ */
+export type OwnerCompanyChoice =
+  | {
+      /** Join this existing Company when it belongs to the same Owner. */
+      companyId: Types.ObjectId | string;
+      company?: never;
+    }
+  | {
+      companyId?: never;
+      /** Fields for a newly formed Company; an empty payload is a choice. */
+      company?: {
+        legalName?: string;
+        taxNumber?: string;
+      };
+    }
+  | {
+      companyId?: never;
+      company?: never;
+    };
+
 export type OwnerCompanyCreationInput = {
   userId: Types.ObjectId | string;
   /** Draft onboarding fields only. */
   business: BusinessCreationInput;
-  /** Join this existing Company when it belongs to the same Owner. */
-  companyId?: Types.ObjectId | string;
-  /** Fields for a newly formed Company; ignored when joining one. */
-  company?: {
-    legalName?: string;
-    taxNumber?: string;
-  };
-};
+} & OwnerCompanyChoice;
 
 export type OwnerCompanyCreationResult = {
   owner: HydratedDocument<IOwner>;
@@ -82,6 +100,19 @@ function requiredCountry(country?: string): string {
     );
   }
   return trimmed;
+}
+
+/**
+ * Refuse an ambiguous Company choice before any write. The input type prevents
+ * this at compile time, but direct JavaScript callers can still send both.
+ */
+function assertSingleCompanyChoice(input: OwnerCompanyCreationInput): void {
+  if (input.companyId !== undefined && input.company !== undefined) {
+    throw new OwnerCompanyCreationError(
+      "company-choice-conflict",
+      "Provide either an existing Company or a new Company, not both!",
+    );
+  }
 }
 
 function requiredSupportedCurrency(currency?: string): string {
@@ -144,6 +175,10 @@ function assertReplayMatchesIntent(
 const ownerCompanyCreation = async (
   input: OwnerCompanyCreationInput,
 ): Promise<OwnerCompanyCreationResult> => {
+  // Refuse an ambiguous Company choice before the transaction can write
+  // anything, so HTTP and direct callers obey the same choice rule.
+  assertSingleCompanyChoice(input);
+
   // Refuse an unsupported currency before the transaction can write anything,
   // so HTTP and direct callers obey the same currency rule.
   const currencyTrade = requiredSupportedCurrency(input.business.currencyTrade);

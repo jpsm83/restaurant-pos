@@ -8,6 +8,7 @@ import Owner from "../../src/models/owner.ts";
 import User from "../../src/models/user.ts";
 import ownerCompanyCreation, {
   type BusinessCreationInput,
+  type OwnerCompanyCreationInput,
 } from "../../src/owners/ownerCompanyCreation.ts";
 import {
   fakeAddress,
@@ -352,6 +353,23 @@ describe("ownerCompanyCreation", () => {
     ).resolves.toBe(1);
     const stored = await Business.findById(businessId).lean();
     expect(stored?.currencyTrade).toBe("EUR");
+  });
+
+  it("rejects both Company choices before writing anything", async () => {
+    const user = await createUser("both-company-choices");
+
+    await expect(
+      ownerCompanyCreation({
+        userId: user._id,
+        business: venue("Spain"),
+        companyId: new Types.ObjectId(),
+        company: { legalName: "Taxpayer SL", taxNumber: "ES-123" },
+      } as unknown as OwnerCompanyCreationInput),
+    ).rejects.toMatchObject({ code: "company-choice-conflict" });
+
+    await expect(Owner.countDocuments({ userId: user._id })).resolves.toBe(0);
+    await expect(Company.countDocuments()).resolves.toBe(0);
+    await expect(Business.countDocuments()).resolves.toBe(0);
   });
 
   it("rejects a later venue with no Company choice and persists nothing", async () => {

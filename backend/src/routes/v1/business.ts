@@ -21,6 +21,7 @@ import dispatchEvent from "../../communications/dispatchEvent.ts";
 import Business from "../../models/business.ts";
 import ownerCompanyCreation, {
   OwnerCompanyCreationError,
+  type OwnerCompanyChoice,
 } from "../../owners/ownerCompanyCreation.ts";
 import { withSoftDeleteFilter } from "../../models/softDelete.ts";
 import {
@@ -176,6 +177,18 @@ function registrationBusinessId(
   return new Types.ObjectId(digest.slice(0, 24));
 }
 
+/**
+ * The DTO already allows at most one Company choice; build the seam's
+ * discriminated choice from it rather than forwarding both fields.
+ */
+function registrationCompanyChoice(
+  body: CreateBusinessBody,
+): OwnerCompanyChoice {
+  if (body.companyId !== undefined) return { companyId: body.companyId };
+  if (body.company !== undefined) return { company: body.company };
+  return {};
+}
+
 /** Safe, portfolio-facing Business shape: no credentials or server-owned fields. */
 function toSafeRegisteredBusiness(business: IBusiness) {
   return {
@@ -214,6 +227,7 @@ function throwRegistrationProblem(error: unknown): never {
       case "owner-country-mismatch":
       case "company-country-mismatch":
       case "company-choice-required":
+      case "company-choice-conflict":
         throw badRequest(error.message);
       case "company-duplicate":
         throw conflict(error.message);
@@ -258,8 +272,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
             currencyTrade: body.currencyTrade,
             country: body.country,
           },
-          companyId: body.companyId,
-          company: body.company,
+          ...registrationCompanyChoice(body),
         });
       } catch (error) {
         throwRegistrationProblem(error);
