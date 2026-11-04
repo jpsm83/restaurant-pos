@@ -204,6 +204,97 @@ describe("GET /api/v1/owners/portfolio", () => {
     expect(response.body).not.toContain("Canada");
   });
 
+  it("omits a soft-deleted Company and its Businesses from the portfolio", async () => {
+    const app = await getTestApp();
+    const { auth, userId } = await customerAuthToken();
+    const owner = await Owner.create({ userId, country: "USA" });
+    const deletedCompany = await Company.create({
+      ownerId: owner._id,
+      country: "USA",
+      legalName: "Deleted Portfolio Llc",
+      taxNumber: "DELETED-PORTFOLIO-TAX",
+      deleted: true,
+      deletedAt: new Date(),
+    });
+    await createTestBusiness({
+      tradeName: "Deleted Portfolio Venue",
+      currencyTrade: "USD",
+      address: { country: "USA" },
+      companyId: deletedCompany._id,
+    });
+    const activeCompany = await Company.create({
+      ownerId: owner._id,
+      country: "USA",
+      legalName: "Active Portfolio Llc",
+      taxNumber: "ACTIVE-PORTFOLIO-TAX",
+    });
+    await createTestBusiness({
+      tradeName: "Active Portfolio Venue",
+      currencyTrade: "USD",
+      address: { country: "USA" },
+      companyId: activeCompany._id,
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/owners/portfolio",
+      headers: { authorization: auth },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
+    expect(body.companies).toHaveLength(1);
+    expect(body.companies[0]._id).toBe(activeCompany._id.toString());
+    expect(body.companies[0].businesses).toHaveLength(1);
+    expect(body.companies[0].businesses[0].tradeName).toBe(
+      "Active Portfolio Venue",
+    );
+    expect(response.body).not.toContain("Deleted Portfolio Llc");
+    expect(response.body).not.toContain("Deleted Portfolio Venue");
+  });
+
+  it("omits a soft-deleted Business while keeping active siblings", async () => {
+    const app = await getTestApp();
+    const { auth, userId } = await customerAuthToken();
+    const owner = await Owner.create({ userId, country: "USA" });
+    const company = await Company.create({
+      ownerId: owner._id,
+      country: "USA",
+      legalName: "Sibling Portfolio Llc",
+      taxNumber: "SIBLING-PORTFOLIO-TAX",
+    });
+    await createTestBusiness({
+      tradeName: "Deleted Sibling Venue",
+      currencyTrade: "USD",
+      address: { country: "USA" },
+      companyId: company._id,
+      deleted: true,
+      deletedAt: new Date(),
+    });
+    await createTestBusiness({
+      tradeName: "Active Sibling Venue",
+      currencyTrade: "USD",
+      address: { country: "USA" },
+      companyId: company._id,
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/owners/portfolio",
+      headers: { authorization: auth },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
+    expect(body.companies).toHaveLength(1);
+    expect(body.companies[0]._id).toBe(company._id.toString());
+    expect(body.companies[0].businesses).toHaveLength(1);
+    expect(body.companies[0].businesses[0].tradeName).toBe(
+      "Active Sibling Venue",
+    );
+    expect(response.body).not.toContain("Deleted Sibling Venue");
+  });
+
   it("marks a venue complete when profile fields and Company identity are present", async () => {
     const app = await getTestApp();
     const { auth, userId } = await customerAuthToken();
