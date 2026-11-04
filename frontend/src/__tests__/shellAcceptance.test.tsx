@@ -19,6 +19,7 @@ import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppRoutes } from "@/App";
 import { AuthModeProvider } from "@/context/AuthModeContext";
+import { canonicalBusinessProfilePath } from "@/routes/canonicalPaths";
 import Navbar from "@/components/Navbar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -107,7 +108,10 @@ function venue(
 }
 
 function portfolio(
-  businesses: Array<Pick<IOwnerPortfolioBusiness, "_id" | "tradeName">> = [],
+  businesses: Array<
+    Pick<IOwnerPortfolioBusiness, "_id" | "tradeName"> &
+      Partial<Pick<IOwnerPortfolioBusiness, "profileComplete">>
+  > = [],
 ): IOwnerPortfolio {
   return {
     owner: { _id: "o1", country: "USA", subscription: "Free" },
@@ -120,10 +124,10 @@ function portfolio(
               _id: "c1",
               country: "USA",
               businesses: businesses.map((business) => ({
-                ...business,
                 currencyTrade: "USD",
                 companyId: "c1",
                 profileComplete: true,
+                ...business,
               })),
             },
           ]
@@ -236,6 +240,14 @@ function installServerMocks() {
       if (!item) throw new Error("venue not found");
       return { data: accessSnapshotFor(item) };
     }
+    const managementContactsMatch =
+      /^\/api\/v1\/employees\/business\/([^/]+)\/management-contacts$/.exec(url);
+    if (managementContactsMatch) {
+      if (!venueById(managementContactsMatch[1])) {
+        throw new Error("venue not found");
+      }
+      return { data: [] };
+    }
     const profileMatch = /^\/api\/v1\/business\/([^/]+)\/profile$/.exec(url);
     if (profileMatch) {
       const item = venueById(profileMatch[1]);
@@ -347,6 +359,14 @@ function findVenueTabs() {
     { name: "Venues" },
     { timeout: FIND_TIMEOUT_MS },
   );
+}
+
+async function findCompletionLink(tradeName: string) {
+  const card = (await screen.findByText(tradeName)).closest("li");
+  expect(card).not.toBeNull();
+  return within(card as HTMLElement).getByRole("link", {
+    name: "Complete venue profile",
+  });
 }
 
 const originalMatchMedia = window.matchMedia;
@@ -623,6 +643,96 @@ describe("Customer chrome and Business shell acceptance", () => {
     expect(
       within(tabs).getByRole("link", { name: "Alpha Bar" }),
     ).toBeInTheDocument();
+  });
+
+  it("opens the addressed venue profile from the incomplete-venue completion link", async () => {
+    server = createServer({
+      venues: [
+        venue({ businessId: "b1", tradeName: "Alpha Bar" }),
+        venue({ businessId: "b2", tradeName: "Beta Bar" }),
+      ],
+      portfolio: portfolio([
+        { _id: "b1", tradeName: "Alpha Bar" },
+        { _id: "b2", tradeName: "Beta Bar", profileComplete: false },
+      ]),
+    });
+    const user = userEvent.setup();
+
+    await renderShell("/dashboard");
+
+    expect(
+      await screen.findByRole("heading", { name: "Dashboard" }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "This venue must be completed before it can go live.",
+      ),
+    ).toBeInTheDocument();
+
+    const completionLink = await findCompletionLink("Beta Bar");
+    expect(completionLink).toHaveAttribute(
+      "href",
+      canonicalBusinessProfilePath("b2"),
+    );
+
+    await user.click(completionLink);
+
+    await expectLocation(canonicalBusinessProfilePath("b2"));
+    expect(
+      await screen.findByRole(
+        "heading",
+        { name: "Core business info" },
+        { timeout: FIND_TIMEOUT_MS },
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(server.mode).toBe("business");
+    });
+    expect(mockPost).toHaveBeenCalledWith("/api/v1/auth/set-mode", {
+      mode: "business",
+    });
+    expect(mockGet).toHaveBeenCalledWith(
+      "/api/v1/business/b2/profile",
+      expect.anything(),
+    );
+    expect(mockGet).not.toHaveBeenCalledWith(
+      "/api/v1/business/b1/profile",
+      expect.anything(),
+    );
+
+    const tabs = await findVenueTabs();
+    expect(
+      within(tabs).getByRole("link", { name: "Beta Bar" }),
+    ).toHaveAttribute("aria-current", "page");
+  });
+
+  it("keeps the guard refusal for a completion link to a venue outside the accessible list", async () => {
+    server = createServer({
+      venues: [venue({ businessId: "b1", tradeName: "Alpha Bar" })],
+      portfolio: portfolio([
+        { _id: "b1", tradeName: "Alpha Bar" },
+        { _id: "b2", tradeName: "Beta Bar", profileComplete: false },
+      ]),
+    });
+    const user = userEvent.setup();
+
+    await renderShell("/dashboard");
+
+    expect(
+      await screen.findByRole("heading", { name: "Dashboard" }),
+    ).toBeInTheDocument();
+    await user.click(await findCompletionLink("Beta Bar"));
+
+    await expectLocation("/dashboard");
+    expect(
+      await screen.findByText(
+        "Business is not available for that venue. You are in Customer mode.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Core business info" }),
+    ).not.toBeInTheDocument();
+    expect(server.mode).toBe("customer");
   });
 
   it("switches venues from a tab without leaving Business mode", async () => {
