@@ -403,23 +403,65 @@ describe("GET /api/v1/owners/portfolio", () => {
     );
   });
 
-  it("marks a venue complete when profile fields and Company identity are present", async () => {
+  type VenueProfileOverrides = {
+    tradeName?: string;
+    currencyTrade?: string;
+    phoneNumber?: string | null;
+    email?: string | null;
+    emailVerified?: boolean;
+    address?: Record<string, unknown> | null;
+    timezone?: string;
+    companyLegalName?: string | null;
+    companyTaxNumber?: string | null;
+    contactVerificationToken?: string;
+  };
+
+  async function readPortfolioForVenue(
+    overrides: VenueProfileOverrides = {},
+  ): Promise<{
+    profileComplete: boolean;
+    business: Record<string, unknown>;
+    rawBody: string;
+    storedTimezone: string | undefined;
+  }> {
     const app = await getTestApp();
     const { auth, userId } = await customerAuthToken();
     const owner = await Owner.create({ userId, country: "USA" });
     const company = await Company.create({
       ownerId: owner._id,
       country: "USA",
-      legalName: "Complete Venue LLC",
-      taxNumber: "TAX-COMPLETE",
+      legalName:
+        overrides.companyLegalName === undefined
+          ? "Complete Venue LLC"
+          : overrides.companyLegalName,
+      taxNumber:
+        overrides.companyTaxNumber === undefined
+          ? "TAX-COMPLETE"
+          : overrides.companyTaxNumber,
     });
-    await createTestBusiness({
-      tradeName: "Complete Venue",
-      currencyTrade: "USD",
-      phoneNumber: "+10000000000",
-      email: "venue@complete.test",
-      emailVerified: true,
-      address: completeAddress,
+    const storedBusiness = await createTestBusiness({
+      tradeName: overrides.tradeName ?? "Complete Venue",
+      currencyTrade: overrides.currencyTrade ?? "USD",
+      phoneNumber:
+        overrides.phoneNumber === undefined
+          ? "+10000000000"
+          : overrides.phoneNumber,
+      email:
+        overrides.email === undefined
+          ? "venue@complete.test"
+          : overrides.email,
+      emailVerified: overrides.emailVerified ?? true,
+      address:
+        overrides.address === undefined ? completeAddress : overrides.address,
+      ...(overrides.timezone === undefined
+        ? {}
+        : { timezone: overrides.timezone }),
+      ...(overrides.contactVerificationToken === undefined
+        ? {}
+        : {
+            contactVerificationToken: overrides.contactVerificationToken,
+            contactVerificationTokenExpires: new Date(Date.now() + 60_000),
+          }),
       companyId: company._id,
     });
 
@@ -431,7 +473,19 @@ describe("GET /api/v1/owners/portfolio", () => {
 
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
-    expect(body.companies[0].businesses[0].profileComplete).toBe(true);
+    const business = body.companies[0].businesses[0];
+    return {
+      profileComplete: business.profileComplete,
+      business,
+      rawBody: response.body,
+      storedTimezone: storedBusiness.timezone,
+    };
+  }
+
+  it("marks a venue complete when profile fields, a resolvable address, and Company identity are present", async () => {
+    const { profileComplete } = await readPortfolioForVenue();
+
+    expect(profileComplete).toBe(true);
   });
 
   it("does not mark a venue complete without verified contact and Company tax identity", async () => {
@@ -462,6 +516,125 @@ describe("GET /api/v1/owners/portfolio", () => {
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
     expect(body.companies[0].businesses[0].profileComplete).toBe(false);
+  });
+
+  it("does not require a stored timezone when the address resolves", async () => {
+    const { profileComplete, storedTimezone } = await readPortfolioForVenue();
+
+    expect(storedTimezone).toBeUndefined();
+    expect(profileComplete).toBe(true);
+  });
+
+  const incompleteVenueCases: Array<[string, VenueProfileOverrides]> = [
+    ["trade name", { tradeName: "   " }],
+    ["currency", { currencyTrade: "   " }],
+    ["phone number", { phoneNumber: null }],
+    ["business contact email", { email: null }],
+    ["verified business contact email", { emailVerified: false }],
+    [
+      "complete address",
+      {
+        address: {
+          country: "USA",
+          city: "Los Angeles",
+          street: "Main St",
+          buildingNumber: "123",
+          postCode: "90001",
+        },
+      },
+    ],
+    ["Company legal name", { companyLegalName: null }],
+    ["Company tax number", { companyTaxNumber: null }],
+  ];
+
+  it.each(incompleteVenueCases)(
+    "does not mark a venue complete without a %s",
+    async (_label, overrides) => {
+      const { profileComplete } = await readPortfolioForVenue(overrides);
+
+      expect(profileComplete).toBe(false);
+    },
+  );
+
+  it("does not mark a venue complete when the address cannot resolve to a supported timezone, even with a stale stored timezone", async () => {
+    const { profileComplete } = await readPortfolioForVenue({
+      address: {
+        country: "Atlantis",
+        state: "Nowhere",
+        city: "Lost City",
+        street: "Unknown St",
+        buildingNumber: "1",
+        postCode: "00000",
+      },
+      timezone: "America/Los_Angeles",
+    });
+
+    expect(profileComplete).toBe(false);
+  });
+
+  it("shares the owning Company's tax-identity completeness across its venues", async () => {
+    const app = await getTestApp();
+    const { auth, userId } = await customerAuthToken();
+    const owner = await Owner.create({ userId, country: "USA" });
+    const company = await Company.create({
+      ownerId: owner._id,
+      country: "USA",
+      legalName: "Shared Taxpayer LLC",
+    });
+    for (const tradeName of ["Shared Venue One", "Shared Venue Two"]) {
+      await createTestBusiness({
+        tradeName,
+        currencyTrade: "USD",
+        phoneNumber: "+10000000000",
+        email: `${tradeName.replaceAll(" ", "-").toLowerCase()}@shared.test`,
+        emailVerified: true,
+        address: completeAddress,
+        companyId: company._id,
+      });
+    }
+
+    const readCompleteness = async (): Promise<boolean[]> => {
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/owners/portfolio",
+        headers: { authorization: auth },
+      });
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      return body.companies[0].businesses.map(
+        (business: { profileComplete: boolean }) => business.profileComplete,
+      );
+    };
+
+    expect(await readCompleteness()).toEqual([false, false]);
+
+    await Company.updateOne(
+      { _id: company._id },
+      { $set: { taxNumber: "SHARED-TAX" } },
+    );
+
+    expect(await readCompleteness()).toEqual([true, true]);
+  });
+
+  it("exposes only safe portfolio fields", async () => {
+    const { business, rawBody } = await readPortfolioForVenue({
+      contactVerificationToken: "super-secret-verification-token",
+    });
+
+    expect(Object.keys(business).sort()).toEqual(
+      [
+        "_id",
+        "address",
+        "companyId",
+        "currencyTrade",
+        "profileComplete",
+        "tradeName",
+      ].sort(),
+    );
+    expect(rawBody).not.toContain("super-secret-verification-token");
+    expect(rawBody).not.toContain("venue@complete.test");
+    expect(rawBody).not.toContain("emailVerified");
+    expect(rawBody).not.toContain("contactVerification");
   });
 });
 

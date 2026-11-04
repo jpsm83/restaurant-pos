@@ -45,10 +45,7 @@ import {
   notFound,
 } from "../../errors/appError.ts";
 import { parseMultipart } from "../../schemas/multipart.ts";
-import {
-  isSupportedTimezone,
-  timezoneSchema,
-} from "restaurant-pos-packages/schemas";
+import { isSupportedTimezone } from "restaurant-pos-packages/schemas";
 import {
   businessIdParamsSchema,
   createBusinessBodySchema,
@@ -64,10 +61,7 @@ import type {
 } from "restaurant-pos-packages/interfaces/IBusiness";
 import type { ICompany } from "restaurant-pos-packages/interfaces/ICompany";
 import { foodSubCategoryEnums } from "restaurant-pos-packages/enums";
-import {
-  resolveTimezoneFromAddress,
-  type AddressLike,
-} from "restaurant-pos-packages/utils/timezoneFromAddress";
+import { resolveSupportedTimezoneFromAddress } from "restaurant-pos-packages/utils/timezoneFromAddress";
 
 /**
  * The public discovery projection. A public venue read returns only these
@@ -104,16 +98,6 @@ function filterStringsByEnum(
 ): string[] {
   const allow = new Set(allowed);
   return Array.from(new Set(values.filter((v) => allow.has(v))));
-}
-
-/**
- * Derive the business timezone from its address and validate it with the one
- * canonical rule, so only zones the platform supports are ever stored.
- * Addresses that cannot be mapped yield `undefined`; reads then fall back to UTC.
- */
-function deriveStoredTimezone(address: AddressLike): string | undefined {
-  const parsed = timezoneSchema.safeParse(resolveTimezoneFromAddress(address));
-  return parsed.success ? parsed.data : undefined;
 }
 
 const flattenChangedFieldPaths = (
@@ -654,7 +638,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       // Keep the derived timezone in sync with the (possibly changed) address.
       let clearTimezone = false;
       if (addressChanged) {
-        const resolvedTimezone = deriveStoredTimezone({
+        const resolvedTimezone = resolveSupportedTimezoneFromAddress({
           ...(businessAddress ?? {}),
           ...address,
         });

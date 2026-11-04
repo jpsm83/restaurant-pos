@@ -1,3 +1,4 @@
+import { isSupportedTimezone } from "../schemas/primitives.ts";
 import {
   COUNTRY_PRIMARY_TIMEZONE,
   STATE_TIMEZONES,
@@ -300,4 +301,17 @@ export function resolveTimezoneFromAddress(
     resolveStateZone(countryCode, address.state) ??
     COUNTRY_PRIMARY_TIMEZONE[countryCode]
   );
+}
+
+/**
+ * Resolve the address to a zone the platform can actually store, or `undefined`
+ * when it maps to nothing or the resolver yields a zone the platform rejects.
+ * This is the single rule both the venue profile write and the portfolio
+ * completeness signal use, so the two cannot drift.
+ */
+export function resolveSupportedTimezoneFromAddress(
+  address: AddressLike | null | undefined,
+): string | undefined {
+  const resolved = resolveTimezoneFromAddress(address);
+  return isSupportedTimezone(resolved) ? resolved : undefined;
 }

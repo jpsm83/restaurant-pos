@@ -17,6 +17,7 @@ import type {
   IOwnerPortfolioBusiness,
   IOwnerPortfolioCompany,
 } from "restaurant-pos-packages/interfaces/IOwner";
+import { resolveSupportedTimezoneFromAddress } from "restaurant-pos-packages/utils/timezoneFromAddress";
 
 import Business from "../models/business.ts";
 import Company from "../models/company.ts";
@@ -39,6 +40,17 @@ function hasCompleteAddress(address: BusinessRecord["address"]): boolean {
     isNonEmptyString(address.buildingNumber) &&
     isNonEmptyString(address.postCode)
   );
+}
+
+/**
+ * The address must resolve through the same supported-timezone rule the venue
+ * profile write uses. A stale stored timezone never substitutes for this: the
+ * address itself has to map to a zone the platform supports.
+ */
+function addressResolvesToSupportedTimezone(
+  address: BusinessRecord["address"],
+): boolean {
+  return resolveSupportedTimezoneFromAddress(address) !== undefined;
 }
 
 /**
@@ -65,6 +77,7 @@ function isBusinessProfileComplete(
     isNonEmptyString(business.email) &&
     business.emailVerified === true &&
     hasCompleteAddress(business.address) &&
+    addressResolvesToSupportedTimezone(business.address) &&
     isNonEmptyString(company?.legalName) &&
     isNonEmptyString(company?.taxNumber)
   );
