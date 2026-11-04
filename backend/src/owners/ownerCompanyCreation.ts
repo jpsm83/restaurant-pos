@@ -111,6 +111,10 @@ function optionalField(value?: string): string | undefined {
 const ownerCompanyCreation = async (
   input: OwnerCompanyCreationInput,
 ): Promise<OwnerCompanyCreationResult> => {
+  // Refuse an unsupported currency before the transaction can write anything,
+  // so HTTP and direct callers obey the same currency rule.
+  const currencyTrade = requiredSupportedCurrency(input.business.currencyTrade);
+
   const outcome = await runTxnWithTransientRetry(async (session) => {
     const existingBusiness = await Business.findById(input.business._id).session(
       session,
@@ -160,9 +164,6 @@ const ownerCompanyCreation = async (
       };
     }
 
-    // Refuse an unsupported currency before any Owner, Company, or Business
-    // write. An idempotent replay of an existing Business writes nothing.
-    const currencyTrade = requiredSupportedCurrency(input.business.currencyTrade);
     const country = requiredCountry(input.business.country);
 
     let owner = await Owner.findOne({ userId: input.userId }).session(session);

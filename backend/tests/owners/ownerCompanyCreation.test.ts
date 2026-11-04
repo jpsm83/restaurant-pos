@@ -208,6 +208,33 @@ describe("ownerCompanyCreation", () => {
     await expect(Business.countDocuments({ _id: businessId })).resolves.toBe(1);
   });
 
+  it("refuses an unsupported currency on a replay without changing the existing venue", async () => {
+    const user = await createUser("idempotent-bad-currency");
+    const businessId = new Types.ObjectId();
+
+    const first = await ownerCompanyCreation({
+      userId: user._id,
+      business: venue("Spain", businessId),
+    });
+
+    await expect(
+      ownerCompanyCreation({
+        userId: user._id,
+        business: {
+          ...venue("Spain", businessId),
+          currencyTrade: "BTC",
+        },
+      }),
+    ).rejects.toMatchObject({ code: "currency-unsupported" });
+
+    await expect(Owner.countDocuments({ userId: user._id })).resolves.toBe(1);
+    await expect(
+      Company.countDocuments({ ownerId: first.owner._id }),
+    ).resolves.toBe(1);
+    const stored = await Business.findById(businessId).lean();
+    expect(stored?.currencyTrade).toBe("EUR");
+  });
+
   it("rejects a later venue with no Company choice and persists nothing", async () => {
     const user = await createUser("no-company-choice");
 
