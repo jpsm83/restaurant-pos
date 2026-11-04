@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { AxiosError, type AxiosResponse } from "axios";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithI18n } from "@/test/i18nTestUtils";
@@ -74,6 +75,17 @@ const emptyPortfolio = {
   companies: [],
 };
 
+function axiosFailure(status: number) {
+  const response = { status } as AxiosResponse;
+  return new AxiosError(
+    "request failed",
+    "ERR_BAD_RESPONSE",
+    undefined,
+    undefined,
+    response,
+  );
+}
+
 function renderPage(language?: "en" | "es") {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -112,6 +124,88 @@ describe("BusinessCompanyPage", () => {
     expect(screen.getByDisplayValue("B12345678")).toBeInTheDocument();
     expect(screen.getByText("Demo Bistro")).toBeInTheDocument();
     expect(screen.getByText("Corner Cafe")).toBeInTheDocument();
+  });
+
+  it("shows the loading state without the identity form while the portfolio read is pending", async () => {
+    mockGet.mockReturnValue(new Promise(() => {}));
+
+    await renderPage();
+
+    expect(screen.getByText("Loading Company...")).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Company legal name"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Save company" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows localized failure copy and no form when the portfolio read fails", async () => {
+    mockGet.mockRejectedValue(new Error("network unavailable"));
+
+    await renderPage();
+
+    expect(
+      await screen.findByText(
+        "We could not reach the server. Check your connection and try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Try again" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Save company" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("re-reads the portfolio from the retry action and shows the identity form", async () => {
+    mockGet
+      .mockRejectedValueOnce(new Error("network unavailable"))
+      .mockResolvedValue({ data: portfolio });
+    const user = userEvent.setup();
+
+    await renderPage();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Try again" }),
+    );
+
+    await waitFor(() => {
+      expect(mockGet).toHaveBeenCalledTimes(2);
+    });
+    expect(await screen.findByDisplayValue("Demo Bistro SL")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Try again" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("localizes a save conflict and keeps the entered values", async () => {
+    mockGet.mockResolvedValue({ data: portfolio });
+    mockPatch.mockRejectedValue(axiosFailure(409));
+    const user = userEvent.setup();
+
+    await renderPage("es");
+
+    const legalName = await screen.findByLabelText(
+      "Razón social de la empresa",
+    );
+    await user.clear(legalName);
+    await user.type(legalName, "Duplicate SL");
+    const taxNumber = screen.getByLabelText(
+      "Número de identificación fiscal de la empresa",
+    );
+    await user.clear(taxNumber);
+    await user.type(taxNumber, "B00000000");
+    await user.click(screen.getByRole("button", { name: "Guardar empresa" }));
+
+    expect(
+      await screen.findByText(
+        "Estos datos entran en conflicto con otra empresa activa de este país.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Duplicate SL")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("B00000000")).toBeInTheDocument();
+    expect(screen.queryByText("Empresa guardada.")).not.toBeInTheDocument();
   });
 
   it("saves edited legal name and tax number through the owner Company route", async () => {

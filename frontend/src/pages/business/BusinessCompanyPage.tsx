@@ -94,7 +94,8 @@ export default function BusinessCompanyPage() {
 
   if (portfolioQuery.isLoading) {
     return (
-      <main className="min-h-0 flex-1 space-y-4 p-6">
+      <main className="min-h-0 flex-1 space-y-4 p-6" aria-busy="true">
+        <span className="sr-only">{t("company.loading")}</span>
         <Skeleton className="h-7 w-48" />
         <Skeleton className="h-32 w-full max-w-2xl" />
         <Skeleton className="h-40 w-full max-w-2xl" />
