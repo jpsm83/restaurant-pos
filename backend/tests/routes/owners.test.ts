@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { Types } from "mongoose";
 import { getTestApp, generateTestToken } from "../setup.ts";
 import { createTestBusiness } from "../helpers/fixtures.ts";
+import Business from "../../src/models/business.ts";
 import Company from "../../src/models/company.ts";
 import Owner from "../../src/models/owner.ts";
 import User from "../../src/models/user.ts";
@@ -293,6 +294,113 @@ describe("GET /api/v1/owners/portfolio", () => {
       "Active Sibling Venue",
     );
     expect(response.body).not.toContain("Deleted Sibling Venue");
+  });
+
+  it("returns every active Company and Business in the read model's stable order", async () => {
+    const app = await getTestApp();
+    const { auth, userId } = await customerAuthToken();
+    const owner = await Owner.create({ userId, country: "USA" });
+
+    const base = new Date("2026-01-01T00:00:00.000Z").getTime();
+    const createdAt = (minutes: number) => new Date(base + minutes * 60_000);
+
+    async function createCompany(name: string, taxNumber: string, at: Date) {
+      const company = await Company.create({
+        ownerId: owner._id,
+        country: "USA",
+        legalName: name,
+        taxNumber,
+      });
+      await Company.collection.updateOne(
+        { _id: company._id },
+        { $set: { createdAt: at } },
+      );
+      return company;
+    }
+
+    async function createBusiness(
+      tradeName: string,
+      companyId: Types.ObjectId,
+      at: Date,
+    ) {
+      const business = await createTestBusiness({
+        tradeName,
+        currencyTrade: "USD",
+        address: { country: "USA" },
+        companyId,
+      });
+      await Business.collection.updateOne(
+        { _id: business._id },
+        { $set: { createdAt: at } },
+      );
+      return business;
+    }
+
+    // Created in reverse createdAt order so the assertions prove the sort
+    // rather than the accidental insertion order.
+    const laterCompany = await createCompany(
+      "Later Portfolio Llc",
+      "LATER-PORTFOLIO-TAX",
+      createdAt(20),
+    );
+    const earlierCompany = await createCompany(
+      "Earlier Portfolio Llc",
+      "EARLIER-PORTFOLIO-TAX",
+      createdAt(10),
+    );
+
+    const laterBusiness = await createBusiness(
+      "Later Venue",
+      earlierCompany._id,
+      createdAt(12),
+    );
+    const otherCompanyBusiness = await createBusiness(
+      "Other Company Venue",
+      laterCompany._id,
+      createdAt(21),
+    );
+    const earlierBusiness = await createBusiness(
+      "Earlier Venue",
+      earlierCompany._id,
+      createdAt(11),
+    );
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/owners/portfolio",
+      headers: { authorization: auth },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
+
+    expect(body.companies.map((company: { _id: string }) => company._id)).toEqual(
+      [earlierCompany._id.toString(), laterCompany._id.toString()],
+    );
+    expect(
+      body.companies[0].businesses.map(
+        (business: { _id: string }) => business._id,
+      ),
+    ).toEqual([earlierBusiness._id.toString(), laterBusiness._id.toString()]);
+    expect(
+      body.companies[1].businesses.map(
+        (business: { _id: string }) => business._id,
+      ),
+    ).toEqual([otherCompanyBusiness._id.toString()]);
+
+    const returnedBusinessIds = body.companies.flatMap(
+      (company: { businesses: { _id: string }[] }) =>
+        company.businesses.map((business) => business._id),
+    );
+    expect(new Set(returnedBusinessIds)).toEqual(
+      new Set(
+        [
+          earlierBusiness._id,
+          laterBusiness._id,
+          otherCompanyBusiness._id,
+        ].map(String),
+      ),
+    );
   });
 
   it("marks a venue complete when profile fields and Company identity are present", async () => {
