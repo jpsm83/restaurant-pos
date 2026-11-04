@@ -1931,12 +1931,57 @@ describe("Business Routes", () => {
       }
     });
 
-    it("recomputes the timezone when the address changes", async () => {
+    it("refuses an address country that differs from the owning Company's country", async () => {
       const app = await getTestApp();
       const boundary = "----formdata";
       const { business, auth } = await createVenue(app, {
-        timezone: "America/Bogota",
-        address: { ...fullAddress, country: "Colombia", state: "Antioquia" },
+        timezone: "America/Los_Angeles",
+        metrics: fullMetrics,
+      });
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/business/${business._id}`,
+        headers: {
+          "content-type": `multipart/form-data; boundary=${boundary}`,
+          authorization: auth,
+        },
+        payload: patchPayload(
+          boundary,
+          { ...business, tradeName: "Should Not Persist" },
+          {
+            address: { ...fullAddress, country: "Canada", state: "Ontario" },
+          },
+        ),
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      const body = JSON.parse(response.body);
+      expect(body.detail).toContain("owning Company's country");
+      const stored = await Business.findById(business._id).lean();
+      expect(stored?.address?.country).toBe("USA");
+      expect(stored?.address?.state).toBe("CA");
+      expect(stored?.address?.complement).toBe("Suite 5");
+      expect(stored?.tradeName).toBe(business.tradeName);
+      expect(stored?.phoneNumber).toBe("1234567890");
+      expect(stored?.timezone).toBe("America/Los_Angeles");
+      expect(stored?.metrics?.foodCostPercentage).toBe(31);
+    });
+
+    it("recomputes the timezone when the address changes within the country", async () => {
+      const app = await getTestApp();
+      const boundary = "----formdata";
+      const { business, auth } = await createVenue(app, {
+        timezone: "America/Los_Angeles",
+        address: {
+          ...fullAddress,
+          country: "USA",
+          state: "California",
+          city: "Los Angeles",
+        },
       });
 
       const response = await app.inject({
@@ -1956,12 +2001,12 @@ describe("Business Routes", () => {
       expect(stored?.timezone).toBe("America/New_York");
     });
 
-    it("clears the timezone when the address becomes unmappable", async () => {
+    it("clears the timezone when a same-country address becomes unmappable", async () => {
       const app = await getTestApp();
       const boundary = "----formdata";
       const { business, auth } = await createVenue(app, {
         timezone: "America/Bogota",
-        address: { ...fullAddress, country: "Colombia", state: "Antioquia" },
+        address: { ...fullAddress, country: "Antarctica", state: "Antioquia" },
       });
 
       const response = await app.inject({
@@ -1972,7 +2017,7 @@ describe("Business Routes", () => {
           authorization: auth,
         },
         payload: patchPayload(boundary, business, {
-          address: { ...fullAddress, country: "Atlantis", state: "Nowhere" },
+          address: { ...fullAddress, country: "Antarctica", state: "Nowhere" },
         }),
       });
 
@@ -1985,7 +2030,7 @@ describe("Business Routes", () => {
       const app = await getTestApp();
       const boundary = "----formdata";
       const { business, auth } = await createVenue(app);
-      const nextAddress = { ...fullAddress, country: "Canada", state: "Ontario" };
+      const nextAddress = { ...fullAddress, country: "USA", state: "New York" };
 
       const response = await app.inject({
         method: "PATCH",

@@ -31,6 +31,7 @@ import { findProfileFieldsAboveLayer } from "../../access/businessProfileFields.
 import { resolveEffectiveAccess } from "../../access/resolveEffectiveAccess.ts";
 import { requireBusinessLayer } from "../../access/requireBusinessLayer.ts";
 import { assertBusinessCurrencyChangeAllowed } from "../../business/businessCurrencyChangeGuard.ts";
+import { assertBusinessAddressCountryAllowed } from "../../business/businessPortfolioCountryGuard.ts";
 import { requestBusinessContactEmailVerification } from "../../business/businessContactEmail.ts";
 import { profileUpdateActorSource } from "../../communications/businessProfileUpdateActor.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
@@ -545,6 +546,11 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const businessRecord = business as Record<string, unknown>;
+
+      await assertBusinessAddressCountryAllowed({
+        companyId: business.companyId,
+        nextCountry: fields.address?.country,
+      });
 
       await assertBusinessCurrencyChangeAllowed({
         businessId,
