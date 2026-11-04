@@ -365,6 +365,58 @@ describe("GET /api/v1/auth/venues", () => {
     expect(response.json().venues).toEqual([]);
   });
 
+  it("excludes an owned venue whose Business is soft-deleted", async () => {
+    const app = await getTestApp();
+    const { user, company } = await createTestOwnerCompany();
+    const business = await createTestBusiness({
+      companyId: company._id,
+      tradeName: "Deleted Owned Venue",
+      currencyTrade: "EUR",
+    });
+    await markAsDeletedById(Business, business._id.toString());
+    const auth = await generateTestToken({
+      id: user._id.toString(),
+      email: "deleted-owned-business@test.com",
+      type: "user",
+      role: "Customer",
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/auth/venues",
+      headers: { authorization: auth },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().venues).toEqual([]);
+  });
+
+  it("excludes an owned venue whose Company is soft-deleted", async () => {
+    const app = await getTestApp();
+    const { user, company } = await createTestOwnerCompany();
+    await createTestBusiness({
+      companyId: company._id,
+      tradeName: "Company Deleted Venue",
+      currencyTrade: "EUR",
+    });
+    await markAsDeletedById(Company, company._id.toString());
+    const auth = await generateTestToken({
+      id: user._id.toString(),
+      email: "deleted-owned-company@test.com",
+      type: "user",
+      role: "Customer",
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/auth/venues",
+      headers: { authorization: auth },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().venues).toEqual([]);
+  });
+
   it("returns an empty list for a non-owner non-member and ignores a client-supplied User id", async () => {
     const app = await getTestApp();
     const outsider = await createSignedInUser();
