@@ -218,6 +218,55 @@ describe("CustomerDashboardPage", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows the loading state without flashing the empty state while the portfolio read is pending", async () => {
+    mockGet.mockReturnValue(new Promise(() => {}));
+
+    await renderPage();
+
+    expect(screen.getByText("Loading…")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Add your venue" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("No venues yet")).not.toBeInTheDocument();
+  });
+
+  it("shows localized failure copy when the portfolio read fails", async () => {
+    mockGet.mockRejectedValue(new Error("network unavailable"));
+
+    await renderPage();
+
+    expect(
+      await screen.findByText(
+        "We could not reach the server. Check your connection and try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Add your venue" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("re-reads the portfolio from the retry action and shows the recovered dashboard", async () => {
+    mockGet
+      .mockRejectedValueOnce(new Error("network unavailable"))
+      .mockResolvedValue({ data: populatedPortfolio });
+    const user = userEvent.setup();
+
+    await renderPage();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Try again" }),
+    );
+
+    await waitFor(() => {
+      expect(mockGet).toHaveBeenCalledTimes(2);
+    });
+    expect(await screen.findByText("Demo Bistro")).toBeInTheDocument();
+    expect(screen.getByText("Your venues")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Try again" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("submits the first venue form and shows the venue after the portfolio refetch", async () => {
     mockGet
       .mockResolvedValueOnce({ data: emptyPortfolio })

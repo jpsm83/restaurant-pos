@@ -68,7 +68,8 @@ export default function CustomerDashboardPage() {
       ) : null}
 
       {portfolioQuery.isLoading ? (
-        <div className="mt-6 space-y-3">
+        <div className="mt-6 space-y-3" aria-busy="true">
+          <span className="sr-only">{t("common:loading.route")}</span>
           <Skeleton className="h-6 w-48" />
           <Skeleton className="h-28 w-full max-w-2xl" />
         </div>
