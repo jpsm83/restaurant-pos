@@ -169,6 +169,8 @@ describe("Business Routes", () => {
         expect(body.business[field], field).toBeUndefined();
         expect(body.company[field], field).toBeUndefined();
       }
+      expect(body.business.legalName).toBeUndefined();
+      expect(body.business.taxNumber).toBeUndefined();
 
       const owner = await Owner.findOne({ userId });
       expect(owner).not.toBeNull();
@@ -368,6 +370,42 @@ describe("Business Routes", () => {
       await expect(Owner.countDocuments({ userId })).resolves.toBe(1);
       await expect(Company.countDocuments()).resolves.toBe(1);
       await expect(Business.countDocuments()).resolves.toBe(1);
+    });
+
+    it("omits legacy legal/tax values from a replayed Business response", async () => {
+      const app = await getTestApp();
+      const { auth } = await customerAuthToken();
+      const headers = {
+        authorization: auth,
+        "x-idempotency-key": "add-venue-legacy-columns",
+      };
+
+      const first = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers,
+        payload: draft,
+      });
+      expect(first.statusCode).toBe(201);
+      const businessId = JSON.parse(first.body).business._id as string;
+
+      await Business.updateOne(
+        { _id: businessId },
+        { $set: { legalName: "Legacy Venue LLC", taxNumber: "LEGACY-TAX" } },
+      );
+
+      const retry = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers,
+        payload: draft,
+      });
+
+      expect(retry.statusCode).toBe(201);
+      const retryBody = JSON.parse(retry.body);
+      expect(retryBody.business._id).toBe(businessId);
+      expect(retryBody.business.legalName).toBeUndefined();
+      expect(retryBody.business.taxNumber).toBeUndefined();
     });
 
     it.each([

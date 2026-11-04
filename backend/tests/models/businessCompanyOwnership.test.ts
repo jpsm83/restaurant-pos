@@ -54,5 +54,7 @@ describe("Business → Company ownership", () => {
     const hydrated = await Business.findById(businessId);
     expect(hydrated?.companyId).toBeUndefined();
     expect(hydrated?.tradeName).toBe(legacy.tradeName);
+    expect(hydrated?.legalName).toBe(legacy.legalName);
+    expect(hydrated?.taxNumber).toBe(`TAX-OWNERSHIP-ORPHAN-${businessId}`);
   });
 });

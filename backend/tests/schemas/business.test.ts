@@ -144,7 +144,13 @@ describe("createBusinessBodySchema", () => {
       { email: "venue@example.com" },
       { subscription: "Pro" },
       { averageRating: 5 },
+      { ratingCount: 12 },
       { timezone: "UTC" },
+      { emailVerified: true },
+      { password: "Password1!" },
+      { verificationToken: "token" },
+      { resetPasswordToken: "reset-token" },
+      { refreshSessionVersion: 2 },
     ]) {
       expect(
         createBusinessBodySchema.safeParse({ ...validCreate, ...override })

@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { Types } from "mongoose";
 
 import Business from "../../src/models/business.ts";
 import Company from "../../src/models/company.ts";
@@ -84,6 +85,69 @@ describe("Soft-delete contracts", () => {
       expect(match?.unique, entry.label).toBe(true);
       expect(match?.partialFilterExpression, entry.label).toEqual(entry.partial);
     }
+  });
+
+  it("hides soft-deleted Owners and Companies from ordinary reads", async () => {
+    const activeUserId = new Types.ObjectId();
+    const deletedUserId = new Types.ObjectId();
+    const activeOwner = await Owner.create({
+      userId: activeUserId,
+      country: "Spain",
+    });
+    const deletedOwner = await Owner.create({
+      userId: deletedUserId,
+      country: "Spain",
+      deleted: true,
+      deletedAt: new Date(),
+    });
+    await Company.create({
+      ownerId: activeOwner._id,
+      country: "Spain",
+      legalName: "Active Taxpayer SL",
+    });
+    await Company.create({
+      ownerId: deletedOwner._id,
+      country: "Spain",
+      legalName: "Deleted Taxpayer SL",
+      deleted: true,
+      deletedAt: new Date(),
+    });
+
+    const owners = await Owner.find({
+      userId: { $in: [activeUserId, deletedUserId] },
+    });
+    expect(owners.map((owner) => owner._id.toString())).toEqual([
+      activeOwner._id.toString(),
+    ]);
+    const companies = await Company.find({ country: "Spain" });
+    expect(companies.map((company) => company.legalName)).toEqual([
+      "Active Taxpayer SL",
+    ]);
+
+    const allOwners = await Owner.find({
+      userId: { $in: [activeUserId, deletedUserId] },
+    }).setOptions({ includeDeleted: true });
+    expect(allOwners).toHaveLength(2);
+    const allCompanies = await Company.find({ country: "Spain" }).setOptions({
+      includeDeleted: true,
+    });
+    expect(allCompanies).toHaveLength(2);
+  });
+
+  it("lets a soft-deleted Owner release its User for a replacement Owner", async () => {
+    const userId = new Types.ObjectId();
+    const deletedOwner = await Owner.create({
+      userId,
+      country: "Spain",
+      deleted: true,
+      deletedAt: new Date(),
+    });
+
+    const replacement = await Owner.create({ userId, country: "Spain" });
+
+    expect(replacement._id.toString()).not.toBe(deletedOwner._id.toString());
+    const active = await Owner.findOne({ userId });
+    expect(active?._id.toString()).toBe(replacement._id.toString());
   });
 
   it("keeps the sales-instance payment id unique across active and deleted rows", async () => {
