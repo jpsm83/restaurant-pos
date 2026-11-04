@@ -847,8 +847,10 @@ describe("POST /api/v1/auth/google", () => {
       const venue = await ownerCompanyCreation({
         userId,
         business: {
-          ...fakeBusinessRecord({ country: "USA" }),
           _id: new Types.ObjectId(),
+          tradeName: "Google Owner Venue",
+          currencyTrade: "USD",
+          country: "USA",
         },
       });
       expect(venue.owner.userId.toString()).toBe(userId);

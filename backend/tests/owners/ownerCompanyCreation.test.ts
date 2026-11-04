@@ -11,7 +11,6 @@ import ownerCompanyCreation, {
 } from "../../src/owners/ownerCompanyCreation.ts";
 import {
   fakeAddress,
-  fakeBusinessRecord,
   fakeCompany,
   fakeOwner,
 } from "../helpers/fixtures.ts";
@@ -35,11 +34,16 @@ async function createUser(label: string) {
   });
 }
 
-function venue(country: string, businessId = new Types.ObjectId()) {
+function venue(
+  country: string,
+  businessId = new Types.ObjectId(),
+): BusinessCreationInput {
   return {
-    ...fakeBusinessRecord({ country }),
     _id: businessId,
-  } as BusinessCreationInput;
+    tradeName: "Test Venue",
+    currencyTrade: "EUR",
+    country,
+  };
 }
 
 describe("ownerCompanyCreation", () => {
@@ -83,7 +87,7 @@ describe("ownerCompanyCreation", () => {
         _id: businessId,
         tradeName: "Draft Venue",
         currencyTrade: "USD",
-        address: { country: "USA" },
+        country: "USA",
       },
     });
 
@@ -99,6 +103,90 @@ describe("ownerCompanyCreation", () => {
     await expect(Owner.countDocuments({ userId: user._id })).resolves.toBe(1);
     await expect(Company.countDocuments({ ownerId: result.owner._id })).resolves.toBe(1);
   });
+
+  it("ignores fields outside the draft onboarding allowlist", async () => {
+    const user = await createUser("allowlist");
+    const businessId = new Types.ObjectId();
+
+    const result = await ownerCompanyCreation({
+      userId: user._id,
+      business: {
+        _id: businessId,
+        tradeName: "Allowlisted Venue",
+        currencyTrade: "USD",
+        country: "USA",
+        legalName: "Legacy Legal Name",
+        taxNumber: "LEGACY-TAX",
+        timezone: "America/New_York",
+        averageRating: 5,
+        ratingCount: 10,
+        email: "legacy@example.com",
+        phoneNumber: "600000000",
+        contactVerificationToken: "legacy-token",
+        contactVerificationTokenExpires: new Date("2030-01-01"),
+        contactVerificationRequestedAt: new Date("2029-01-01"),
+        address: {
+          country: "Canada",
+          city: "Toronto",
+        },
+      } as BusinessCreationInput,
+    });
+
+    expect(result.business.tradeName).toBe("Allowlisted Venue");
+    expect(result.business.currencyTrade).toBe("USD");
+    expect(result.business.address?.country).toBe("USA");
+    expect(result.business.address?.city).toBeUndefined();
+
+    const stored = await Business.findById(businessId).lean();
+    expect(stored).toMatchObject({
+      tradeName: "Allowlisted Venue",
+      currencyTrade: "USD",
+      address: { country: "USA" },
+    });
+    for (const field of [
+      "legalName",
+      "taxNumber",
+      "timezone",
+      "averageRating",
+      "ratingCount",
+      "email",
+      "phoneNumber",
+      "contactVerificationToken",
+      "contactVerificationTokenExpires",
+      "contactVerificationRequestedAt",
+    ]) {
+      expect(
+        (stored as Record<string, unknown> | null)?.[field],
+        field,
+      ).toBeUndefined();
+    }
+  });
+
+  it.each([
+    ["unsupported", "BTC"],
+    ["empty", ""],
+    ["whitespace", "   "],
+    ["padded", " USD "],
+  ])(
+    "refuses the %s currency before writing anything",
+    async (label, currencyTrade) => {
+      const user = await createUser(`bad-currency-${label}`);
+
+      await expect(
+        ownerCompanyCreation({
+          userId: user._id,
+          business: {
+            ...venue("Spain"),
+            currencyTrade,
+          },
+        }),
+      ).rejects.toMatchObject({ code: "currency-unsupported" });
+
+      await expect(Owner.countDocuments({ userId: user._id })).resolves.toBe(0);
+      await expect(Company.countDocuments()).resolves.toBe(0);
+      await expect(Business.countDocuments()).resolves.toBe(0);
+    },
+  );
 
   it("is idempotent for the first venue when called again with the same Business id", async () => {
     const user = await createUser("idempotent");

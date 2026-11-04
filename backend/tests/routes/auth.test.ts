@@ -17,7 +17,6 @@ import {
   createTestBusiness,
   createTestEmployeeMembership,
   createTestSchedule,
-  fakeBusinessRecord,
   fakeScheduleEntry,
 } from "../helpers/fixtures.ts";
 
@@ -61,9 +60,10 @@ describe("Auth Routes", () => {
     const venue = await ownerCompanyCreation({
       userId: user._id,
       business: {
-        ...fakeBusinessRecord({ country: "USA" }),
         _id: new Types.ObjectId(),
-        email: `${username}-venue@test.com`,
+        tradeName: `${username} Venue`,
+        currencyTrade: "USD",
+        country: "USA",
       },
     });
     return { user, venue };
@@ -2264,7 +2264,7 @@ describe("Auth Routes", () => {
           _id: new Types.ObjectId(),
           tradeName: "Draft Venue",
           currencyTrade: "EUR",
-          address: { country: "USA" },
+          country: "USA",
         },
       });
 
@@ -2471,9 +2471,10 @@ describe("Auth Routes", () => {
         const { business: venue } = await ownerCompanyCreation({
           userId: user._id,
           business: {
-            ...fakeBusinessRecord({ country: "USA" }),
             _id: new Types.ObjectId(),
-            email: `venue-${employmentStatus.replace(/\s/g, "")}@test.com`,
+            tradeName: `Venue ${employmentStatus}`,
+            currencyTrade: "USD",
+            country: "USA",
           },
         });
         await createTestEmployeeMembership({

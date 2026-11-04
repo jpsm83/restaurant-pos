@@ -209,6 +209,7 @@ function throwRegistrationProblem(error: unknown): never {
       case "company-not-owned":
         throw forbidden("Company does not belong to this Owner!");
       case "country-required":
+      case "currency-unsupported":
       case "owner-country-mismatch":
       case "company-country-mismatch":
       case "company-choice-required":
@@ -253,7 +254,7 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
             _id: businessId,
             tradeName: body.tradeName,
             currencyTrade: body.currencyTrade,
-            address: { country: body.country },
+            country: body.country,
           },
           companyId: body.companyId,
           company: body.company,
