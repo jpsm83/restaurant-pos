@@ -1,6 +1,16 @@
 import type { Types } from "mongoose";
 import type { IAddress } from "./IAddress.ts";
 
+/** Machine outcomes of a venue contact-verification request. */
+export const BUSINESS_CONTACT_VERIFICATION_OUTCOMES = [
+  "sent",
+  "already_verified",
+  "cooldown",
+] as const;
+
+export type BusinessContactVerificationOutcome =
+  (typeof BUSINESS_CONTACT_VERIFICATION_OUTCOMES)[number];
+
 export interface IsupplierGoodWastePercentage {
   veryLowBudgetImpact: number;
   lowBudgetImpact: number;

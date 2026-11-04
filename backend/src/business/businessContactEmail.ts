@@ -10,6 +10,7 @@
 import Business from "../models/business.ts";
 import User from "../models/user.ts";
 import { withSoftDeleteFilter } from "../models/softDelete.ts";
+import type { BusinessContactVerificationOutcome } from "restaurant-pos-packages/interfaces/IBusiness";
 import {
   sendAuthTokenEmailOrRollback,
   VERIFICATION_TOKEN_TTL_MS,
@@ -30,9 +31,12 @@ export const BUSINESS_CONTACT_VERIFICATION_SEND_FAILED_MESSAGE =
   "Failed to send verification email. Please try again later.";
 
 export type RequestBusinessContactVerificationResult =
-  | { kind: "sent"; message: string }
-  | { kind: "already_verified"; message: string }
-  | { kind: "cooldown"; message: string }
+  | {
+      [K in BusinessContactVerificationOutcome]: {
+        kind: K;
+        message: string;
+      };
+    }[BusinessContactVerificationOutcome]
   | { kind: "no_contact_email"; message: string }
   | { kind: "not_found"; message: string }
   | { kind: "server_error_500"; message: string };

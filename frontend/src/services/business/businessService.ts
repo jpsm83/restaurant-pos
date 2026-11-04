@@ -93,10 +93,13 @@ export {
   BusinessServiceError,
   fetchManagementContactOptions,
   getBusinessById,
+  requestBusinessContactVerification,
   updateBusinessProfile,
   useBusinessProfileQuery,
+  useRequestBusinessContactVerificationMutation,
   useUpdateBusinessProfileMutation,
 } from "./businessProfileApi";
 
 export { businessDtoToFormValues } from "./businessProfileMapper";
 export { formValuesToUpdatePayload } from "./businessProfilePayload";
+export type { BusinessContactVerificationOutcome } from "restaurant-pos-packages/interfaces/IBusiness";

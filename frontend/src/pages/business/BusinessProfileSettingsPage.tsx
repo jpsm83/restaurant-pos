@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BusinessContactEmailField } from "@/components/business/BusinessContactEmailField";
+import { BusinessContactVerificationAction } from "@/components/business/BusinessContactVerificationAction";
 import {
   currenctyEnums,
   cuisineTypeEnums,
@@ -209,6 +210,7 @@ function BusinessProfileSections({
 }) {
   const { t } = useTranslation("business");
   const {
+    businessId,
     canAdminister,
     register,
     control,
@@ -292,6 +294,14 @@ function BusinessProfileSections({
                 registerEmail={register("email")}
                 hasStoredEmail={emailHasValue}
                 verified={emailVerified}
+                verificationAction={
+                  <BusinessContactVerificationAction
+                    businessId={businessId}
+                    hasStoredEmail={emailHasValue}
+                    verified={emailVerified}
+                    canRequest={canAdminister}
+                  />
+                }
               />
             </div>
           </div>

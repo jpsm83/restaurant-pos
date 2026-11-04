@@ -162,6 +162,18 @@ const OVERRIDES: Partial<Record<ServiceErrorCode, ErrorCopyTemplate>> = {
     namespace: "business",
     key: "errors.updateConflict",
   },
+  "businessContactVerification.badRequest": {
+    namespace: "business",
+    key: "profileSettings.core.emailVerification.noEmail",
+  },
+  "businessContactVerification.internal": {
+    namespace: "business",
+    key: "profileSettings.core.emailVerification.requestFailure",
+  },
+  "businessContactVerification.transport": {
+    namespace: "business",
+    key: "profileSettings.core.emailVerification.requestFailure",
+  },
   "companyUpdate.conflict": {
     namespace: "business",
     key: "errors.companyConflict",

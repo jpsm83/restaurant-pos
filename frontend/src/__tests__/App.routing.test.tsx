@@ -1,4 +1,5 @@
 import { screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { IAuthAccessibleVenue } from "restaurant-pos-packages/interfaces/IAuth";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -325,10 +326,13 @@ describe("App public routing (Phase 1.5.1)", () => {
   });
 
   it("renders ConfirmEmailPage for `/confirm-email`", async () => {
+    const queryClient = new QueryClient();
     await renderWithI18n(
-      <MemoryRouter initialEntries={["/confirm-email"]}>
-        <AppRoutes />
-      </MemoryRouter>,
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={["/confirm-email"]}>
+          <AppRoutes />
+        </MemoryRouter>
+      </QueryClientProvider>,
     );
 
     expect(

@@ -1,4 +1,8 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  BUSINESS_CONTACT_VERIFICATION_OUTCOMES,
+  type BusinessContactVerificationOutcome,
+} from "restaurant-pos-packages/interfaces/IBusiness";
 import { http } from "../http";
 import { multipartFormDataConfig } from "../multipartRequest";
 import { queryKeys } from "../queryKeys";
@@ -29,7 +33,7 @@ export class BusinessServiceError extends ServiceRequestError {
 
 function toBusinessServiceError(
   error: unknown,
-  operation: "businessFetch" | "businessUpdate",
+  operation: "businessFetch" | "businessUpdate" | "businessContactVerification",
 ): BusinessServiceError {
   const mapped = toServiceRequestError(error, operation);
   return new BusinessServiceError(mapped, { cause: error });
@@ -116,6 +120,48 @@ export async function getBusinessById(
     });
     throw mapped;
   }
+}
+
+/**
+ * POST `/api/v1/business/:businessId/request-email-verification`.
+ * The venue contact address is verified through the account-email rail; the
+ * caller maps the machine outcome to localised copy.
+ */
+export type BusinessContactVerificationSuccess = {
+  outcome: BusinessContactVerificationOutcome;
+};
+
+function isBusinessContactVerificationOutcome(
+  value: unknown,
+): value is BusinessContactVerificationOutcome {
+  return (
+    typeof value === "string" &&
+    (BUSINESS_CONTACT_VERIFICATION_OUTCOMES as readonly string[]).includes(
+      value,
+    )
+  );
+}
+
+export async function requestBusinessContactVerification(
+  businessId: string,
+): Promise<BusinessContactVerificationSuccess> {
+  let data: { outcome?: unknown };
+  try {
+    ({ data } = await http.post<{ outcome?: unknown }>(
+      `/api/v1/business/${businessId}/request-email-verification`,
+      {},
+    ));
+  } catch (e) {
+    throw toBusinessServiceError(e, "businessContactVerification");
+  }
+
+  if (!isBusinessContactVerificationOutcome(data.outcome)) {
+    throw new BusinessServiceError({
+      code: "businessContactVerification.internal",
+    });
+  }
+
+  return { outcome: data.outcome };
 }
 
 /**
@@ -219,5 +265,16 @@ export function useUpdateBusinessProfileMutation() {
       formData: FormData;
       operationId?: string;
     }) => updateBusinessProfile(businessId, formData, { operationId }),
+  });
+}
+
+/** Requests one venue contact-verification email and refreshes the Owner portfolio. */
+export function useRequestBusinessContactVerificationMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (businessId: string) =>
+      requestBusinessContactVerification(businessId),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.portfolio.all() }),
   });
 }

@@ -89,6 +89,7 @@ vi.mock("sonner", () => ({
 }));
 
 const mockFetchManagementContactOptions = vi.fn();
+const mockRequestBusinessContactVerification = vi.fn();
 
 vi.mock("@/services/employees/employeesService", async (importOriginal) => {
   const actual =
@@ -111,6 +112,11 @@ vi.mock("@/services/business/businessService", async (importOriginal) => {
       mockUseUpdateBusinessProfileMutation(...args),
     fetchManagementContactOptions: (...args: unknown[]) =>
       mockFetchManagementContactOptions(...args),
+    useRequestBusinessContactVerificationMutation: () => ({
+      mutateAsync: (...args: unknown[]) =>
+        mockRequestBusinessContactVerification(...args),
+      isPending: false,
+    }),
   };
 });
 
@@ -169,6 +175,7 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     mockToastError.mockReset();
     mockFetchManagementContactOptions.mockReset();
     mockFetchManagementContactOptions.mockResolvedValue([]);
+    mockRequestBusinessContactVerification.mockReset();
     mockUseUpdateBusinessProfileMutation.mockReturnValue({
       mutateAsync: vi.fn().mockResolvedValue({ message: "Business updated" }),
       isPending: false,
@@ -409,6 +416,218 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
 
     expect(screen.getByText("Not verified")).toBeInTheDocument();
     expect(screen.queryByText("Verified")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Send verification email" }),
+    ).toBeInTheDocument();
+  });
+
+  it("asks the Owner to add a contact email before offering verification", async () => {
+    mockUseBusinessProfileQuery.mockReturnValue({
+      data: {
+        ...makeBusinessProfileDto(),
+        email: "",
+        emailVerified: false,
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    await renderWithQueryClient(
+      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
+        <Routes>
+          <Route
+            path="/business/:businessId/settings/profile"
+            element={<BusinessProfileSettingsPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Send verification email" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Add a contact email before requesting verification.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("does not offer the verification action once the contact email is verified", async () => {
+    mockUseBusinessProfileQuery.mockReturnValue({
+      data: makeBusinessProfileDto(),
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    await renderWithQueryClient(
+      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
+        <Routes>
+          <Route
+            path="/business/:businessId/settings/profile"
+            element={<BusinessProfileSettingsPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Verified")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Send verification email" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["sent", "Verification email sent."],
+    ["already_verified", "This contact email is already verified."],
+    [
+      "cooldown",
+      "A verification email was sent recently. Please try again in a minute.",
+    ],
+  ] as const)(
+    "shows localised copy for the %s verification outcome",
+    async (outcome, expectedCopy) => {
+      mockUseBusinessProfileQuery.mockReturnValue({
+        data: { ...makeBusinessProfileDto(), emailVerified: false },
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: vi.fn(),
+      });
+      mockRequestBusinessContactVerification.mockResolvedValue({
+        outcome,
+        message: "Server success copy",
+      });
+      const user = userEvent.setup();
+
+      await renderWithQueryClient(
+        <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
+          <Routes>
+            <Route
+              path="/business/:businessId/settings/profile"
+              element={<BusinessProfileSettingsPage />}
+            />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      await user.click(
+        screen.getByRole("button", { name: "Send verification email" }),
+      );
+
+      expect(mockRequestBusinessContactVerification).toHaveBeenCalledWith(
+        "64b000000000000000000001",
+      );
+      expect(await screen.findByText(expectedCopy)).toBeInTheDocument();
+      expect(screen.queryByText("Server success copy")).not.toBeInTheDocument();
+    },
+  );
+
+  it("shows localised copy when the request finds no contact email", async () => {
+    mockUseBusinessProfileQuery.mockReturnValue({
+      data: { ...makeBusinessProfileDto(), emailVerified: false },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    mockRequestBusinessContactVerification.mockRejectedValue(
+      new BusinessServiceError({
+        code: "businessContactVerification.badRequest",
+        status: 400,
+      }),
+    );
+    const user = userEvent.setup();
+
+    await renderWithQueryClient(
+      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
+        <Routes>
+          <Route
+            path="/business/:businessId/settings/profile"
+            element={<BusinessProfileSettingsPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Send verification email" }),
+    );
+
+    expect(
+      await screen.findByText(
+        "Add a contact email before requesting verification.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("shows localised copy when sending the verification email fails", async () => {
+    mockUseBusinessProfileQuery.mockReturnValue({
+      data: { ...makeBusinessProfileDto(), emailVerified: false },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    mockRequestBusinessContactVerification.mockRejectedValue(
+      new BusinessServiceError({
+        code: "businessContactVerification.internal",
+        status: 500,
+      }),
+    );
+    const user = userEvent.setup();
+
+    await renderWithQueryClient(
+      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
+        <Routes>
+          <Route
+            path="/business/:businessId/settings/profile"
+            element={<BusinessProfileSettingsPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Send verification email" }),
+    );
+
+    expect(
+      await screen.findByText(
+        "Failed to send verification email. Please try again later.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("uses Spanish copy for the verification action", async () => {
+    mockUseBusinessProfileQuery.mockReturnValue({
+      data: { ...makeBusinessProfileDto(), emailVerified: false },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    await renderWithQueryClient(
+      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
+        <Routes>
+          <Route
+            path="/business/:businessId/settings/profile"
+            element={<BusinessProfileSettingsPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+      "es",
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Enviar correo de verificación" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("No verificado")).toBeInTheDocument();
   });
 
   it("renders the business contact email as read-only for a manager", async () => {
@@ -438,6 +657,35 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     expect(emailInput).toHaveValue("owner@demo.test");
     expect(emailInput.readOnly).toBe(true);
     expect(screen.getByText("Verified")).toBeInTheDocument();
+  });
+
+  it("does not offer a manager the verification action", async () => {
+    mockUseBusinessAccessSnapshotQuery.mockReturnValue(
+      accessSnapshot("manager"),
+    );
+    mockUseBusinessProfileQuery.mockReturnValue({
+      data: { ...makeBusinessProfileDto(), emailVerified: false },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    await renderWithQueryClient(
+      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
+        <Routes>
+          <Route
+            path="/business/:businessId/settings/profile"
+            element={<BusinessProfileSettingsPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Not verified")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Send verification email" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows the server-derived timezone as a read-only field", async () => {

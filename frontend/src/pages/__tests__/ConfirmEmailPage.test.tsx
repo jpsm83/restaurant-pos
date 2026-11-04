@@ -1,7 +1,9 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { renderWithI18n } from "@/test/i18nTestUtils";
+import { queryKeys } from "@/services/queryKeys";
 import ConfirmEmailPage from "../ConfirmEmailPage";
 
 const mockConfirmEmail = vi.fn();
@@ -18,8 +20,14 @@ vi.mock("@/auth/store/AuthContext", () => ({
   useAuth: () => mockUseAuth(),
 }));
 
-function renderAt(path: string, language?: "en" | "es") {
-  return renderWithI18n(
+async function renderAt(path: string, language?: "en" | "es") {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: 0 },
+    },
+  });
+  const view = await renderWithI18n(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/confirm-email" element={<ConfirmEmailPage />} />
@@ -30,8 +38,14 @@ function renderAt(path: string, language?: "en" | "es") {
         />
       </Routes>
     </MemoryRouter>,
-    language ? { language } : undefined,
+    {
+      ...(language ? { language } : {}),
+      wrapper: ({ children }) => (
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      ),
+    },
   );
+  return { ...view, queryClient };
 }
 
 describe("ConfirmEmailPage", () => {
@@ -84,6 +98,31 @@ describe("ConfirmEmailPage", () => {
       expect(screen.getByText("Login Screen")).toBeInTheDocument();
     });
     expect(mockConfirmEmail).toHaveBeenCalledWith("abc");
+  });
+
+  it("invalidates the Owner portfolio after a successful confirmation", async () => {
+    const user = userEvent.setup();
+    mockConfirmEmail.mockResolvedValue({
+      ok: true,
+      data: { message: "Email verified." },
+    });
+
+    const view = await renderAt("/confirm-email?token=abc");
+    const portfolioKey = queryKeys.portfolio.byUser("owner-1");
+    const profileKey = queryKeys.business.detail("b1");
+    view.queryClient.setQueryData(portfolioKey, { companies: [] });
+    view.queryClient.setQueryData(profileKey, { _id: "b1" });
+
+    await user.click(screen.getByRole("button", { name: /confirm email/i }));
+
+    await waitFor(() => {
+      expect(
+        view.queryClient.getQueryState(portfolioKey)?.isInvalidated,
+      ).toBe(true);
+      expect(
+        view.queryClient.getQueryState(profileKey)?.isInvalidated,
+      ).toBe(true);
+    });
   });
 
   it("redirects to actor dashboard after successful confirm when a session exists", async () => {

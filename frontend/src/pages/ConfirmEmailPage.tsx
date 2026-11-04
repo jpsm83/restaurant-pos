@@ -2,9 +2,11 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { confirmEmail, refreshSession } from "@/auth/api";
 import { useErrorMessage, type ErrorFailure } from "@/i18n/errorCopy";
 import { useAuth } from "@/auth/store/AuthContext";
+import { queryKeys } from "@/services/queryKeys";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +25,7 @@ export default function ConfirmEmailPage() {
   const { t } = useTranslation(["auth", "nav"]);
   const navigate = useNavigate();
   const { state, dispatch } = useAuth();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const token = (searchParams.get("token") ?? "").trim();
 
@@ -45,6 +48,16 @@ export default function ConfirmEmailPage() {
 
     const result = await confirmEmail(token);
     if (result.ok) {
+      // A venue contact link changes the Owner portfolio's completeness signal
+      // and the profile's verification state, so both reads must refresh.
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.portfolio.all(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.business.detailAll(),
+        }),
+      ]);
       // Confirm-email does not mint a new access token; refresh reads `emailVerified` from the DB into the JWT.
       if (state.user) {
         const refreshed = await refreshSession();

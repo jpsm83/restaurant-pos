@@ -3,11 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockHttpGet,
   mockHttpPatch,
+  mockHttpPost,
   mockUseMutation,
   mockUseQuery,
 } = vi.hoisted(() => ({
   mockHttpGet: vi.fn(),
   mockHttpPatch: vi.fn(),
+  mockHttpPost: vi.fn(),
   mockUseMutation: vi.fn(),
   mockUseQuery: vi.fn(),
 }));
@@ -16,17 +18,20 @@ vi.mock("../../http", () => ({
   http: {
     get: (...args: unknown[]) => mockHttpGet(...args),
     patch: (...args: unknown[]) => mockHttpPatch(...args),
+    post: (...args: unknown[]) => mockHttpPost(...args),
   },
 }));
 
 vi.mock("@tanstack/react-query", () => ({
   useMutation: (...args: unknown[]) => mockUseMutation(...args),
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
+  useQueryClient: () => ({ invalidateQueries: vi.fn() }),
 }));
 
 import {
   fetchManagementContactOptions,
   getBusinessById,
+  requestBusinessContactVerification,
   updateBusinessProfile,
   useBusinessProfileQuery,
   useUpdateBusinessProfileMutation,
@@ -36,6 +41,7 @@ describe("businessProfileApi", () => {
   beforeEach(() => {
     mockHttpGet.mockReset();
     mockHttpPatch.mockReset();
+    mockHttpPost.mockReset();
     mockUseMutation.mockReset();
     mockUseQuery.mockReset();
   });
@@ -84,6 +90,49 @@ describe("businessProfileApi", () => {
       code: "businessUpdate.forbidden",
       serverMessage: "You cannot edit this business",
       status: 403,
+    });
+  });
+
+  it("requests contact verification for the addressed venue and returns its outcome", async () => {
+    mockHttpPost.mockResolvedValueOnce({
+      data: { outcome: "cooldown", message: "Server copy" },
+    });
+
+    await expect(
+      requestBusinessContactVerification("b-1"),
+    ).resolves.toEqual({ outcome: "cooldown" });
+    expect(mockHttpPost).toHaveBeenCalledWith(
+      "/api/v1/business/b-1/request-email-verification",
+      {},
+    );
+  });
+
+  it("rejects an unexpected success body instead of claiming an email was sent", async () => {
+    mockHttpPost.mockResolvedValueOnce({ data: { message: "Server copy" } });
+
+    await expect(
+      requestBusinessContactVerification("b-1"),
+    ).rejects.toMatchObject({
+      code: "businessContactVerification.internal",
+    });
+  });
+
+  it("maps contact-verification problem details", async () => {
+    mockHttpPost.mockRejectedValueOnce({
+      isAxiosError: true,
+      message: "Request failed with status code 400",
+      response: {
+        status: 400,
+        data: { status: 400, detail: "Add a contact email first" },
+      },
+    });
+
+    await expect(
+      requestBusinessContactVerification("b-1"),
+    ).rejects.toMatchObject({
+      name: "BusinessServiceError",
+      code: "businessContactVerification.badRequest",
+      status: 400,
     });
   });
 

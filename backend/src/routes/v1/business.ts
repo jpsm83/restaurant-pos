@@ -487,7 +487,10 @@ export const businessRoutes: FastifyPluginAsync = async (app) => {
         throw internal(result.message);
       }
 
-      return reply.code(200).send({ message: result.message });
+      return reply.code(200).send({
+        message: result.message,
+        outcome: result.kind,
+      });
     },
   );
 

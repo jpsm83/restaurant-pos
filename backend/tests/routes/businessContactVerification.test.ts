@@ -246,9 +246,10 @@ describe("POST /api/v1/business/:businessId/request-email-verification", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json().message).toBe(
-      BUSINESS_CONTACT_VERIFICATION_SENT_MESSAGE,
-    );
+    expect(response.json()).toMatchObject({
+      message: BUSINESS_CONTACT_VERIFICATION_SENT_MESSAGE,
+      outcome: "sent",
+    });
 
     const stored = await Business.findById(business._id)
       .select(
@@ -402,9 +403,10 @@ describe("POST /api/v1/business/:businessId/request-email-verification", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json().message).toBe(
-      BUSINESS_CONTACT_VERIFICATION_ALREADY_VERIFIED_MESSAGE,
-    );
+    expect(response.json()).toMatchObject({
+      message: BUSINESS_CONTACT_VERIFICATION_ALREADY_VERIFIED_MESSAGE,
+      outcome: "already_verified",
+    });
     expect(sendEmailMock).not.toHaveBeenCalled();
     const stored = await Business.findById(business._id)
       .select(
@@ -438,9 +440,10 @@ describe("POST /api/v1/business/:businessId/request-email-verification", () => {
       headers: { authorization: auth },
     });
     expect(second.statusCode).toBe(200);
-    expect(second.json().message).toBe(
-      BUSINESS_CONTACT_VERIFICATION_COOLDOWN_MESSAGE,
-    );
+    expect(second.json()).toMatchObject({
+      message: BUSINESS_CONTACT_VERIFICATION_COOLDOWN_MESSAGE,
+      outcome: "cooldown",
+    });
     expect(sendEmailMock).toHaveBeenCalledTimes(1);
 
     const secondStored = await Business.findById(business._id)

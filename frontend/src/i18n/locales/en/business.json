@@ -163,7 +163,14 @@
       "timezoneDefaultHint": "We couldn't determine your time zone from the business address. Update the address country and region to set it.",
       "emailVerification": {
         "verified": "Verified",
-        "unverified": "Not verified"
+        "unverified": "Not verified",
+        "requestAction": "Send verification email",
+        "requestPending": "Sending…",
+        "requestSuccess": "Verification email sent.",
+        "alreadyVerified": "This contact email is already verified.",
+        "noEmail": "Add a contact email before requesting verification.",
+        "cooldown": "A verification email was sent recently. Please try again in a minute.",
+        "requestFailure": "Failed to send verification email. Please try again later."
       }
     },
     "discovery": {

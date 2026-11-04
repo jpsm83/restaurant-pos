@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { UseFormRegisterReturn } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,7 @@ type BusinessContactEmailFieldProps = {
   readOnly?: boolean;
   hasStoredEmail: boolean;
   verified: boolean;
+  verificationAction?: ReactNode;
 };
 
 /** Venue contact email with its stored verification state; read-only for non-admins. */
@@ -17,6 +19,7 @@ export function BusinessContactEmailField({
   readOnly = false,
   hasStoredEmail,
   verified,
+  verificationAction,
 }: BusinessContactEmailFieldProps) {
   const { t } = useTranslation("business");
 
@@ -52,6 +55,7 @@ export function BusinessContactEmailField({
           )}
         </p>
       ) : null}
+      {verificationAction}
     </div>
   );
 }

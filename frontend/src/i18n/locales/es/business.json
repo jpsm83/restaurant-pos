@@ -163,7 +163,14 @@
       "timezoneDefaultHint": "No pudimos determinar tu zona horaria a partir de la dirección del negocio. Actualiza el país y la región de la dirección para establecerla.",
       "emailVerification": {
         "verified": "Verificado",
-        "unverified": "No verificado"
+        "unverified": "No verificado",
+        "requestAction": "Enviar correo de verificación",
+        "requestPending": "Enviando…",
+        "requestSuccess": "Correo de verificación enviado.",
+        "alreadyVerified": "Este correo de contacto ya está verificado.",
+        "noEmail": "Añade un correo de contacto antes de solicitar la verificación.",
+        "cooldown": "Se envió un correo de verificación recientemente. Inténtalo de nuevo en un minuto.",
+        "requestFailure": "No se pudo enviar el correo de verificación. Inténtalo de nuevo más tarde."
       }
     },
     "discovery": {
