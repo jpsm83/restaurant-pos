@@ -10,20 +10,34 @@ import {
   createVenue,
   fetchOwnerPortfolio,
   hasOwnedBusiness,
+  updateCompany,
   useCreateVenueMutation,
 } from "../portfolioService";
 
-const { mockGet, mockPost } = vi.hoisted(() => ({
+const { mockGet, mockPost, mockPatch } = vi.hoisted(() => ({
   mockGet: vi.fn(),
   mockPost: vi.fn(),
+  mockPatch: vi.fn(),
 }));
 
 vi.mock("../../http", () => ({
   http: {
     get: (...args: unknown[]) => mockGet(...args),
     post: (...args: unknown[]) => mockPost(...args),
+    patch: (...args: unknown[]) => mockPatch(...args),
   },
 }));
+
+function companyUpdateFailure(status: number) {
+  const response = { status } as AxiosResponse;
+  return new AxiosError(
+    "request failed",
+    "ERR_BAD_RESPONSE",
+    undefined,
+    undefined,
+    response,
+  );
+}
 
 const emptyPortfolio = {
   owner: null,
@@ -70,6 +84,7 @@ describe("portfolioService", () => {
   beforeEach(() => {
     mockGet.mockReset();
     mockPost.mockReset();
+    mockPatch.mockReset();
   });
 
   it("reads the caller's portfolio from the owner portfolio endpoint", async () => {
@@ -217,5 +232,51 @@ describe("portfolioService", () => {
     await expect(
       createVenue({ tradeName: "Dup", country: "USA", currencyTrade: "USD" }),
     ).rejects.toMatchObject({ code: "businessCreate.conflict", status: 409 });
+  });
+
+  it("updates the Company identity through the owner Company route", async () => {
+    mockPatch.mockResolvedValue({
+      data: {
+        _id: "c1",
+        country: "Spain",
+        legalName: "Demo Bistro SL",
+        taxNumber: "B12345678",
+      },
+    });
+
+    const result = await updateCompany("c1", {
+      legalName: "Demo Bistro SL",
+      taxNumber: "B12345678",
+    });
+
+    expect(mockPatch).toHaveBeenCalledWith("/api/v1/owners/companies/c1", {
+      legalName: "Demo Bistro SL",
+      taxNumber: "B12345678",
+    });
+    expect(result.legalName).toBe("Demo Bistro SL");
+  });
+
+  it("maps Company update conflicts to a machine failure code", async () => {
+    mockPatch.mockRejectedValue(companyUpdateFailure(409));
+
+    await expect(
+      updateCompany("c1", { legalName: "Duplicate SL" }),
+    ).rejects.toMatchObject({ code: "companyUpdate.conflict", status: 409 });
+  });
+
+  it("maps forbidden Company updates to a machine failure code", async () => {
+    mockPatch.mockRejectedValue(companyUpdateFailure(403));
+
+    await expect(
+      updateCompany("c1", { taxNumber: "B12345678" }),
+    ).rejects.toMatchObject({ code: "companyUpdate.forbidden", status: 403 });
+  });
+
+  it("maps a missing Company to a machine failure code", async () => {
+    mockPatch.mockRejectedValue(companyUpdateFailure(404));
+
+    await expect(
+      updateCompany("missing", { legalName: "Unknown SL" }),
+    ).rejects.toMatchObject({ code: "companyUpdate.notFound", status: 404 });
   });
 });
