@@ -41,6 +41,13 @@ const emptyPortfolio = {
   companies: [],
 };
 
+const ownerOnlyPortfolio = {
+  owner: { _id: "o1", country: "Spain", subscription: "Free" },
+  country: "Spain",
+  subscription: "Free",
+  companies: [],
+};
+
 const populatedPortfolio = {
   owner: { _id: "o1", country: "Spain", subscription: "Free" },
   country: "Spain",
@@ -195,6 +202,20 @@ describe("CustomerDashboardPage", () => {
       await screen.findByRole("button", { name: "Add your venue" }),
     ).toBeInTheDocument();
     expect(screen.queryByText("Demo Bistro")).not.toBeInTheDocument();
+  });
+
+  it("shows Add your venue when the Owner exists but owns no Companies", async () => {
+    mockGet.mockResolvedValue({ data: ownerOnlyPortfolio });
+
+    await renderPage();
+
+    expect(
+      await screen.findByRole("button", { name: "Add your venue" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Your venues")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Open business" }),
+    ).not.toBeInTheDocument();
   });
 
   it("submits the first venue form and shows the venue after the portfolio refetch", async () => {

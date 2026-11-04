@@ -73,6 +73,29 @@ describe("GET /api/v1/owners/portfolio", () => {
     });
   });
 
+  it("keeps the Owner, country and subscription when the Owner has no Companies", async () => {
+    const app = await getTestApp();
+    const { auth, userId } = await customerAuthToken();
+    const owner = await Owner.create({ userId, country: "Spain" });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/owners/portfolio",
+      headers: { authorization: auth },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
+    expect(body.owner).toEqual({
+      _id: owner._id.toString(),
+      country: "Spain",
+      subscription: "Free",
+    });
+    expect(body.country).toBe("Spain");
+    expect(body.subscription).toBe("Free");
+    expect(body.companies).toEqual([]);
+  });
+
   it("returns the first registered venue under the caller's Owner", async () => {
     const app = await getTestApp();
     const { auth, userId } = await customerAuthToken();
