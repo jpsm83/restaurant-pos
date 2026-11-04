@@ -218,6 +218,7 @@ function throwRegistrationProblem(error: unknown): never {
         throw conflict(error.message);
       case "business-without-company":
       case "business-other-company":
+      case "payload-mismatch":
         throw conflict(error.message);
       default:
         throw error;

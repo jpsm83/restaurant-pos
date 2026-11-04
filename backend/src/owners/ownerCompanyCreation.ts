@@ -21,6 +21,7 @@ import { runTxnWithTransientRetry } from "../mongo/runTxnWithTransientRetry.ts";
 export type OwnerCompanyCreationErrorCode =
   | "business-without-company"
   | "business-other-company"
+  | "payload-mismatch"
   | "company-not-found"
   | "company-not-owned"
   | "company-duplicate"
@@ -99,9 +100,41 @@ function optionalField(value?: string): string | undefined {
 }
 
 /**
+ * A replayed registration must carry the same intent as the first attempt.
+ * The stored Business and its Company are the source of truth: a changed trade
+ * name, currency, country, or Company choice is refused instead of silently
+ * returning the first venue.
+ */
+function assertReplayMatchesIntent(
+  input: OwnerCompanyCreationInput,
+  existingBusiness: HydratedDocument<IBusiness>,
+  company: HydratedDocument<ICompany>,
+  currencyTrade: string,
+): void {
+  const country = requiredCountry(input.business.country);
+  const businessMatches =
+    existingBusiness.tradeName === input.business.tradeName &&
+    existingBusiness.currencyTrade === currencyTrade &&
+    existingBusiness.address?.country === country;
+  const companyFieldsMatch = input.company
+    ? optionalField(input.company.legalName) === company.legalName &&
+      optionalField(input.company.taxNumber) === company.taxNumber
+    : true;
+  const companyMatches = company.country === country;
+
+  if (!businessMatches || !companyFieldsMatch || !companyMatches) {
+    throw new OwnerCompanyCreationError(
+      "payload-mismatch",
+      "Registration payload does not match the original idempotent request!",
+    );
+  }
+}
+
+/**
  * Creates or reuses the User's Owner and the venue's Company, then creates the
  * Business linked to that Company. Calling again with the same Business `_id`
- * returns the existing Owner/Company pair instead of creating another.
+ * and an equivalent payload returns the existing Owner/Company pair instead of
+ * creating another; a changed payload is refused.
  *
  * Rejects a venue whose country differs from the Owner's portfolio country, a
  * Company that is not owned by this User's Owner or sits in another country,
@@ -157,6 +190,13 @@ const ownerCompanyCreation = async (
           "Company does not belong to this User's Owner!",
         );
       }
+
+      assertReplayMatchesIntent(
+        input,
+        existingBusiness,
+        company,
+        currencyTrade,
+      );
 
       return {
         type: "commit" as const,

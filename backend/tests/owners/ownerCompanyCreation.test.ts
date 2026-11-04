@@ -203,9 +203,128 @@ describe("ownerCompanyCreation", () => {
 
     expect(second.owner._id.toString()).toBe(first.owner._id.toString());
     expect(second.company._id.toString()).toBe(first.company._id.toString());
+    expect(second.business._id.toString()).toBe(first.business._id.toString());
+    expect(second.business.tradeName).toBe("Test Venue");
+    expect(second.business.currencyTrade).toBe("EUR");
     await expect(Owner.countDocuments({ userId: user._id })).resolves.toBe(1);
     await expect(Company.countDocuments({ ownerId: first.owner._id })).resolves.toBe(1);
     await expect(Business.countDocuments({ _id: businessId })).resolves.toBe(1);
+  });
+
+  it("rejects a changed trade name on a replay as a payload mismatch and changes nothing", async () => {
+    const user = await createUser("idempotent-changed-trade-name");
+    const businessId = new Types.ObjectId();
+
+    const first = await ownerCompanyCreation({
+      userId: user._id,
+      business: venue("Spain", businessId),
+    });
+
+    await expect(
+      ownerCompanyCreation({
+        userId: user._id,
+        business: { ...venue("Spain", businessId), tradeName: "Renamed Venue" },
+      }),
+    ).rejects.toMatchObject({ code: "payload-mismatch" });
+
+    const stored = await Business.findById(businessId).lean();
+    expect(stored?.tradeName).toBe("Test Venue");
+    await expect(Owner.countDocuments({ userId: user._id })).resolves.toBe(1);
+    await expect(
+      Company.countDocuments({ ownerId: first.owner._id }),
+    ).resolves.toBe(1);
+    await expect(Business.countDocuments({})).resolves.toBe(1);
+  });
+
+  it("rejects a changed supported currency on a replay as a payload mismatch", async () => {
+    const user = await createUser("idempotent-changed-currency");
+    const businessId = new Types.ObjectId();
+
+    await ownerCompanyCreation({
+      userId: user._id,
+      business: venue("Spain", businessId),
+    });
+
+    await expect(
+      ownerCompanyCreation({
+        userId: user._id,
+        business: { ...venue("Spain", businessId), currencyTrade: "USD" },
+      }),
+    ).rejects.toMatchObject({ code: "payload-mismatch" });
+
+    const stored = await Business.findById(businessId).lean();
+    expect(stored?.currencyTrade).toBe("EUR");
+  });
+
+  it("rejects a changed country on a replay as a payload mismatch", async () => {
+    const user = await createUser("idempotent-changed-country");
+    const businessId = new Types.ObjectId();
+
+    await ownerCompanyCreation({
+      userId: user._id,
+      business: venue("Spain", businessId),
+    });
+
+    await expect(
+      ownerCompanyCreation({
+        userId: user._id,
+        business: venue("France", businessId),
+      }),
+    ).rejects.toMatchObject({ code: "payload-mismatch" });
+
+    const stored = await Business.findById(businessId).lean();
+    expect(stored?.address?.country).toBe("Spain");
+  });
+
+  it("rejects a different Company id on a replay as a business-other-company conflict", async () => {
+    const user = await createUser("idempotent-changed-company");
+    const businessId = new Types.ObjectId();
+
+    const first = await ownerCompanyCreation({
+      userId: user._id,
+      business: venue("Spain", businessId),
+    });
+    const otherCompany = await Company.create({
+      ownerId: first.owner._id,
+      country: "Spain",
+    });
+
+    await expect(
+      ownerCompanyCreation({
+        userId: user._id,
+        business: venue("Spain", businessId),
+        companyId: otherCompany._id,
+      }),
+    ).rejects.toMatchObject({ code: "business-other-company" });
+
+    const stored = await Business.findById(businessId).lean();
+    expect(stored?.companyId?.toString()).toBe(first.company._id.toString());
+  });
+
+  it("rejects changed Company identity fields on a replay as a payload mismatch", async () => {
+    const user = await createUser("idempotent-changed-company-fields");
+    const businessId = new Types.ObjectId();
+
+    const first = await ownerCompanyCreation({
+      userId: user._id,
+      business: venue("Spain", businessId),
+      company: { legalName: "Taxpayer SL", taxNumber: "ES-123" },
+    });
+
+    await expect(
+      ownerCompanyCreation({
+        userId: user._id,
+        business: venue("Spain", businessId),
+        company: { legalName: "Other SL", taxNumber: "ES-123" },
+      }),
+    ).rejects.toMatchObject({ code: "payload-mismatch" });
+
+    const storedCompany = await Company.findById(first.company._id).lean();
+    expect(storedCompany?.legalName).toBe("Taxpayer SL");
+    const storedBusiness = await Business.findById(businessId).lean();
+    expect(storedBusiness?.companyId?.toString()).toBe(
+      first.company._id.toString(),
+    );
   });
 
   it("refuses an unsupported currency on a replay without changing the existing venue", async () => {

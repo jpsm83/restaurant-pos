@@ -370,6 +370,144 @@ describe("Business Routes", () => {
       await expect(Business.countDocuments()).resolves.toBe(1);
     });
 
+    it.each([
+      ["trade name", { tradeName: "Renamed Venue" }],
+      ["currency", { currencyTrade: "EUR" }],
+      ["country", { country: "Canada" }],
+    ])(
+      "rejects a retry with a changed %s as a conflict and leaves the venue unchanged",
+      async (_label, change) => {
+        const app = await getTestApp();
+        const { auth, userId } = await customerAuthToken();
+        const headers = {
+          authorization: auth,
+          "x-idempotency-key": "add-venue-changed-payload",
+        };
+
+        const first = await app.inject({
+          method: "POST",
+          url: "/api/v1/business",
+          headers,
+          payload: draft,
+        });
+        expect(first.statusCode).toBe(201);
+        const firstBody = JSON.parse(first.body);
+
+        const retry = await app.inject({
+          method: "POST",
+          url: "/api/v1/business",
+          headers,
+          payload: { ...draft, ...change },
+        });
+
+        expect(retry.statusCode).toBe(409);
+        expect(retry.headers["content-type"]).toContain(
+          "application/problem+json",
+        );
+        const retryBody = JSON.parse(retry.body);
+        expect(retryBody.type).toBe(
+          "https://restaurant-pos.app/errors/conflict",
+        );
+        expect(retryBody.status).toBe(409);
+
+        const stored = await Business.findById(firstBody.business._id).lean();
+        expect(stored).toMatchObject({
+          tradeName: "Draft Venue",
+          currencyTrade: "USD",
+          address: { country: "USA" },
+        });
+        await expect(Owner.countDocuments({ userId })).resolves.toBe(1);
+        await expect(Company.countDocuments()).resolves.toBe(1);
+        await expect(Business.countDocuments()).resolves.toBe(1);
+      },
+    );
+
+    it("rejects a retry with a changed Company choice as a conflict", async () => {
+      const app = await getTestApp();
+      const { auth, userId } = await customerAuthToken();
+      const headers = {
+        authorization: auth,
+        "x-idempotency-key": "add-venue-changed-company",
+      };
+
+      const first = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers,
+        payload: draft,
+      });
+      expect(first.statusCode).toBe(201);
+      const firstBody = JSON.parse(first.body);
+      const owner = await Owner.findOne({ userId });
+      const otherCompany = await Company.create({
+        ownerId: owner!._id,
+        country: "USA",
+      });
+
+      const retry = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers,
+        payload: { ...draft, companyId: otherCompany._id.toString() },
+      });
+
+      expect(retry.statusCode).toBe(409);
+      expect(retry.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      expect(JSON.parse(retry.body).type).toBe(
+        "https://restaurant-pos.app/errors/conflict",
+      );
+      const stored = await Business.findById(firstBody.business._id).lean();
+      expect(stored?.companyId?.toString()).toBe(firstBody.company._id);
+      await expect(Company.countDocuments()).resolves.toBe(2);
+      await expect(Business.countDocuments()).resolves.toBe(1);
+    });
+
+    it("rejects a retry with changed Company identity fields as a conflict", async () => {
+      const app = await getTestApp();
+      const { auth, userId } = await customerAuthToken();
+      const headers = {
+        authorization: auth,
+        "x-idempotency-key": "add-venue-changed-company-fields",
+      };
+
+      const first = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers,
+        payload: {
+          ...draft,
+          company: { legalName: "Taxpayer SL", taxNumber: "TAX-1" },
+        },
+      });
+      expect(first.statusCode).toBe(201);
+      const firstBody = JSON.parse(first.body);
+
+      const retry = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers,
+        payload: {
+          ...draft,
+          company: { legalName: "Other SL", taxNumber: "TAX-1" },
+        },
+      });
+
+      expect(retry.statusCode).toBe(409);
+      expect(retry.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      expect(JSON.parse(retry.body).type).toBe(
+        "https://restaurant-pos.app/errors/conflict",
+      );
+      const storedCompany = await Company.findById(firstBody.company._id).lean();
+      expect(storedCompany?.legalName).toBe("Taxpayer SL");
+      await expect(Owner.countDocuments({ userId })).resolves.toBe(1);
+      await expect(Company.countDocuments()).resolves.toBe(1);
+      await expect(Business.countDocuments()).resolves.toBe(1);
+    });
+
     it("joins an existing Company owned by the caller's Owner", async () => {
       const app = await getTestApp();
       const { auth, userId } = await customerAuthToken();
