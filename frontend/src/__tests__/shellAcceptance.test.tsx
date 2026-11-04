@@ -798,6 +798,41 @@ describe("Customer chrome and Business shell acceptance", () => {
     });
   });
 
+  it("keeps a Customer-mode deep link to a non-first owned venue", async () => {
+    server = createServer({
+      venues: [
+        venue({ businessId: "b1", tradeName: "Alpha Bar" }),
+        venue({ businessId: "b2", tradeName: "Beta Bar" }),
+        venue({ businessId: "b3", tradeName: "Gamma Bar" }),
+      ],
+      portfolio: portfolio([
+        { _id: "b1", tradeName: "Alpha Bar" },
+        { _id: "b2", tradeName: "Beta Bar" },
+        { _id: "b3", tradeName: "Gamma Bar" },
+      ]),
+    });
+
+    await renderShell("/business/b2/dashboard");
+
+    expect(await findBusinessDashboard()).toBeInTheDocument();
+    await expectLocation("/business/b2/dashboard");
+    expect(mockGet).toHaveBeenCalledWith(
+      "/api/v1/business/b2/access",
+      expect.anything(),
+    );
+    await waitFor(() => {
+      expect(server.mode).toBe("business");
+    });
+
+    const tabs = await findVenueTabs();
+    expect(
+      within(tabs).getByRole("link", { name: "Beta Bar" }),
+    ).toHaveAttribute("aria-current", "page");
+    expect(
+      within(tabs).getByRole("link", { name: "Alpha Bar" }),
+    ).not.toHaveAttribute("aria-current", "page");
+  });
+
   it("explains an ineligible Business deep link and stays in Customer", async () => {
     server = createServer({
       venues: [
