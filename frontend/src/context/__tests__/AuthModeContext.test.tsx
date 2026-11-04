@@ -36,7 +36,6 @@ function AuthModeProbe() {
       <span data-testid="mode">{ctx.mode ?? "none"}</span>
       <span data-testid="loading">{String(ctx.isLoading)}</span>
       <span data-testid="error">{ctx.error?.message ?? "none"}</span>
-      <span data-testid="setting">{String(ctx.isSettingMode)}</span>
       <button type="button" onClick={() => void ctx.refreshMode()}>
         refresh
       </button>

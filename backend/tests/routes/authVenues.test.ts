@@ -365,6 +365,30 @@ describe("GET /api/v1/auth/venues", () => {
     expect(response.json().venues).toEqual([]);
   });
 
+  it("excludes a membership venue whose Company is soft-deleted", async () => {
+    const app = await getTestApp();
+    const business = await createTestBusiness({
+      tradeName: "Company Deleted Membership Venue",
+      currencyTrade: "EUR",
+    });
+    const { userId, auth } = await createSignedInUser();
+    await createMembership({
+      businessId: business._id.toString(),
+      userId,
+      roles: ["Manager"],
+    });
+    await markAsDeletedById(Company, business.companyId.toString());
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/auth/venues",
+      headers: { authorization: auth },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().venues).toEqual([]);
+  });
+
   it("excludes an owned venue whose Business is soft-deleted", async () => {
     const app = await getTestApp();
     const { user, company } = await createTestOwnerCompany();

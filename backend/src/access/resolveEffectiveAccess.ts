@@ -29,6 +29,7 @@ import Owner from "../models/owner.ts";
 import Schedule from "../models/schedule.ts";
 import { withSoftDeleteFilter } from "../models/softDelete.ts";
 import findActiveEmployeeMembership, {
+  findUsableEmployeeMemberships,
   type EmployeeMembership,
 } from "../auth/employeeMembership.ts";
 
@@ -67,10 +68,10 @@ export interface ResolveEffectiveAccessParams {
 }
 
 /**
- * Resolve effective access, or `null` when the User or Business id is invalid
- * or the Business does not exist. A valid Business with no access returns the
- * customer-only projection with source `none`; callers decide whether to
- * refuse it.
+ * Resolve effective access, or `null` when the User or Business id is invalid,
+ * the Business does not exist, or its owning Company is soft-deleted. A valid
+ * Business with no access returns the customer-only projection with source
+ * `none`; callers decide whether to refuse it.
  */
 export async function resolveEffectiveAccess(
   params: ResolveEffectiveAccessParams,
@@ -95,6 +96,19 @@ export async function resolveEffectiveAccess(
   )) as { companyId?: Types.ObjectId } | null;
   if (!business) return null;
 
+  // A Business reaches the tenant only through an active Company. A
+  // soft-deleted Company therefore makes the venue unavailable to owners and
+  // members alike, not just to the owned-venue read.
+  if (business.companyId) {
+    const company = await withSession(
+      Company.findOne(withSoftDeleteFilter({ _id: business.companyId }))
+        .select("_id")
+        .lean(),
+      lookup.session,
+    );
+    if (!company) return null;
+  }
+
   const membership = await findActiveEmployeeMembership({
     userId: lookup.userId,
     businessId: lookup.businessId,
@@ -102,10 +116,7 @@ export async function resolveEffectiveAccess(
     session: lookup.session,
   });
 
-  if (
-    business.companyId &&
-    (await ownsBusiness(lookup, business.companyId))
-  ) {
+  if (business.companyId && (await ownsBusiness(lookup, business.companyId))) {
     return {
       businessId: lookup.businessId,
       effectiveLayer: "admin",
@@ -167,27 +178,49 @@ export async function canEnterBusinessAnywhere(params: {
       session,
     )) as Array<{ _id: Types.ObjectId }>;
 
-    for (const business of businesses) {
-      const access = await resolveEffectiveAccess({
+    if (
+      await canEnterAnyVenue({
         userId,
-        businessId: String(business._id),
         now,
         session,
-      });
-      if (access?.canEnterBusiness) return true;
+        venues: businesses.map((business) => ({
+          businessId: String(business._id),
+        })),
+      })
+    ) {
+      return true;
     }
   }
 
-  const membership = await findActiveEmployeeMembership({ userId, session });
-  if (!membership) return false;
-
-  const access = await resolveEffectiveAccess({
+  const memberships = await findUsableEmployeeMemberships({ userId, session });
+  return canEnterAnyVenue({
     userId,
-    businessId: String(membership.businessId),
     now,
     session,
+    venues: memberships.map((membership) => ({
+      businessId: String(membership.businessId),
+      membershipId: membership._id,
+    })),
   });
-  return access?.canEnterBusiness === true;
+}
+
+async function canEnterAnyVenue(params: {
+  userId: string;
+  now: Date;
+  session?: ClientSession;
+  venues: Array<{ businessId: string; membershipId?: Types.ObjectId }>;
+}): Promise<boolean> {
+  for (const venue of params.venues) {
+    const access = await resolveEffectiveAccess({
+      userId: params.userId,
+      businessId: venue.businessId,
+      membershipId: venue.membershipId,
+      now: params.now,
+      session: params.session,
+    });
+    if (access?.canEnterBusiness) return true;
+  }
+  return false;
 }
 
 async function ownsBusiness(

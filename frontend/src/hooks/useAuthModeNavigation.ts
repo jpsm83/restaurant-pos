@@ -6,7 +6,7 @@
  * share one failure contract.
  */
 import { useCallback, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, type NavigateOptions } from "react-router-dom";
 import { useSetAuthModeMutation, type AuthMode } from "@/services/authMode";
 import {
   toServiceRequestError,
@@ -19,11 +19,15 @@ export function useAuthModeNavigation() {
   const [failure, setFailure] = useState<ServiceRequestError | null>(null);
 
   const switchModeAndNavigate = useCallback(
-    async (mode: AuthMode, destination: string): Promise<void> => {
+    async (
+      mode: AuthMode,
+      destination: string,
+      options?: NavigateOptions,
+    ): Promise<void> => {
       setFailure(null);
       try {
         await setModeMutation.mutateAsync(mode);
-        navigate(destination);
+        navigate(destination, options);
       } catch (error) {
         setFailure(toServiceRequestError(error, "modeSave"));
       }

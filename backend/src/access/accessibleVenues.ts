@@ -15,10 +15,9 @@ import type { IAuthAccessibleVenue } from "restaurant-pos-packages/interfaces/IA
 
 import Business from "../models/business.ts";
 import Company from "../models/company.ts";
-import Employee from "../models/employee.ts";
 import Owner from "../models/owner.ts";
 import { withSoftDeleteFilter } from "../models/softDelete.ts";
-import { usableMembershipFilter } from "../employees/membershipStatus.ts";
+import { findUsableEmployeeMemberships } from "../auth/employeeMembership.ts";
 import {
   resolveEffectiveAccess,
   type EffectiveAccess,
@@ -61,15 +60,7 @@ async function findOwnedBusinesses(userId: string): Promise<BusinessIdentity[]> 
 }
 
 async function findMemberBusinessIds(userId: string): Promise<string[]> {
-  const memberships = (await Employee.find(
-    withSoftDeleteFilter({
-      userId,
-      ...usableMembershipFilter,
-    }),
-  )
-    .select("businessId")
-    .lean()) as Array<{ businessId: Types.ObjectId }>;
-
+  const memberships = await findUsableEmployeeMemberships({ userId });
   return [...new Set(memberships.map((row) => String(row.businessId)))];
 }
 

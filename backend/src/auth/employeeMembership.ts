@@ -5,6 +5,8 @@ import Employee from "../models/employee.ts";
 import { withSoftDeleteFilter } from "../models/softDelete.ts";
 import { usableMembershipFilter } from "../employees/membershipStatus.ts";
 
+const MEMBERSHIP_SELECT = "businessId allEmployeeRoles employmentStatus onDuty";
+
 /** The membership fields the access and session seams consume. */
 export interface EmployeeMembership {
   _id: Types.ObjectId;
@@ -15,12 +17,31 @@ export interface EmployeeMembership {
 }
 
 /**
- * Resolve one usable Employee membership for a User.
+ * The one active-membership filter shared by the single and multi lookups.
  *
  * With a stored employment status, only the employed statuses count; Suspended
  * and Terminated block the membership. A legacy row without a stored status
- * keeps the old rule: `active` is true and there is no `terminatedDate`. When
- * `businessId` is given the membership is scoped to that venue; when
+ * keeps the old rule: `active` is true and there is no `terminatedDate`.
+ */
+function usableMembershipQuery(params: {
+  userId: Types.ObjectId | string;
+  businessId?: Types.ObjectId | string;
+  employeeId?: Types.ObjectId | string;
+}): Record<string, unknown> {
+  return withSoftDeleteFilter({
+    userId: params.userId,
+    ...usableMembershipFilter,
+    ...(params.businessId === undefined
+      ? {}
+      : { businessId: params.businessId }),
+    ...(params.employeeId === undefined ? {} : { _id: params.employeeId }),
+  });
+}
+
+/**
+ * Resolve one usable Employee membership for a User.
+ *
+ * When `businessId` is given the membership is scoped to that venue; when
  * `employeeId` is given that exact membership is resolved. Otherwise the first
  * usable membership by id is returned so single-membership sign-in stays
  * deterministic.
@@ -31,19 +52,28 @@ export default async function findActiveEmployeeMembership(params: {
   employeeId?: Types.ObjectId | string;
   session?: ClientSession;
 }): Promise<EmployeeMembership | null> {
-  const { userId, businessId, employeeId, session } = params;
+  const { session } = params;
 
-  let query = Employee.findOne(
-    withSoftDeleteFilter({
-      userId,
-      ...usableMembershipFilter,
-      ...(businessId === undefined ? {} : { businessId }),
-      ...(employeeId === undefined ? {} : { _id: employeeId }),
-    }),
-  )
-    .select("businessId allEmployeeRoles employmentStatus onDuty")
+  let query = Employee.findOne(usableMembershipQuery(params))
+    .select(MEMBERSHIP_SELECT)
     .sort({ _id: 1 })
     .lean<EmployeeMembership>();
+  if (session) query = query.session(session);
+
+  return await query;
+}
+
+/** Every usable membership for a User, ordered by id for deterministic scans. */
+export async function findUsableEmployeeMemberships(params: {
+  userId: Types.ObjectId | string;
+  session?: ClientSession;
+}): Promise<EmployeeMembership[]> {
+  const { session } = params;
+
+  let query = Employee.find(usableMembershipQuery(params))
+    .select(MEMBERSHIP_SELECT)
+    .sort({ _id: 1 })
+    .lean<EmployeeMembership[]>();
   if (session) query = query.session(session);
 
   return await query;

@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { getCurrentUser } from "@/auth/api";
 import { useAuth } from "@/auth/store/AuthContext";
 import type { AuthUser } from "@/auth/types";
@@ -15,7 +15,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useAuthMode } from "@/context/AuthModeContext";
-import { useErrorMessage, type ErrorFailure } from "@/i18n/errorCopy";
+import { useAuthModeNavigation } from "@/hooks/useAuthModeNavigation";
+import { useErrorMessage } from "@/i18n/errorCopy";
 import { findFirstEnterableVenue } from "@/lib/accessibleVenues";
 import { formatCalendarDate } from "@/lib/calendarDate";
 import { SessionLoading } from "@/routes/AuthRouteGuards";
@@ -116,15 +117,14 @@ function hasEmployeeLink(
  */
 export default function SelectUserModePage() {
   const { t } = useTranslation("mode");
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { state, dispatch } = useAuth();
+  const { error: modeLoadError } = useAuthMode();
   const {
-    setModeAndRefresh,
-    isSettingMode,
-    error: modeLoadError,
-  } = useAuthMode();
-  const [submitFailure, setSubmitFailure] = useState<ErrorFailure | null>(null);
+    switchModeAndNavigate,
+    failure: switchFailure,
+    isSwitchingMode,
+  } = useAuthModeNavigation();
   const resolveError = useErrorMessage();
 
   const [dayKey, setDayKey] = useState(() => formatCalendarDate(new Date()));
@@ -175,10 +175,10 @@ export default function SelectUserModePage() {
   const modeLoadFailure = modeLoadError
     ? toServiceRequestError(modeLoadError, "modeLoad")
     : null;
-  // Submit feedback is the most direct; then the venue read that drives
+  // Switch feedback is the most direct; then the venue read that drives
   // Business eligibility, then the schedule check and the mode read.
   const failure =
-    submitFailure ?? venuesFailure ?? scheduleFailure ?? modeLoadFailure;
+    switchFailure ?? venuesFailure ?? scheduleFailure ?? modeLoadFailure;
 
   const derived = useMemo(
     () => deriveEmployeeModeFromSchedule(nowMs, scheduleQuery.data?.entries ?? []),
@@ -237,28 +237,21 @@ export default function SelectUserModePage() {
       ? t("businessHelp.countdownSoon")
       : t("businessHelp.blocked");
 
-  const goCustomer = async () => {
-    setSubmitFailure(null);
-    try {
-      await setModeAndRefresh("customer");
-      navigate(canonicalCustomerDashboardPath(), { replace: true });
-    } catch (e) {
-      setSubmitFailure(toServiceRequestError(e, "modeSave"));
-    }
+  const goCustomer = () => {
+    void switchModeAndNavigate(
+      "customer",
+      canonicalCustomerDashboardPath(),
+      { replace: true },
+    );
   };
 
-  const goBusiness = async () => {
+  const goBusiness = () => {
     if (!firstEnterableVenue) return;
-    setSubmitFailure(null);
-    try {
-      await setModeAndRefresh("business");
-      navigate(
-        canonicalBusinessDashboardRoutePath(firstEnterableVenue.businessId),
-        { replace: true },
-      );
-    } catch (e) {
-      setSubmitFailure(toServiceRequestError(e, "modeSave"));
-    }
+    void switchModeAndNavigate(
+      "business",
+      canonicalBusinessDashboardRoutePath(firstEnterableVenue.businessId),
+      { replace: true },
+    );
   };
 
   return (
@@ -274,9 +267,9 @@ export default function SelectUserModePage() {
             <Button
               type="button"
               className="w-full"
-              disabled={isSettingMode}
-              aria-busy={isSettingMode || undefined}
-              onClick={() => void goCustomer()}
+              disabled={isSwitchingMode}
+              aria-busy={isSwitchingMode || undefined}
+              onClick={goCustomer}
             >
               {t("continueCustomer")}
             </Button>
@@ -292,9 +285,9 @@ export default function SelectUserModePage() {
               <Button
                 type="button"
                 className="w-full"
-                disabled={!canEnterBusiness || isSettingMode}
-                aria-busy={isSettingMode || undefined}
-                onClick={() => void goBusiness()}
+                disabled={!canEnterBusiness || isSwitchingMode}
+                aria-busy={isSwitchingMode || undefined}
+                onClick={goBusiness}
               >
                 {t("continueBusiness")}
               </Button>

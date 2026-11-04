@@ -10,6 +10,7 @@ import type { FastifyInstance } from "fastify";
 import { getTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
 import Business from "../../src/models/business.ts";
+import Company from "../../src/models/company.ts";
 import Employee from "../../src/models/employee.ts";
 import RefreshSession from "../../src/models/refreshSession.ts";
 import { markAsDeletedById } from "../../src/models/softDelete.ts";
@@ -2341,6 +2342,119 @@ describe("Auth Routes", () => {
       });
       expect(mode.statusCode).toBe(200);
       expect(mode.json().mode).toBe("customer");
+    });
+
+    it("refuses business mode for an owned venue whose Company is soft-deleted", async () => {
+      const app = await getTestApp();
+      const email = "owner-company-deleted-mode@test.com";
+      const { venue } = await createOwnerVenue(
+        email,
+        "ownercompanydeletedmode",
+      );
+      await markAsDeletedById(Company, venue.company._id.toString());
+
+      const accessToken = await loginToken(app, email);
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/set-mode",
+        headers: { authorization: `Bearer ${accessToken}` },
+        payload: { mode: "business" },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(response.json().detail).toBe(
+        "Not authorized to enter business mode",
+      );
+
+      const mode = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/mode",
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+      expect(mode.statusCode).toBe(200);
+      expect(mode.json().mode).toBe("customer");
+    });
+
+    it("refuses business mode for a membership venue whose Company is soft-deleted", async () => {
+      const app = await getTestApp();
+      const email = "membership-company-deleted-mode@test.com";
+      const user = await User.create({
+        personalDetails: {
+          email,
+          password: hashedPassword,
+          firstName: "Membership",
+          lastName: "Deleted Company",
+          username: "membershipcompanydeletedmode",
+        },
+      });
+      const business = await createTestBusiness({
+        tradeName: "Deleted Company Mode Venue",
+        currencyTrade: "EUR",
+      });
+      await createTestEmployeeMembership({
+        businessId: business._id,
+        userId: user._id,
+        roles: ["Manager"],
+      });
+      await markAsDeletedById(Company, business.companyId.toString());
+
+      const accessToken = await loginToken(app, email);
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/set-mode",
+        headers: { authorization: `Bearer ${accessToken}` },
+        payload: { mode: "business" },
+      });
+
+      expect(response.statusCode).toBe(403);
+      expect(response.json().detail).toBe(
+        "Not authorized to enter business mode",
+      );
+
+      const mode = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/mode",
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+      expect(mode.statusCode).toBe(200);
+      expect(mode.json().mode).toBe("customer");
+    });
+
+    it("allows business mode when any membership venue is enterable", async () => {
+      const app = await getTestApp();
+      const email = "any-enterable-membership-mode@test.com";
+      const user = await User.create({
+        personalDetails: {
+          email,
+          password: hashedPassword,
+          firstName: "Any",
+          lastName: "Enterable",
+          username: "anyenterablemembershipmode",
+        },
+      });
+      const gated = await createTestBusiness({
+        tradeName: "Gated Employee Venue",
+        currencyTrade: "EUR",
+      });
+      await createTestEmployeeMembership({
+        businessId: gated._id,
+        userId: user._id,
+        roles: ["Waiter"],
+      });
+      const manager = await createTestBusiness({
+        tradeName: "Manager Venue",
+        currencyTrade: "EUR",
+      });
+      await createTestEmployeeMembership({
+        businessId: manager._id,
+        userId: user._id,
+        roles: ["Manager"],
+      });
+
+      const response = await setBusinessMode(app, email);
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().mode).toBe("business");
     });
 
     it("keeps each refresh session on its own stored mode", async () => {

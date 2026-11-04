@@ -17,9 +17,9 @@
  *    awaited invalidation/refetch of **`auth.mode`** are handled in **`authMode.ts`**. Callers that
  *    navigate afterwards can rely on the new stored mode being read before they move.
  * 4. A same-origin tab that receives the signal invalidates its **`auth.mode`** query, so both tabs refetch the server-stored mode.
- * 5. **Consumers:** **`SelectUserModePage`** calls **`setModeAndRefresh`** then navigates to Customer
- *    or the first enterable venue. Import directly from **`@/context/AuthModeContext`** (barrel
- *    files are deprecated).
+ * 5. **Consumers:** **`SelectUserModePage`** switches through **`useAuthModeNavigation`**;
+ *    the route guards call **`setModeAndRefresh`** to switch or reconcile. Import directly from
+ *    **`@/context/AuthModeContext`** (barrel files are deprecated).
  *
  * Depends on: **`useAuth`** (`AuthContext`), **`useAuthModeQuery` / `useSetAuthModeMutation`** (`authMode.ts`).
  */
@@ -52,8 +52,6 @@ type AuthModeContextValue = {
   isLoading: boolean;
   isError: boolean;
   error: Error | null;
-  /** True while `POST /auth/set-mode` is in flight (e.g. mode selection page). */
-  isSettingMode: boolean;
   /** Refetch `GET /auth/mode` (no-op when query disabled). */
   refreshMode: () => Promise<unknown>;
   /** `POST /api/v1/auth/set-mode`; mutation invalidates mode query (see `services/authMode.ts`). */
@@ -110,7 +108,6 @@ export function AuthModeProvider({ children }: { children: ReactNode }) {
       isError: queryEnabled && isError,
       error:
         queryEnabled && isError && error instanceof Error ? error : null,
-      isSettingMode: setModeMutation.isPending,
       refreshMode,
       setModeAndRefresh,
     }),
@@ -120,7 +117,6 @@ export function AuthModeProvider({ children }: { children: ReactNode }) {
       isLoading,
       isError,
       error,
-      setModeMutation.isPending,
       refreshMode,
       setModeAndRefresh,
     ],

@@ -2,14 +2,20 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { IAuthAccessibleVenue } from "restaurant-pos-packages/interfaces/IAuth";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import {
+  MemoryRouter,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithI18n } from "@/test/i18nTestUtils";
 import { ServiceRequestError } from "@/services/serviceErrors";
 import SelectUserModePage from "../SelectUserModePage";
 
 const mockDispatch = vi.fn();
-const mockSetModeAndRefresh = vi.fn();
+const mockSetAuthMode = vi.fn();
 const mockUseAuth = vi.fn();
 const mockGetCurrentUser = vi.fn();
 const {
@@ -48,6 +54,13 @@ vi.mock("@/services/authVenues", () => ({
   useAccessibleVenuesQuery: () => mockVenues,
 }));
 
+vi.mock("@/services/authMode", () => ({
+  useSetAuthModeMutation: () => ({
+    mutateAsync: mockSetAuthMode,
+    isPending: false,
+  }),
+}));
+
 vi.mock("@/services/schedulesService", () => ({
   useNextShiftForEmployee: (...args: unknown[]) =>
     mockUseNextShiftForEmployee(...args),
@@ -83,7 +96,20 @@ function LocationProbe() {
   return <output data-testid="location">{location.pathname}</output>;
 }
 
-async function renderAtMode(path = "/mode", client?: QueryClient) {
+function BackButton() {
+  const navigate = useNavigate();
+  return (
+    <button type="button" onClick={() => navigate(-1)}>
+      Back
+    </button>
+  );
+}
+
+async function renderAtMode(
+  path = "/mode",
+  client?: QueryClient,
+  initialEntries?: string[],
+) {
   const qc =
     client ??
     new QueryClient({
@@ -93,8 +119,9 @@ async function renderAtMode(path = "/mode", client?: QueryClient) {
       },
     });
   return renderWithI18n(
-    <MemoryRouter initialEntries={[path]}>
+    <MemoryRouter initialEntries={initialEntries ?? [path]}>
       <LocationProbe />
+      <BackButton />
       <Routes>
         <Route path="/mode" element={<SelectUserModePage />} />
         <Route
@@ -118,20 +145,17 @@ async function renderAtMode(path = "/mode", client?: QueryClient) {
 describe("SelectUserModePage (Phase 1.6)", () => {
   beforeEach(() => {
     mockDispatch.mockReset();
-    mockSetModeAndRefresh.mockReset();
+    mockSetAuthMode.mockReset();
     mockUseAuth.mockReset();
     mockGetCurrentUser.mockReset();
     mockUseNextShiftForEmployee.mockReset();
     mockUseAuthMode.mockReset();
-    mockSetModeAndRefresh.mockResolvedValue(undefined);
+    mockSetAuthMode.mockResolvedValue(undefined);
     mockUseAuthMode.mockReturnValue({
-      setModeAndRefresh: mockSetModeAndRefresh,
-      isSettingMode: false,
       mode: "customer",
       isLoading: false,
       isError: false,
       error: null,
-      refreshMode: vi.fn(),
     });
     mockUseNextShiftForEmployee.mockReturnValue({
       data: undefined,
@@ -163,7 +187,7 @@ describe("SelectUserModePage (Phase 1.6)", () => {
     await user.click(screen.getByRole("button", { name: /continue as customer/i }));
 
     await waitFor(() => {
-      expect(mockSetModeAndRefresh).toHaveBeenCalledWith("customer");
+      expect(mockSetAuthMode).toHaveBeenCalledWith("customer");
     });
     await waitFor(() => {
       expect(screen.getByTestId("customer-shell")).toBeInTheDocument();
@@ -186,7 +210,7 @@ describe("SelectUserModePage (Phase 1.6)", () => {
     await user.click(screen.getByRole("button", { name: /continue as business/i }));
 
     await waitFor(() => {
-      expect(mockSetModeAndRefresh).toHaveBeenCalledWith("business");
+      expect(mockSetAuthMode).toHaveBeenCalledWith("business");
     });
     await waitFor(() => {
       expect(screen.getByTestId("business-shell")).toBeInTheDocument();
@@ -196,9 +220,29 @@ describe("SelectUserModePage (Phase 1.6)", () => {
     );
   });
 
+  it("replaces the fallback entry when opening a venue", async () => {
+    mockVenues.data = [venue({ businessId: "alpha", tradeName: "Alpha Bar" })];
+    const user = userEvent.setup();
+    await renderAtMode("/mode", undefined, ["/dashboard", "/mode"]);
+
+    await user.click(
+      screen.getByRole("button", { name: /continue as business/i }),
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent(
+        "/business/alpha/dashboard",
+      );
+    });
+
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent("/dashboard");
+    });
+  });
+
   it("explains a mode-switch failure in the active language", async () => {
     const user = userEvent.setup();
-    mockSetModeAndRefresh.mockRejectedValueOnce(new Error("Network Error"));
+    mockSetAuthMode.mockRejectedValueOnce(new Error("Network Error"));
 
     await renderAtMode();
 
@@ -215,8 +259,6 @@ describe("SelectUserModePage (Phase 1.6)", () => {
 
   it("explains a mode-load failure in the active language", async () => {
     mockUseAuthMode.mockReturnValue({
-      setModeAndRefresh: mockSetModeAndRefresh,
-      isSettingMode: false,
       mode: undefined,
       isLoading: false,
       isError: true,
@@ -224,7 +266,6 @@ describe("SelectUserModePage (Phase 1.6)", () => {
         code: "modeLoad.forbidden",
         status: 403,
       }),
-      refreshMode: vi.fn(),
     });
 
     await renderAtMode();
