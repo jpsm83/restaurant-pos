@@ -236,6 +236,18 @@ function installServerMocks() {
       if (!item) throw new Error("venue not found");
       return { data: accessSnapshotFor(item) };
     }
+    const profileMatch = /^\/api\/v1\/business\/([^/]+)\/profile$/.exec(url);
+    if (profileMatch) {
+      const item = venueById(profileMatch[1]);
+      return {
+        data: {
+          _id: profileMatch[1],
+          tradeName: item?.tradeName ?? "Venue",
+          currencyTrade: "USD",
+          email: server.user.email,
+        },
+      };
+    }
     const businessMatch = /^\/api\/v1\/business\/([^/]+)$/.exec(url);
     if (businessMatch) {
       const item = venueById(businessMatch[1]);
@@ -818,6 +830,14 @@ describe("Customer chrome and Business shell acceptance", () => {
     await expectLocation("/business/b2/dashboard");
     expect(mockGet).toHaveBeenCalledWith(
       "/api/v1/business/b2/access",
+      expect.anything(),
+    );
+    expect(mockGet).toHaveBeenCalledWith(
+      "/api/v1/business/b2/profile",
+      expect.anything(),
+    );
+    expect(mockGet).not.toHaveBeenCalledWith(
+      "/api/v1/business/b1/profile",
       expect.anything(),
     );
     await waitFor(() => {
