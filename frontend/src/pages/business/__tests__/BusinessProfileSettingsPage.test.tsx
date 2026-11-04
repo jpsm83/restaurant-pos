@@ -16,6 +16,7 @@ import {
   BusinessServiceError,
   type BusinessProfileDto,
 } from "@/services/business/businessService";
+import { queryKeys } from "@/services/queryKeys";
 import BusinessProfileSettingsPage from "../BusinessProfileSettingsPage";
 
 async function renderWithQueryClient(
@@ -28,12 +29,13 @@ async function renderWithQueryClient(
       mutations: { retry: 0 },
     },
   });
-  return renderWithI18n(ui, {
+  const view = await renderWithI18n(ui, {
     ...(language ? { language } : {}),
     wrapper: ({ children }) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     ),
   });
+  return { ...view, queryClient };
 }
 
 const mockUseBusinessProfileQuery = vi.fn();
@@ -251,7 +253,8 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     expect(screen.queryByLabelText("Tax number")).not.toBeInTheDocument();
     const emailInput = screen.getByLabelText("Business email");
     expect(emailInput).toHaveValue("owner@demo.test");
-    expect(emailInput).toHaveAttribute("readonly");
+    expect(emailInput).not.toHaveAttribute("readonly");
+    expect(screen.getByText("Verified")).toBeInTheDocument();
     expect(screen.getByLabelText("Phone number")).toHaveValue("+10000000000");
   });
 
@@ -298,7 +301,120 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     expect(request.formData.get("taxNumber")).toBeNull();
   });
 
-  it("exposes the business contact email as read-only", async () => {
+  it("lets an admin save a new business contact email", async () => {
+    const mutateAsync = vi.fn().mockResolvedValue({ message: "Business updated" });
+    mockUseUpdateBusinessProfileMutation.mockReturnValue({
+      mutateAsync,
+      isPending: false,
+    });
+    const refetch = vi.fn().mockResolvedValue({
+      data: {
+        ...makeBusinessProfileDto(),
+        email: "new-contact@demo.test",
+        emailVerified: false,
+      },
+    });
+    mockUseBusinessProfileQuery.mockReturnValue({
+      data: makeBusinessProfileDto(),
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch,
+    });
+    const user = userEvent.setup();
+
+    await renderWithQueryClient(
+      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
+        <Routes>
+          <Route
+            path="/business/:businessId/settings/profile"
+            element={<BusinessProfileSettingsPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const emailInput = screen.getByLabelText("Business email") as HTMLInputElement;
+    expect(emailInput.readOnly).toBe(false);
+    await user.clear(emailInput);
+    await user.type(emailInput, "new-contact@demo.test");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(mutateAsync).toHaveBeenCalledTimes(1);
+    const request = mutateAsync.mock.calls[0][0] as { formData: FormData };
+    expect(request.formData.get("email")).toBe("new-contact@demo.test");
+    await waitFor(() => {
+      expect(refetch).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("invalidates the Owner portfolio read after a successful profile save", async () => {
+    const mutateAsync = vi.fn().mockResolvedValue({ message: "Business updated" });
+    mockUseUpdateBusinessProfileMutation.mockReturnValue({
+      mutateAsync,
+      isPending: false,
+    });
+    mockUseBusinessProfileQuery.mockReturnValue({
+      data: makeBusinessProfileDto(),
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn().mockResolvedValue({ data: makeBusinessProfileDto() }),
+    });
+    const user = userEvent.setup();
+
+    const view = await renderWithQueryClient(
+      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
+        <Routes>
+          <Route
+            path="/business/:businessId/settings/profile"
+            element={<BusinessProfileSettingsPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+    const portfolioKey = queryKeys.portfolio.byUser("portfolio-owner");
+    view.queryClient.setQueryData(portfolioKey, { companies: [] });
+
+    await user.clear(screen.getByLabelText("Trade name"));
+    await user.type(screen.getByLabelText("Trade name"), "Demo Bistro Updated");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => {
+      expect(
+        view.queryClient.getQueryState(portfolioKey)?.isInvalidated,
+      ).toBe(true);
+    });
+  });
+
+  it("shows an unverified state for a contact email that is not verified", async () => {
+    mockUseBusinessProfileQuery.mockReturnValue({
+      data: { ...makeBusinessProfileDto(), emailVerified: false },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    await renderWithQueryClient(
+      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
+        <Routes>
+          <Route
+            path="/business/:businessId/settings/profile"
+            element={<BusinessProfileSettingsPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Not verified")).toBeInTheDocument();
+    expect(screen.queryByText("Verified")).not.toBeInTheDocument();
+  });
+
+  it("renders the business contact email as read-only for a manager", async () => {
+    mockUseBusinessAccessSnapshotQuery.mockReturnValue(
+      accessSnapshot("manager"),
+    );
     mockUseBusinessProfileQuery.mockReturnValue({
       data: makeBusinessProfileDto(),
       isLoading: false,
@@ -319,8 +435,9 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     );
 
     const emailInput = screen.getByLabelText("Business email") as HTMLInputElement;
+    expect(emailInput).toHaveValue("owner@demo.test");
     expect(emailInput.readOnly).toBe(true);
-    expect(screen.queryByRole("button", { name: "Change email" })).not.toBeInTheDocument();
+    expect(screen.getByText("Verified")).toBeInTheDocument();
   });
 
   it("shows the server-derived timezone as a read-only field", async () => {
@@ -708,7 +825,7 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     expect(screen.getByLabelText("Cuisine type")).toBeInTheDocument();
     expect(screen.getByLabelText("Categories (comma separated)")).toBeInTheDocument();
     expect(screen.queryByLabelText("Trade name")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Business email")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Business email")).toHaveAttribute("readonly");
     expect(screen.queryByLabelText("Phone number")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Currency")).not.toBeInTheDocument();
     expect(screen.queryByText("Core business info")).not.toBeInTheDocument();

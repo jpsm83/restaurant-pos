@@ -125,7 +125,8 @@
       "invalidWeeklyStartDay": "El inicio de semana del informe debe estar entre 0 y 6.",
       "invalidImage": "Archivo de imagen no válido.",
       "openingRange": "El horario de apertura debe terminar después de empezar.",
-      "deliveryRange": "El horario de entrega debe terminar después de empezar."
+      "deliveryRange": "El horario de entrega debe terminar después de empezar.",
+      "invalidEmail": "Introduce una dirección de correo válida."
     }
   },
   "profileSettings": {
@@ -159,7 +160,11 @@
         "contactPerson": "Persona de contacto",
         "timezone": "Zona horaria"
       },
-      "timezoneDefaultHint": "No pudimos determinar tu zona horaria a partir de la dirección del negocio. Actualiza el país y la región de la dirección para establecerla."
+      "timezoneDefaultHint": "No pudimos determinar tu zona horaria a partir de la dirección del negocio. Actualiza el país y la región de la dirección para establecerla.",
+      "emailVerification": {
+        "verified": "Verificado",
+        "unverified": "No verificado"
+      }
     },
     "discovery": {
       "sectionTitle": "Descubrimiento",

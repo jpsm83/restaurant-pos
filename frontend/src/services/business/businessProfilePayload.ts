@@ -56,6 +56,7 @@ export function formValuesToUpdatePayload(
   };
 
   appendIfPresent("tradeName", values.tradeName);
+  appendIfPresent("email", values.email);
   appendIfPresent("phoneNumber", values.phoneNumber);
   appendIfPresent("currencyTrade", values.currencyTrade);
 

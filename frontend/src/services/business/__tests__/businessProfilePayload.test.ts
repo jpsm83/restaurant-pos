@@ -7,6 +7,7 @@ function values(overrides?: Partial<BusinessProfileFormValues>): BusinessProfile
     imageUrl: "",
     imageFile: null,
     tradeName: " Demo ",
+    email: " Venue@Example.com ",
     phoneNumber: " +1 ",
     currencyTrade: " USD ",
     address: {
@@ -133,11 +134,20 @@ describe("businessProfilePayload", () => {
     expect(payload.get("metrics")).not.toBeNull();
   });
 
-  it("never sends the business contact email or credentials (they are server-owned)", () => {
-    const payload = formValuesToUpdatePayload(values());
-    expect(payload.get("email")).toBeNull();
+  it("sends the business contact email for an admin but never credentials", () => {
+    const payload = formValuesToUpdatePayload(values(), {
+      actorLayer: "admin",
+    });
+    expect(payload.get("email")).toBe("Venue@Example.com");
     expect(payload.get("confirmEmail")).toBeNull();
     expect(payload.get("password")).toBeNull();
     expect(payload.get("currentPassword")).toBeNull();
+  });
+
+  it("omits the business contact email for a manager", () => {
+    const payload = formValuesToUpdatePayload(values(), {
+      actorLayer: "manager",
+    });
+    expect(payload.get("email")).toBeNull();
   });
 });

@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BusinessContactEmailField } from "@/components/business/BusinessContactEmailField";
 import {
   currenctyEnums,
   cuisineTypeEnums,
@@ -222,6 +223,9 @@ function BusinessProfileSections({
   // Timezone is derived server-side from the business address (read-only here).
   const timezone = profileQuery.data?.timezone?.trim() || "UTC";
   const timezoneIsDefault = profileQuery.data?.timezoneIsDefault === true;
+  const storedEmail = profileQuery.data?.email?.trim() ?? "";
+  const emailHasValue = storedEmail.length > 0;
+  const emailVerified = profileQuery.data?.emailVerified === true;
 
   return (
     <>
@@ -284,19 +288,11 @@ function BusinessProfileSections({
                   {...register("tradeName")}
                 />
               </div>
-              <div className="min-w-0 space-y-2">
-                <Label htmlFor="bp-email">
-                  {t("profileSettings.core.fields.email")}
-                </Label>
-                <Input
-                  id="bp-email"
-                  type="email"
-                  autoComplete="email"
-                  readOnly
-                  aria-readonly="true"
-                  value={profileQuery.data?.email ?? ""}
-                />
-              </div>
+              <BusinessContactEmailField
+                registerEmail={register("email")}
+                hasStoredEmail={emailHasValue}
+                verified={emailVerified}
+              />
             </div>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -413,7 +409,17 @@ function BusinessProfileSections({
           </div>
         </section>
       ) : (
-        <Alert tone="info">{t("profileSettings.managerFieldNotice")}</Alert>
+        <>
+          <Alert tone="info">{t("profileSettings.managerFieldNotice")}</Alert>
+          <div className="max-w-lg">
+            <BusinessContactEmailField
+              registerEmail={register("email")}
+              readOnly
+              hasStoredEmail={emailHasValue}
+              verified={emailVerified}
+            />
+          </div>
+        </>
       )}
 
       <section className="space-y-4">

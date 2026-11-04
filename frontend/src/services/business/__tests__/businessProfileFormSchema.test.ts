@@ -13,6 +13,7 @@ const schemaMessages = {
   invalidNonNegative: "Invalid non-negative.",
   invalidWeeklyStartDay: "Invalid weekly start day.",
   invalidImage: "Invalid image file.",
+  invalidEmail: "Invalid email address.",
   openingRange: "Opening range must increase.",
   deliveryRange: "Delivery range must increase.",
 };
@@ -74,6 +75,7 @@ describe("Business profile schema + mappers", () => {
     const formValues = businessDtoToFormValues(makeBusinessDto());
 
     expect(formValues.tradeName).toBe("Imperium Kitchen");
+    expect(formValues.email).toBe("owner@imperium.test");
     expect(formValues).not.toHaveProperty("legalName");
     expect(formValues).not.toHaveProperty("taxNumber");
     expect(formValues.categories).toEqual(["Pizza", "Pasta"]);
@@ -88,6 +90,7 @@ describe("Business profile schema + mappers", () => {
     const payload = formValuesToUpdatePayload(values);
 
     expect(payload.get("tradeName")).toBe("Imperium Kitchen");
+    expect(payload.get("email")).toBe("owner@imperium.test");
     expect(payload.get("legalName")).toBeNull();
     expect(payload.get("taxNumber")).toBeNull();
 
@@ -136,6 +139,14 @@ describe("Business profile schema + mappers", () => {
     });
 
     expect(schema.safeParse(values).success).toBe(true);
+  });
+
+  it("rejects an invalid contact email", () => {
+    const schema = buildBusinessProfileSchema(schemaMessages);
+    const values = businessDtoToFormValues(makeBusinessDto());
+    values.email = "not-an-email";
+
+    expect(schema.safeParse(values).success).toBe(false);
   });
 
   it("still validates fields that are present", () => {

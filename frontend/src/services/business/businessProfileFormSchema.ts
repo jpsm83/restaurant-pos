@@ -4,6 +4,7 @@ import {
   cuisineTypeEnums,
   foodSubCategoryEnums,
 } from "restaurant-pos-packages/enums";
+import { emailSchema } from "restaurant-pos-packages/schemas/primitives";
 
 const HHMM_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
@@ -14,6 +15,7 @@ type BusinessProfileSchemaMessages = {
   invalidNonNegative: string;
   invalidWeeklyStartDay: string;
   invalidImage: string;
+  invalidEmail: string;
   openingRange: string;
   deliveryRange: string;
 };
@@ -43,6 +45,10 @@ export function buildBusinessProfileSchema(
       .refine((value) => value === "" || allowed.has(value), message);
   };
   const timeString = optionalString.regex(HHMM_REGEX, messages.invalidTime);
+  const optionalEmail = optionalString.refine(
+    (value) => value === "" || emailSchema.safeParse(value).success,
+    messages.invalidEmail,
+  );
 
   return z
     .object({
@@ -52,6 +58,7 @@ export function buildBusinessProfileSchema(
         { message: messages.invalidImage },
       ),
       tradeName: optionalString,
+      email: optionalEmail,
       phoneNumber: optionalString,
       currencyTrade: optionalEnum(currencyTuple, messages.invalidCurrency),
       address: z.object({

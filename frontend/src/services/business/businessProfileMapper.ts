@@ -145,6 +145,7 @@ export function businessDtoToFormValues(
     imageUrl: asTrimmedString(dto.imageUrl),
     imageFile: null,
     tradeName: asTrimmedString(dto.tradeName),
+    email: asTrimmedString(dto.email),
     phoneNumber: asTrimmedString(dto.phoneNumber),
     currencyTrade: normalizeCurrencyTrade(dto.currencyTrade),
     address: {

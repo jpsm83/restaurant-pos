@@ -219,6 +219,23 @@ describe("PATCH business profile field authorization", () => {
     expect(stored?.tradeName).toBe("Authorization Venue");
   });
 
+  it("refuses a manager's contact-email submission", async () => {
+    const business = await newVenue({
+      email: "old-contact@venue.test",
+      emailVerified: true,
+    });
+    const { auth } = await createMemberSession(business._id, ["Manager"]);
+
+    const response = await patch(auth, business._id, {
+      email: "manager-contact@venue.test",
+    });
+
+    expect(response.statusCode).toBe(403);
+    const stored = await Business.findById(business._id).lean();
+    expect(stored?.email).toBe("old-contact@venue.test");
+    expect(stored?.emailVerified).toBe(true);
+  });
+
   it("refuses a blank above-layer field instead of silently dropping it", async () => {
     const business = await newVenue();
     const { auth } = await createMemberSession(business._id, ["Manager"]);
@@ -264,6 +281,7 @@ describe("PATCH business profile field authorization", () => {
 
     const response = await patch(auth, business._id, {
       tradeName: "Admin Renamed",
+      email: "admin-contact@venue.test",
       phoneNumber: "5550000",
       currencyTrade: "EUR",
       contactPerson: "Alex Admin",
@@ -273,6 +291,8 @@ describe("PATCH business profile field authorization", () => {
     expect(response.statusCode).toBe(200);
     const stored = await Business.findById(business._id).lean();
     expect(stored?.tradeName).toBe("Admin Renamed");
+    expect(stored?.email).toBe("admin-contact@venue.test");
+    expect(stored?.emailVerified).toBe(false);
     expect(stored?.phoneNumber).toBe("5550000");
     expect(stored?.currencyTrade).toBe("EUR");
     expect(stored?.contactPerson).toBe("Alex Admin");

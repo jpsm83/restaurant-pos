@@ -125,7 +125,8 @@
       "invalidWeeklyStartDay": "Weekly report start day must be between 0 and 6.",
       "invalidImage": "Invalid image file.",
       "openingRange": "Opening range must have closeTime after openTime.",
-      "deliveryRange": "Delivery range must have closeTime after openTime."
+      "deliveryRange": "Delivery range must have closeTime after openTime.",
+      "invalidEmail": "Enter a valid email address."
     }
   },
   "profileSettings": {
@@ -159,7 +160,11 @@
         "contactPerson": "Contact person",
         "timezone": "Time zone"
       },
-      "timezoneDefaultHint": "We couldn't determine your time zone from the business address. Update the address country and region to set it."
+      "timezoneDefaultHint": "We couldn't determine your time zone from the business address. Update the address country and region to set it.",
+      "emailVerification": {
+        "verified": "Verified",
+        "unverified": "Not verified"
+      }
     },
     "discovery": {
       "sectionTitle": "Discovery",

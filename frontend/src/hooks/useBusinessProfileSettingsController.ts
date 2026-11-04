@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/auth/store/AuthContext";
 import { useErrorMessage, type ErrorFailure } from "@/i18n/errorCopy";
 import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query";
 import {
   businessDtoToFormValues,
@@ -44,6 +44,7 @@ const EMPTY_PROFILE_FORM_VALUES: BusinessProfileFormValues = {
   imageUrl: "",
   imageFile: null,
   tradeName: "",
+  email: "",
   phoneNumber: "",
   currencyTrade: "",
   address: {
@@ -234,6 +235,7 @@ export function useBusinessProfileSettingsController(
   );
   const { t } = useTranslation("business");
   const resolveError = useErrorMessage();
+  const queryClient = useQueryClient();
   const [submitError, setSubmitError] = useState<ErrorFailure | null>(null);
   const [navigationBypassAfterSave, setNavigationBypassAfterSave] = useState(false);
 
@@ -246,6 +248,7 @@ export function useBusinessProfileSettingsController(
         invalidNonNegative: t("profileForm.validation.invalidNonNegative"),
         invalidWeeklyStartDay: t("profileForm.validation.invalidWeeklyStartDay"),
         invalidImage: t("profileForm.validation.invalidImage"),
+        invalidEmail: t("profileForm.validation.invalidEmail"),
         openingRange: t("profileForm.validation.openingRange"),
         deliveryRange: t("profileForm.validation.deliveryRange"),
       }),
@@ -369,8 +372,12 @@ export function useBusinessProfileSettingsController(
         formData: payload,
       });
 
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.portfolio.all(),
+      });
+
       const refreshed = await profileQuery.refetch();
-      if (refreshed.data) {
+      if (refreshed?.data) {
         reset(businessDtoToFormValues(refreshed.data), {
           keepDirty: false,
           keepTouched: false,
