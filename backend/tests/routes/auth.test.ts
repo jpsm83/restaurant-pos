@@ -9,8 +9,10 @@ import bcrypt from "bcrypt";
 import type { FastifyInstance } from "fastify";
 import { getTestApp } from "../setup.ts";
 import User from "../../src/models/user.ts";
+import Business from "../../src/models/business.ts";
 import Employee from "../../src/models/employee.ts";
 import RefreshSession from "../../src/models/refreshSession.ts";
+import { markAsDeletedById } from "../../src/models/softDelete.ts";
 import { AUTH_CONFIG } from "../../src/auth/config.ts";
 import ownerCompanyCreation from "../../src/owners/ownerCompanyCreation.ts";
 import {
@@ -2286,6 +2288,59 @@ describe("Auth Routes", () => {
 
       expect(setMode.statusCode).toBe(200);
       expect(setMode.json().mode).toBe("business");
+    });
+
+    it("re-checks owned venue availability at switch time and leaves the session in customer mode", async () => {
+      const app = await getTestApp();
+      const email = "owner-venue-gone-mode@test.com";
+      const { venue } = await createOwnerVenue(email, "ownervenuegonemode");
+      const businessId = venue.business._id.toString();
+
+      const loginRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email, password: testPassword },
+      });
+      expect(loginRes.statusCode).toBe(200);
+      expect(loginRes.json().user.mode).toBe("customer");
+      const accessToken = loginRes.json().accessToken as string;
+
+      const venuesBefore = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/venues",
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+      expect(venuesBefore.statusCode).toBe(200);
+      expect(venuesBefore.json().venues).toEqual([
+        expect.objectContaining({
+          businessId,
+          canEnterBusiness: true,
+        }),
+      ]);
+
+      await markAsDeletedById(Business, businessId);
+
+      const setMode = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/set-mode",
+        headers: { authorization: `Bearer ${accessToken}` },
+        payload: { mode: "business" },
+      });
+      expect(setMode.statusCode).toBe(403);
+      expect(setMode.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      expect(setMode.json().detail).toBe(
+        "Not authorized to enter business mode",
+      );
+
+      const mode = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/mode",
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+      expect(mode.statusCode).toBe(200);
+      expect(mode.json().mode).toBe("customer");
     });
 
     it("keeps each refresh session on its own stored mode", async () => {
