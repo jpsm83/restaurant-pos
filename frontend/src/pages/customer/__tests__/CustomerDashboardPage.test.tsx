@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -395,6 +395,30 @@ describe("CustomerDashboardPage", () => {
       });
     });
     expect(await screen.findByText("Business dashboard")).toBeInTheDocument();
+  });
+
+  it("offers Open business from each portfolio venue and nowhere else", async () => {
+    mockGet.mockResolvedValue({ data: multiCompanyPortfolio });
+
+    await renderPage();
+
+    expect(await screen.findByText("Your venues")).toBeInTheDocument();
+    const venues = multiCompanyPortfolio.companies.flatMap(
+      (company) => company.businesses,
+    );
+    const openBusinessActions = screen.getAllByRole("button", {
+      name: "Open business",
+    });
+    expect(openBusinessActions).toHaveLength(venues.length);
+    for (const action of openBusinessActions) {
+      const card = action.closest("li");
+      expect(card).not.toBeNull();
+      expect(
+        venues.some((venue) =>
+          within(card as HTMLElement).queryByText(venue.tradeName),
+        ),
+      ).toBe(true);
+    }
   });
 
   it("lists the venues in a populated portfolio", async () => {
