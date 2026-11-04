@@ -149,7 +149,9 @@ async function accountGenerationIfRowExists(
 
 /**
  * Verify an access token, require its refresh session to be live, and refuse
- * a soft-deleted User or deleted Business. Database failures propagate.
+ * a soft-deleted User. Business access is checked separately by the
+ * business-access hook and the effective-access resolver. Database failures
+ * propagate.
  */
 export interface LiveAccessSession {
   session: AuthSession;
