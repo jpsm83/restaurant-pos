@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithI18n } from "@/test/i18nTestUtils";
+import type { SupportedLanguage } from "@/i18n/config";
 import CustomerDashboardPage from "../CustomerDashboardPage";
 
 const { mockGet, mockPost } = vi.hoisted(() => ({
@@ -33,6 +34,10 @@ vi.mock("@/auth/store/AuthContext", () => ({
     dispatch: vi.fn(),
   }),
 }));
+
+const incompleteWarning =
+  "This venue must be completed before it can go live.";
+const completeProfileLink = "Complete venue profile";
 
 const emptyPortfolio = {
   owner: null,
@@ -103,6 +108,31 @@ const completePortfolio = {
         {
           ...populatedPortfolio.companies[0].businesses[0],
           profileComplete: true,
+          address: {
+            country: "Spain",
+            state: "Madrid",
+            city: "Madrid",
+            street: "Gran Via",
+            buildingNumber: "1",
+            postCode: "28013",
+          },
+        },
+      ],
+    },
+  ],
+};
+
+const mixedPortfolio = {
+  ...populatedPortfolio,
+  companies: [
+    {
+      ...populatedPortfolio.companies[0],
+      businesses: [
+        populatedPortfolio.companies[0].businesses[0],
+        {
+          ...completePortfolio.companies[0].businesses[0],
+          _id: "b2",
+          tradeName: "Complete Bistro",
         },
       ],
     },
@@ -184,7 +214,7 @@ const joinedPortfolio = {
   ],
 };
 
-function renderPage() {
+function renderPage(language: SupportedLanguage = "en") {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -206,6 +236,7 @@ function renderPage() {
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
+    { language },
   );
 }
 
@@ -224,6 +255,10 @@ describe("CustomerDashboardPage", () => {
       await screen.findByRole("button", { name: "Add your venue" }),
     ).toBeInTheDocument();
     expect(screen.queryByText("Demo Bistro")).not.toBeInTheDocument();
+    expect(screen.queryByText(incompleteWarning)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: completeProfileLink }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows Add your venue when the Owner exists but owns no Companies", async () => {
@@ -237,6 +272,10 @@ describe("CustomerDashboardPage", () => {
     expect(screen.queryByText("Your venues")).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Open business" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(incompleteWarning)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: completeProfileLink }),
     ).not.toBeInTheDocument();
   });
 
@@ -440,29 +479,100 @@ describe("CustomerDashboardPage", () => {
 
     await renderPage();
 
+    expect(await screen.findByText(incompleteWarning)).toBeInTheDocument();
     expect(
-      await screen.findByText(
-        "This venue must be completed before it can go live.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "Complete venue profile" }),
+      screen.getByRole("link", { name: completeProfileLink }),
     ).toHaveAttribute("href", "/business/b1/settings/profile");
   });
 
-  it("shows no warning for a venue with a complete profile", async () => {
+  it("shows no warning for a venue with a complete identity/contact profile and Company tax identity", async () => {
     mockGet.mockResolvedValue({ data: completePortfolio });
 
     await renderPage();
 
     expect(await screen.findByText("Demo Bistro")).toBeInTheDocument();
+    expect(screen.queryByText(incompleteWarning)).not.toBeInTheDocument();
     expect(
-      screen.queryByText(
-        "This venue must be completed before it can go live.",
-      ),
+      screen.queryByRole("link", { name: completeProfileLink }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("warns only on incomplete venues in a mixed portfolio", async () => {
+    mockGet.mockResolvedValue({ data: mixedPortfolio });
+
+    await renderPage();
+
+    expect(await screen.findByText("Your venues")).toBeInTheDocument();
+    expect(screen.getAllByText(incompleteWarning)).toHaveLength(1);
+
+    const incompleteCard = screen.getByText("Demo Bistro").closest("li");
+    expect(incompleteCard).not.toBeNull();
+    expect(
+      within(incompleteCard as HTMLElement).getByText(incompleteWarning),
+    ).toBeInTheDocument();
+    expect(
+      within(incompleteCard as HTMLElement).getByRole("link", {
+        name: completeProfileLink,
+      }),
+    ).toHaveAttribute("href", "/business/b1/settings/profile");
+
+    const completeCard = screen.getByText("Complete Bistro").closest("li");
+    expect(completeCard).not.toBeNull();
+    expect(
+      within(completeCard as HTMLElement).queryByText(incompleteWarning),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("link", { name: "Complete venue profile" }),
+      within(completeCard as HTMLElement).queryByRole("link", {
+        name: completeProfileLink,
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("warns once per incomplete venue in a portfolio with multiple drafts", async () => {
+    mockGet.mockResolvedValue({ data: multiCompanyPortfolio });
+
+    await renderPage();
+
+    expect(await screen.findByText("Your venues")).toBeInTheDocument();
+    const venues = multiCompanyPortfolio.companies.flatMap(
+      (company) => company.businesses,
+    );
+
+    expect(screen.getAllByText(incompleteWarning)).toHaveLength(venues.length);
+    expect(
+      screen.getAllByRole("link", { name: completeProfileLink }),
+    ).toHaveLength(venues.length);
+
+    for (const venue of venues) {
+      const card = screen.getByText(venue.tradeName).closest("li");
+      expect(card).not.toBeNull();
+      expect(
+        within(card as HTMLElement).getAllByText(incompleteWarning),
+      ).toHaveLength(1);
+      expect(
+        within(card as HTMLElement).getByRole("link", {
+          name: completeProfileLink,
+        }),
+      ).toHaveAttribute("href", `/business/${venue._id}/settings/profile`);
+    }
+  });
+
+  it("renders the incomplete warning and completion link in Spanish", async () => {
+    mockGet.mockResolvedValue({ data: populatedPortfolio });
+
+    await renderPage("es");
+
+    expect(
+      await screen.findByText(
+        "Este local debe completarse antes de que pueda publicarse.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Completar perfil del local" }),
+    ).toHaveAttribute("href", "/business/b1/settings/profile");
+    expect(screen.queryByText(incompleteWarning)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: completeProfileLink }),
     ).not.toBeInTheDocument();
   });
 
