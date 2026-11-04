@@ -698,6 +698,67 @@ describe("Business Routes", () => {
       await expect(Business.countDocuments()).resolves.toBe(0);
     });
 
+    it("returns a problem-details 404 for an unknown Company", async () => {
+      const app = await getTestApp();
+      const { auth, userId } = await customerAuthToken();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { authorization: auth },
+        payload: { ...draft, companyId: new Types.ObjectId().toString() },
+      });
+
+      expect(response.statusCode).toBe(404);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      expect(JSON.parse(response.body).type).toBe(
+        "https://restaurant-pos.app/errors/not-found",
+      );
+      await expect(Owner.countDocuments({ userId })).resolves.toBe(0);
+      await expect(Company.countDocuments()).resolves.toBe(0);
+      await expect(Business.countDocuments()).resolves.toBe(0);
+    });
+
+    it("returns a problem-details 409 for duplicate Company identity", async () => {
+      const app = await getTestApp();
+      const { auth, userId } = await customerAuthToken();
+
+      const first = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { authorization: auth },
+        payload: {
+          ...draft,
+          company: { legalName: "Taxpayer SL", taxNumber: "TAX-1" },
+        },
+      });
+      expect(first.statusCode).toBe(201);
+
+      const duplicate = await app.inject({
+        method: "POST",
+        url: "/api/v1/business",
+        headers: { authorization: auth },
+        payload: {
+          ...draft,
+          tradeName: "Second Venue",
+          company: { legalName: "Taxpayer SL", taxNumber: "TAX-1" },
+        },
+      });
+
+      expect(duplicate.statusCode).toBe(409);
+      expect(duplicate.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      expect(JSON.parse(duplicate.body).type).toBe(
+        "https://restaurant-pos.app/errors/conflict",
+      );
+      await expect(Owner.countDocuments({ userId })).resolves.toBe(1);
+      await expect(Company.countDocuments()).resolves.toBe(1);
+      await expect(Business.countDocuments()).resolves.toBe(1);
+    });
+
     it("refuses a soft-deleted Company", async () => {
       const app = await getTestApp();
       const { auth, userId } = await customerAuthToken();

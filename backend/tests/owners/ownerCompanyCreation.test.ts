@@ -673,6 +673,46 @@ describe("ownerCompanyCreation", () => {
     ).rejects.toThrow(/Company country/i);
   });
 
+  it("rejects an unknown Company id as not found and persists nothing", async () => {
+    const user = await createUser("unknown-company");
+
+    await expect(
+      ownerCompanyCreation({
+        userId: user._id,
+        business: venue("Spain"),
+        companyId: new Types.ObjectId(),
+      }),
+    ).rejects.toMatchObject({ code: "company-not-found" });
+
+    await expect(Owner.countDocuments({ userId: user._id })).resolves.toBe(0);
+    await expect(Company.countDocuments()).resolves.toBe(0);
+    await expect(Business.countDocuments()).resolves.toBe(0);
+  });
+
+  it("rejects a duplicate Company identity and persists nothing new", async () => {
+    const user = await createUser("duplicate-company-identity");
+
+    const first = await ownerCompanyCreation({
+      userId: user._id,
+      business: venue("Spain"),
+      company: { legalName: "Taxpayer SL", taxNumber: "ES-123" },
+    });
+
+    await expect(
+      ownerCompanyCreation({
+        userId: user._id,
+        business: venue("Spain"),
+        company: { legalName: "Taxpayer SL", taxNumber: "ES-999" },
+      }),
+    ).rejects.toMatchObject({ code: "company-duplicate" });
+
+    await expect(Owner.countDocuments({ userId: user._id })).resolves.toBe(1);
+    await expect(
+      Company.countDocuments({ ownerId: first.owner._id }),
+    ).resolves.toBe(1);
+    await expect(Business.countDocuments({})).resolves.toBe(1);
+  });
+
   it("rejects a Company that belongs to another Owner", async () => {
     const firstUser = await createUser("first-owner");
     const secondUser = await createUser("second-owner");

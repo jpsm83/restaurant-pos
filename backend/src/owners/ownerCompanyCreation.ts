@@ -278,6 +278,18 @@ const ownerCompanyCreation = async (
         ownerId: owner._id,
       }).session(session);
       if (!joinedCompany) {
+        // Distinguish a Company id that does not exist (404) from one that
+        // exists but is foreign or soft-deleted (403). The active-only query
+        // above hides the latter, so probe every stored state explicitly.
+        const storedCompany = await Company.findById(input.companyId)
+          .setOptions({ includeDeleted: true })
+          .session(session);
+        if (!storedCompany) {
+          throw new OwnerCompanyCreationError(
+            "company-not-found",
+            "Company not found!",
+          );
+        }
         throw new OwnerCompanyCreationError(
           "company-not-owned",
           "Company does not belong to this User's Owner!",
