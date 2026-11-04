@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AxiosError, type AxiosResponse } from "axios";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -60,6 +60,29 @@ const portfolio = {
           tradeName: "Corner Cafe",
           currencyTrade: "EUR",
           companyId: "c1",
+          profileComplete: false,
+          address: { country: "Spain" },
+        },
+      ],
+    },
+  ],
+};
+
+const portfolioWithSecondCompany = {
+  ...portfolio,
+  companies: [
+    portfolio.companies[0],
+    {
+      _id: "c2",
+      country: "Spain",
+      legalName: "Second Taxpayer SL",
+      taxNumber: "B87654321",
+      businesses: [
+        {
+          _id: "b9",
+          tradeName: "Other Venue",
+          currencyTrade: "EUR",
+          companyId: "c2",
           profileComplete: false,
           address: { country: "Spain" },
         },
@@ -240,30 +263,7 @@ describe("BusinessCompanyPage", () => {
   });
 
   it("shows the active venue's Company when the Owner has several", async () => {
-    mockGet.mockResolvedValue({
-      data: {
-        ...portfolio,
-        companies: [
-          portfolio.companies[0],
-          {
-            _id: "c2",
-            country: "Spain",
-            legalName: "Second Taxpayer SL",
-            taxNumber: "B87654321",
-            businesses: [
-              {
-                _id: "b9",
-                tradeName: "Other Venue",
-                currencyTrade: "EUR",
-                companyId: "c2",
-                profileComplete: false,
-                address: { country: "Spain" },
-              },
-            ],
-          },
-        ],
-      },
-    });
+    mockGet.mockResolvedValue({ data: portfolioWithSecondCompany });
 
     await renderPage();
 
@@ -283,8 +283,30 @@ describe("BusinessCompanyPage", () => {
     expect(screen.getAllByText("Spain · EUR")).toHaveLength(2);
   });
 
-  it("preselects this Company when adding a venue", async () => {
-    mockGet.mockResolvedValue({ data: portfolio });
+  it("adds a venue to the pre-selected Company and shows it after the portfolio refresh", async () => {
+    mockGet
+      .mockResolvedValueOnce({ data: portfolio })
+      .mockResolvedValue({
+        data: {
+          ...portfolio,
+          companies: [
+            {
+              ...portfolio.companies[0],
+              businesses: [
+                ...portfolio.companies[0].businesses,
+                {
+                  _id: "b3",
+                  tradeName: "New Venue",
+                  currencyTrade: "USD",
+                  companyId: "c1",
+                  profileComplete: false,
+                  address: { country: "Spain" },
+                },
+              ],
+            },
+          ],
+        },
+      });
     mockPost.mockResolvedValue({
       data: {
         business: {
@@ -306,6 +328,11 @@ describe("BusinessCompanyPage", () => {
     await renderPage();
 
     await user.click(await screen.findByRole("button", { name: "Add venue" }));
+
+    expect(screen.getByRole("combobox", { name: "Company" })).toHaveTextContent(
+      "Demo Bistro SL",
+    );
+
     await user.type(screen.getByLabelText("Trade name"), "New Venue");
     await user.click(screen.getByRole("button", { name: "Create venue" }));
 
@@ -315,7 +342,54 @@ describe("BusinessCompanyPage", () => {
         expect.objectContaining({ companyId: "c1", tradeName: "New Venue" }),
       );
     });
+    expect(mockPost).toHaveBeenCalledTimes(1);
     expect(mockPost.mock.calls[0][1]).not.toHaveProperty("company");
+    const venueList = screen.getByRole("list");
+    expect(await within(venueList).findByText("New Venue")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Create venue" }),
+    ).not.toBeInTheDocument();
+    const portfolioReads = mockGet.mock.calls.filter(
+      (call) => call[0] === "/api/v1/owners/portfolio",
+    );
+    expect(portfolioReads.length).toBeGreaterThan(1);
+  });
+
+  it("keeps offering another Company or a new Company from the shared form", async () => {
+    mockGet.mockResolvedValue({ data: portfolioWithSecondCompany });
+    const user = userEvent.setup();
+
+    await renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Add venue" }));
+
+    const companySelect = screen.getByRole("combobox", { name: "Company" });
+    expect(companySelect).toHaveTextContent("Demo Bistro SL");
+
+    await user.click(companySelect);
+    await user.click(
+      await screen.findByRole("option", { name: "Second Taxpayer SL" }),
+    );
+    expect(
+      screen.queryByLabelText("Company legal name", {
+        selector: "#venue-legal-name",
+      }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("combobox", { name: "Company" }));
+    await user.click(
+      await screen.findByRole("option", { name: "New Company" }),
+    );
+    expect(
+      screen.getByLabelText("Company legal name", {
+        selector: "#venue-legal-name",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Company tax number", {
+        selector: "#venue-tax-number",
+      }),
+    ).toBeInTheDocument();
   });
 
   it("shows no Company data to a User without the owning Owner", async () => {
