@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -18,6 +18,10 @@ import {
 import { useAuth } from "@/auth/store/AuthContext";
 import { useResendEmailConfirmation } from "@/hooks/useResendEmailConfirmation";
 import { FieldError } from "@/components/FieldError";
+import {
+  canonicalPrivacyNoticePath,
+  canonicalTermsPath,
+} from "@/routes/canonicalPaths";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -233,13 +237,33 @@ export default function SignUpPage() {
                         errors.privacyAccepted ? true : undefined
                       }
                     />
-                    <Label
+                    <span
                       id="signup-privacy-accepted-label"
-                      htmlFor="signup-privacy-accepted"
-                      className="text-sm leading-snug font-normal"
+                      className="text-sm leading-snug text-foreground"
                     >
-                      {t("signup.privacyAcceptanceLabel")}
-                    </Label>
+                      <Trans
+                        t={t}
+                        i18nKey="signup.privacyAcceptanceLabel"
+                        components={{
+                          privacyLink: (
+                            <Link
+                              to={canonicalPrivacyNoticePath()}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="underline underline-offset-2 hover:text-foreground"
+                            />
+                          ),
+                          termsLink: (
+                            <Link
+                              to={canonicalTermsPath()}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="underline underline-offset-2 hover:text-foreground"
+                            />
+                          ),
+                        }}
+                      />
+                    </span>
                   </div>
                   <FieldError message={errors.privacyAccepted?.message} />
                 </div>
@@ -256,9 +280,14 @@ export default function SignUpPage() {
 
             <GoogleAuthButton onFailure={setSubmitFailure} />
 
-            <Button asChild variant="outline" className="w-full">
-              <Link to={loginHref}>{t("signup.backToSignIn")}</Link>
-            </Button>
+            <div className="text-center">
+              <Link
+                to={loginHref}
+                className="text-sm font-medium text-muted-foreground underline-offset-4 hover:underline"
+              >
+                {t("signup.backToSignIn")}
+              </Link>
+            </div>
 
           </form>
         </CardContent>

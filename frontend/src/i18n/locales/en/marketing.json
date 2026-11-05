@@ -1,5 +1,16 @@
 {
   "listItemSeparator": " — ",
+  "legal": {
+    "lastUpdated": "Last updated {{date}}",
+    "privacy": {
+      "title": "Privacy notice",
+      "body": "This privacy notice is a placeholder while the full policy is prepared. It will explain what information Project Imperium collects, why it is collected, and how you can exercise your privacy rights."
+    },
+    "terms": {
+      "title": "Account terms",
+      "body": "These account terms are a placeholder while the full terms are prepared. They will set out the rules for using Project Imperium accounts and services."
+    }
+  },
   "customer": {
     "public": {
       "heroTitle": "Order and dine with confidence",

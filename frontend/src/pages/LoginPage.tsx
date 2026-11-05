@@ -174,9 +174,14 @@ export default function LoginPage() {
 
             <GoogleAuthButton onFailure={setSubmitFailure} />
 
-            <Button asChild variant="outline" className="w-full">
-              <Link to={signupHref}>{t("login.createAccountLink")}</Link>
-            </Button>
+            <div className="text-center">
+              <Link
+                to={signupHref}
+                className="text-sm font-medium text-muted-foreground underline-offset-4 hover:underline"
+              >
+                {t("login.createAccountLink")}
+              </Link>
+            </div>
 
           </form>
         </CardContent>

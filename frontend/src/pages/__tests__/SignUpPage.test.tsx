@@ -178,6 +178,61 @@ describe("SignUpPage", () => {
     expect(screen.getByLabelText(/^password$/i)).toHaveValue("ValidPass1!");
   });
 
+  it("renders the legal acceptance links as safe new-tab links", async () => {
+    await renderWithI18n(
+      <MemoryRouter>
+        <SignUpPage />
+      </MemoryRouter>,
+    );
+
+    const privacyLink = screen.getByRole("link", { name: /privacy notice/i });
+    expect(privacyLink).toHaveAttribute("href", "/legal/privacy");
+    expect(privacyLink).toHaveAttribute("target", "_blank");
+    expect(privacyLink).toHaveAttribute("rel", "noopener noreferrer");
+
+    const termsLink = screen.getByRole("link", { name: /account terms/i });
+    expect(termsLink).toHaveAttribute("href", "/legal/terms");
+    expect(termsLink).toHaveAttribute("target", "_blank");
+    expect(termsLink).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("renders the legal acceptance links in Spanish", async () => {
+    await renderWithI18n(
+      <MemoryRouter>
+        <SignUpPage />
+      </MemoryRouter>,
+      { language: "es" },
+    );
+
+    expect(
+      screen.getByRole("link", { name: /aviso de privacidad/i }),
+    ).toHaveAttribute("href", "/legal/privacy");
+    expect(
+      screen.getByRole("link", { name: /términos de la cuenta/i }),
+    ).toHaveAttribute("href", "/legal/terms");
+  });
+
+  it.each([
+    { name: "privacy notice", linkName: /privacy notice/i },
+    { name: "account terms", linkName: /account terms/i },
+  ])("does not accept the terms when the $name link is clicked", async ({ linkName }) => {
+    const user = userEvent.setup();
+    await renderWithI18n(
+      <MemoryRouter>
+        <SignUpPage />
+      </MemoryRouter>,
+    );
+
+    const checkbox = screen.getByRole("checkbox", {
+      name: /privacy notice and account terms/i,
+    });
+    const link = screen.getByRole("link", { name: linkName });
+
+    expect(checkbox).not.toBeChecked();
+    await user.click(link);
+    expect(checkbox).not.toBeChecked();
+  });
+
   it("shows the acceptance validation in Spanish", async () => {
     const user = userEvent.setup();
     await renderWithI18n(
@@ -821,5 +876,8 @@ describe("SignUpPage", () => {
     expect(
       screen.getByRole("link", { name: /back to sign in/i }),
     ).toHaveAttribute("href", expectedHref);
+    expect(
+      screen.queryByRole("button", { name: /back to sign in/i }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -50,6 +50,10 @@ const ConfirmEmailChangePage = lazy(
 const RequestEmailConfirmationPage = lazy(
   () => import("@/pages/RequestEmailConfirmationPage"),
 );
+const PrivacyNoticePage = lazy(
+  () => import("@/pages/legal/PrivacyNoticePage"),
+);
+const TermsPage = lazy(() => import("@/pages/legal/TermsPage"));
 const BusinessDashboardPage = lazy(() => import("@/pages/business/BusinessDashboardPage"));
 const BusinessCompanyPage = lazy(
   () => import("@/pages/business/BusinessCompanyPage"),
@@ -222,6 +226,8 @@ export function AppRoutes() {
                 </PublicOnlyRoute>
               }
             />
+            <Route path="legal/privacy" element={<PrivacyNoticePage />} />
+            <Route path="legal/terms" element={<TermsPage />} />
             <Route path="business" element={<PublicBusinessRoute />} />
           </Route>
 

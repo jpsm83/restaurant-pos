@@ -1,5 +1,16 @@
 {
   "listItemSeparator": " — ",
+  "legal": {
+    "lastUpdated": "Última actualización: {{date}}",
+    "privacy": {
+      "title": "Aviso de privacidad",
+      "body": "Este aviso de privacidad es un marcador de posición mientras se prepara la política completa. Explicará qué información recopila Project Imperium, por qué se recopila y cómo puedes ejercer tus derechos de privacidad."
+    },
+    "terms": {
+      "title": "Términos de la cuenta",
+      "body": "Estos términos de la cuenta son un marcador de posición mientras se preparan los términos completos. Establecerán las reglas para usar las cuentas y los servicios de Project Imperium."
+    }
+  },
   "customer": {
     "public": {
       "heroTitle": "Pide y come con tranquilidad",

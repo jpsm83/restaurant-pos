@@ -164,6 +164,9 @@ describe("LoginPage", () => {
     expect(
       screen.getByRole("link", { name: /create account/i }),
     ).toHaveAttribute("href", expectedHref);
+    expect(
+      screen.queryByRole("button", { name: /create account/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a flash message passed through navigation state", async () => {

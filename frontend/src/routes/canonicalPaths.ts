@@ -118,6 +118,16 @@ export function canonicalCustomerFavoritesPath(): string {
   return "/favorites";
 }
 
+/** Public privacy notice, reachable without a session and by signed-in visitors. */
+export function canonicalPrivacyNoticePath(): string {
+  return "/legal/privacy";
+}
+
+/** Public account terms, reachable without a session and by signed-in visitors. */
+export function canonicalTermsPath(): string {
+  return "/legal/terms";
+}
+
 /** Customer | Business mode selection. */
 export function canonicalModePath(): string {
   return "/mode";

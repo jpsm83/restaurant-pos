@@ -301,6 +301,61 @@ describe("App public routing (Phase 1.5.1)", () => {
     );
   });
 
+  const legalPages = [
+    {
+      entry: "/legal/privacy",
+      heading: { en: /privacy notice/i, es: /aviso de privacidad/i },
+    },
+    {
+      entry: "/legal/terms",
+      heading: { en: /account terms/i, es: /términos de la cuenta/i },
+    },
+  ];
+  const legalVisits = [false, true] as const;
+  const legalLanguages = ["en", "es"] as const;
+  const legalCases = legalVisits.flatMap((authenticated) =>
+    legalPages.flatMap((page) =>
+      legalLanguages.map((language) => ({
+        entry: page.entry,
+        heading: page.heading[language],
+        authenticated,
+        language,
+      })),
+    ),
+  );
+
+  it.each(legalCases)(
+    "renders $entry for authenticated=$authenticated in $language",
+    async ({ entry, heading, authenticated, language }) => {
+      if (authenticated) {
+        mockUseAuth.mockReturnValue({
+          state: {
+            user: { id: "u1", email: "patron@example.com", type: "user" },
+            status: "authenticated",
+            error: null,
+          },
+          dispatch: vi.fn(),
+        });
+      }
+
+      await renderWithI18n(
+        <MemoryRouter initialEntries={[entry]}>
+          <AppRoutes />
+        </MemoryRouter>,
+        { language },
+      );
+
+      expect(
+        await screen.findByRole(
+          "heading",
+          { level: 1, name: heading },
+          { timeout: 10_000 },
+        ),
+      ).toBeInTheDocument();
+    },
+    20_000,
+  );
+
   it("renders ForgotPasswordPage for `/forgot-password`", async () => {
     await renderWithI18n(
       <MemoryRouter initialEntries={["/forgot-password"]}>

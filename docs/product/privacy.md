@@ -41,7 +41,7 @@ This subject introduces **no new persistent business entity** beyond preferences
 
 ### Terms this subject introduces
 
-- **Privacy notice** — the published explanation of how Project Imperium and venues process personal data. Creating a User requires acknowledging it (with account terms). Exact counsel text is outside this subject.
+- **Privacy notice** — the published explanation of how Project Imperium and venues process personal data. Creating a User requires acknowledging it (with account terms). The notice and account terms are public pages linked from the sign-up acceptance step and stay reachable with or without a session. Exact counsel text is outside this subject.
 - **Customer data export** (also **DSAR export** in product language) — a self-service, portable, machine-readable package of the signed-in person's **own attributable** personal data and history while those rows still exist.
 - **Digital-consent age** — the platform floor age below which marketing consent cannot be granted in stage 1 because there is no parental-authorisation product. Seed: **sixteen**.
 - **Alcohol purchase age** — the platform floor age required before a payer may check out **Alcoholic drinks** tax-category goods on **self-channels**. Seed: **eighteen**.
