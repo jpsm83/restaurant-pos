@@ -42,9 +42,8 @@ interface GoogleDeletedUserLookup {
 
 export type GoogleAuthInput = {
   credential: string;
-  intent?: GoogleAuthIntent;
+  intent: GoogleAuthIntent;
   languagePreference?: "en" | "es";
-  privacyAccepted?: boolean;
 };
 
 export type GoogleAuthResult =
@@ -55,7 +54,6 @@ export type GoogleAuthResult =
       created: boolean;
     }
   | { kind: "reactivation"; message: string }
-  | { kind: "consent_required" }
   | { kind: "account_not_found" }
   | { kind: "google_email_conflict" }
   | { kind: "invalid_credential" }
@@ -136,13 +134,10 @@ export async function handleGoogleAuth(
   }
 
   // Sign-in never creates an account: an unknown Google identity is a
-  // dedicated not-found outcome. Sign-up keeps the create-with-consent path.
+  // dedicated not-found outcome. The route schema has already rejected a
+  // sign-up without the acceptance proof, so this is the create branch.
   if (input.intent === "signin") {
     return { kind: "account_not_found" };
-  }
-
-  if (input.privacyAccepted !== true) {
-    return { kind: "consent_required" };
   }
 
   const createdUser = await User.create({

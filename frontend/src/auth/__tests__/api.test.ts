@@ -247,27 +247,9 @@ describe("auth api — email / password-reset endpoints", () => {
         accessToken: "google-access",
         user: { id: "u1", email: "google@example.com", type: "user" },
         reactivationRequired: false,
-        consentRequired: false,
       },
     });
     expect(publishAuthSignIn).toHaveBeenCalledTimes(1);
-  });
-
-  it("googleAuth exposes the consent-required outcome without a session", async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse({ consentRequired: true }));
-
-    const result = await googleAuth({ credential: "google-id-token", intent: "signup" });
-
-    expect(result).toEqual({
-      ok: true,
-      data: {
-        accessToken: undefined,
-        user: null,
-        reactivationRequired: false,
-        consentRequired: true,
-      },
-    });
-    expect(publishAuthSignIn).not.toHaveBeenCalled();
   });
 
   it("googleAuth marks a reactivation message as a machine outcome", async () => {
@@ -278,7 +260,7 @@ describe("auth api — email / password-reset endpoints", () => {
       }),
     );
 
-    const result = await googleAuth({ credential: "google-id-token", intent: "signup" });
+    const result = await googleAuth({ credential: "google-id-token", intent: "signin" });
 
     expect(result).toEqual({
       ok: true,
@@ -286,7 +268,6 @@ describe("auth api — email / password-reset endpoints", () => {
         accessToken: undefined,
         user: null,
         reactivationRequired: true,
-        consentRequired: false,
       },
     });
     expect(publishAuthSignIn).not.toHaveBeenCalled();

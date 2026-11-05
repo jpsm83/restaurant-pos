@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMemo, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { Trans, useTranslation } from "react-i18next";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -78,7 +78,7 @@ export default function SignUpPage() {
   const { t, i18n } = useTranslation("auth");
   const navigate = useNavigate();
   const location = useLocation();
-  const { state, dispatch } = useAuth();
+  const { dispatch } = useAuth();
   const returnTo = getReturnToParam(location.search);
   const loginHref = authPathWithReturnTo("/login", returnTo);
   const language = (i18n.resolvedLanguage ?? i18n.language ?? "")
@@ -88,11 +88,11 @@ export default function SignUpPage() {
     ? language
     : undefined;
   const [submitFailure, setSubmitFailure] = useState<ErrorFailure | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const resolveError = useErrorMessage();
   const { resend } = useResendEmailConfirmation({
     successMessage: t("signup.resendConfirmationSuccess"),
   });
-  const isSubmitting = state.status === "loading";
 
   const schema = useMemo(
     () =>
@@ -110,6 +110,8 @@ export default function SignUpPage() {
     register,
     control,
     handleSubmit,
+    setError,
+    clearErrors,
     formState: { errors },
   } = useForm<SignUpFormValues>({
     resolver: zodResolver(schema),
@@ -120,49 +122,52 @@ export default function SignUpPage() {
       privacyAccepted: false,
     },
   });
+  const privacyAccepted = useWatch({ control, name: "privacyAccepted" });
 
   const onSubmit = async (data: SignUpFormValues) => {
     setSubmitFailure(null);
-    dispatch({ type: "AUTH_LOADING" });
+    setIsSubmitting(true);
 
-    const result = await signup({
-      email: data.email.trim(),
-      password: data.password,
-      privacyAccepted: data.privacyAccepted,
-      ...(languagePreference ? { languagePreference } : {}),
-    });
-
-    if (!result.ok) {
-      dispatch({ type: "AUTH_ERROR", payload: result.error.code });
-      setSubmitFailure(result.error);
-      return;
-    }
-
-    if (!result.data?.user) {
-      dispatch({ type: "AUTH_CLEAR" });
-      toast.info(
-        result.data?.reactivationRequired
-          ? t("login.reactivationRequired")
-          : t("requestEmailConfirmation.successMessage"),
-      );
-      return;
-    }
-
-    markPriorSession();
-    const sessionUser = result.data.user;
-    dispatch({ type: "AUTH_SUCCESS", payload: sessionUser });
-    if (result.data.verificationEmailSent === false) {
-      toast.warning(t("signup.verificationEmailSendFailed"), {
-        duration: 10000,
-        action: {
-          label: t("signup.resendConfirmationAction"),
-          onClick: () => void resend(),
-        },
+    try {
+      const result = await signup({
+        email: data.email.trim(),
+        password: data.password,
+        privacyAccepted: data.privacyAccepted,
+        ...(languagePreference ? { languagePreference } : {}),
       });
-    } else if (sessionUser.emailVerified === false) {
-      toast.info(t("signup.verifyEmailToast"));
+
+      if (!result.ok) {
+        setSubmitFailure(result.error);
+        return;
+      }
+
+      if (!result.data?.user) {
+        toast.info(
+          result.data?.reactivationRequired
+            ? t("login.reactivationRequired")
+            : t("requestEmailConfirmation.successMessage"),
+        );
+        return;
+      }
+
+      markPriorSession();
+      const sessionUser = result.data.user;
+      dispatch({ type: "AUTH_SUCCESS", payload: sessionUser });
+      if (result.data.verificationEmailSent === false) {
+        toast.warning(t("signup.verificationEmailSendFailed"), {
+          duration: 10000,
+          action: {
+            label: t("signup.resendConfirmationAction"),
+            onClick: () => void resend(),
+          },
+        });
+      } else if (sessionUser.emailVerified === false) {
+        toast.info(t("signup.verifyEmailToast"));
+      }
+      navigate(getPostLoginDestination(returnTo), { replace: true });
+    } finally {
+      setIsSubmitting(false);
     }
-    navigate(getPostLoginDestination(returnTo), { replace: true });
   };
 
   return (
@@ -227,9 +232,10 @@ export default function SignUpPage() {
                     <Checkbox
                       id="signup-privacy-accepted"
                       checked={field.value}
-                      onCheckedChange={(checked) =>
-                        field.onChange(checked === true)
-                      }
+                      onCheckedChange={(checked) => {
+                        if (checked === true) clearErrors("privacyAccepted");
+                        field.onChange(checked === true);
+                      }}
                       onBlur={field.onBlur}
                       ref={field.ref}
                       aria-labelledby="signup-privacy-accepted-label"
@@ -278,7 +284,17 @@ export default function SignUpPage() {
               {isSubmitting ? t("signup.submitting") : t("signup.submit")}
             </Button>
 
-            <GoogleAuthButton intent="signup" onFailure={setSubmitFailure} />
+            <GoogleAuthButton
+              intent="signup"
+              privacyAccepted={privacyAccepted}
+              onAcceptanceRequired={() =>
+                setError("privacyAccepted", {
+                  type: "manual",
+                  message: t("signup.errors.privacyRequired"),
+                })
+              }
+              onFailure={setSubmitFailure}
+            />
 
             <div className="text-center">
               <Link

@@ -55,8 +55,6 @@ export interface AuthLoginSnapshot {
   user: AuthSession | null;
   /** A soft-deleted account must confirm the email reactivation link first. */
   reactivationRequired?: boolean;
-  /** Google would create a User, so the client must collect acceptance first. */
-  consentRequired?: boolean;
   /** Signup only: `false` when the account exists but the verification email failed. */
   verificationEmailSent?: boolean;
 }

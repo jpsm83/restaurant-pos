@@ -310,7 +310,6 @@ describe("LoginPage", () => {
     await waitFor(() => {
       expect(screen.getByText(landing)).toBeInTheDocument();
     });
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(mockGoogleAuth).toHaveBeenCalledWith({
       credential: "google-id-token",
       intent: "signin",
@@ -318,7 +317,7 @@ describe("LoginPage", () => {
     });
   });
 
-  it("sends signin intent with no acceptance and opens no consent dialog", async () => {
+  it("sends sign-in intent without acceptance", async () => {
     const user = userEvent.setup();
     mockGoogleAuth.mockResolvedValue({
       ok: false,
@@ -351,7 +350,6 @@ describe("LoginPage", () => {
         languagePreference: "en",
       });
     });
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
@@ -389,7 +387,6 @@ describe("LoginPage", () => {
         }),
       );
     });
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
     const options = vi.mocked(toast.info).mock.calls.at(-1)?.[1] as
       | { action?: { onClick?: () => void } }

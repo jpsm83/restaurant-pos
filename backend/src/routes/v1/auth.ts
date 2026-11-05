@@ -517,9 +517,9 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
    * the token's subject), then a new verified User with no password. A
    * soft-deleted email keeps the email-confirmed reactivation path. A
    * `signin` intent stops at the not-found outcome when no account exists,
-   * so the sign-in surface never creates a User. The legacy sign-up path
-   * still creates a User once the shared privacy/terms proof is present;
-   * without it the response is a non-session consent-required outcome.
+   * so the sign-in surface never creates a User. A `signup` intent creates a
+   * User only after the body schema has accepted the privacy/terms proof;
+   * missing acceptance is an ordinary validation failure.
    */
   app.post<{ Body: GoogleAuthBody }>(
     "/google",
@@ -549,10 +549,6 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
           "account-not-found",
         );
       }
-      if (result.kind === "consent_required") {
-        return reply.code(200).send({ consentRequired: true });
-      }
-
       const session = await buildAuthUserSessionFromUserId(result.userId);
       if (!session) {
         throw unauthorized("Invalid Google credential");

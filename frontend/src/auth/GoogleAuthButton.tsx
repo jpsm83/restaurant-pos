@@ -6,11 +6,10 @@
  * the localized auth failure copy through the normal machine-code rail.
  *
  * The sign-in surface sends `intent: "signin"`, which never creates an
- * account and never opens the consent dialog. The legacy sign-up surface
- * sends `intent: "signup"`; when Google would create a new User the API
- * answers with `consentRequired` instead of a session. The shared button
- * then opens the acceptance dialog, keeps the credential, and retries with
- * the acceptance proof on accept.
+ * account. The sign-up surface sends `intent: "signup"` plus the form's
+ * acceptance proof. Until the acceptance checkbox is checked the control is
+ * inert, and a stray credential attempt still refuses to call the API and
+ * asks the form to surface its acceptance validation.
  */
 import { GoogleLogin } from "@react-oauth/google";
 import { useState } from "react";
@@ -28,42 +27,53 @@ import { useAuth } from "@/auth/store/AuthContext";
 import type { AuthSession, GoogleAuthIntent } from "@/auth/types";
 import { isSupportedLanguage } from "@/i18n/config";
 import type { ErrorFailure } from "@/i18n/errorCopy";
-import { PrivacyConsentDialog } from "@/components/PrivacyConsentDialog";
 
 interface GoogleAuthButtonProps {
   intent: GoogleAuthIntent;
   onFailure: (failure: ErrorFailure) => void;
+  /** The sign-up form's privacy/terms acceptance value. */
+  privacyAccepted?: boolean;
+  /** Ask the sign-up form to surface its acceptance validation. */
+  onAcceptanceRequired?: () => void;
 }
 
 type GoogleAuthOutcome =
   | { kind: "success"; user: AuthSession }
-  | { kind: "consent_required" }
   /** The outcome was already surfaced (failure, reactivation, or internal). */
   | { kind: "no_session" };
 
 export function GoogleAuthButton({
   intent,
   onFailure,
+  privacyAccepted,
+  onAcceptanceRequired,
 }: GoogleAuthButtonProps) {
   if (!getGoogleClientId()) return null;
-  return <EnabledGoogleAuthButton intent={intent} onFailure={onFailure} />;
+  return (
+    <EnabledGoogleAuthButton
+      intent={intent}
+      onFailure={onFailure}
+      privacyAccepted={privacyAccepted}
+      onAcceptanceRequired={onAcceptanceRequired}
+    />
+  );
 }
 
-function EnabledGoogleAuthButton({ intent, onFailure }: GoogleAuthButtonProps) {
+function EnabledGoogleAuthButton({
+  intent,
+  onFailure,
+  privacyAccepted,
+  onAcceptanceRequired,
+}: GoogleAuthButtonProps) {
   const { t, i18n } = useTranslation("auth");
   const navigate = useNavigate();
   const location = useLocation();
   const returnTo = getReturnToParam(location.search);
   const { dispatch } = useAuth();
   const [submitting, setSubmitting] = useState(false);
-  const [consentOpen, setConsentOpen] = useState(false);
-  const [consentAccepted, setConsentAccepted] = useState(false);
-  const [consentValidation, setConsentValidation] = useState(false);
-  const [pendingCredential, setPendingCredential] = useState<string | null>(
-    null,
-  );
   const { data: authConfig } = useAuthConfigQuery();
   const canCreateAccount = intent === "signup";
+  const requiresAcceptance = canCreateAccount && privacyAccepted !== true;
 
   const language = (i18n.resolvedLanguage ?? i18n.language ?? "")
     .split("-")[0]
@@ -83,142 +93,89 @@ function EnabledGoogleAuthButton({ intent, onFailure }: GoogleAuthButtonProps) {
     navigate(getPostLoginDestination(returnTo), { replace: true });
   };
 
-  const runGoogleAuth = async (
-    credential: string,
-    privacyAccepted?: boolean,
-  ): Promise<GoogleAuthOutcome> => {
+  const runGoogleAuth = async (credential: string): Promise<GoogleAuthOutcome> => {
     setSubmitting(true);
-    dispatch({ type: "AUTH_LOADING" });
 
-    const result = await googleAuth({
-      credential,
-      intent,
-      ...(canCreateAccount && privacyAccepted ? { privacyAccepted } : {}),
-      ...(languagePreference ? { languagePreference } : {}),
-    });
+    try {
+      const result = await googleAuth({
+        credential,
+        intent,
+        ...(canCreateAccount && privacyAccepted === true
+          ? { privacyAccepted: true }
+          : {}),
+        ...(languagePreference ? { languagePreference } : {}),
+      });
 
-    setSubmitting(false);
-
-    if (!result.ok) {
-      dispatch({ type: "AUTH_ERROR", payload: result.error.code });
-      onFailure(result.error);
-      return { kind: "no_session" };
-    }
-
-    if (result.data?.consentRequired) {
-      dispatch({ type: "AUTH_CLEAR" });
-      return { kind: "consent_required" };
-    }
-
-    if (!result.data?.user) {
-      dispatch({ type: "AUTH_CLEAR" });
-      if (result.data?.reactivationRequired) {
-        toast.info(t("login.reactivationRequired"));
+      if (!result.ok) {
+        onFailure(result.error);
         return { kind: "no_session" };
       }
-      const failure: ErrorFailure = { code: "googleAuth.internal" };
-      dispatch({ type: "AUTH_ERROR", payload: failure.code });
-      onFailure(failure);
-      return { kind: "no_session" };
+
+      if (!result.data?.user) {
+        if (result.data?.reactivationRequired) {
+          toast.info(t("login.reactivationRequired"));
+          return { kind: "no_session" };
+        }
+        const failure: ErrorFailure = { code: "googleAuth.internal" };
+        onFailure(failure);
+        return { kind: "no_session" };
+      }
+
+      return { kind: "success", user: result.data.user };
+    } finally {
+      setSubmitting(false);
     }
-
-    return { kind: "success", user: result.data.user };
   };
 
-  const resetConsent = () => {
-    setConsentOpen(false);
-    setConsentAccepted(false);
-    setConsentValidation(false);
-    setPendingCredential(null);
-  };
-
-  const openConsent = (credential: string) => {
-    resetConsent();
-    setPendingCredential(credential);
-    setConsentOpen(true);
+  const refuseMissingAcceptance = () => {
+    if (!requiresAcceptance) return false;
+    onAcceptanceRequired?.();
+    return true;
   };
 
   const handleCredential = async (credential: string | undefined) => {
-    if (submitting || consentOpen) return;
+    if (submitting || refuseMissingAcceptance()) return;
     if (!credential) {
       onFailure({ code: "googleAuth.unauthorized" });
       return;
     }
 
     const outcome = await runGoogleAuth(credential);
-    if (outcome.kind === "consent_required") {
-      if (canCreateAccount) {
-        openConsent(credential);
-      } else {
-        onFailure({ code: "googleAuth.internal" });
-      }
-      return;
-    }
     if (outcome.kind === "success") completeSession(outcome.user);
   };
 
-  const handleConsentAccept = async () => {
-    if (!pendingCredential || submitting) return;
-    if (!consentAccepted) {
-      setConsentValidation(true);
-      return;
-    }
-
-    const credential = pendingCredential;
-    setConsentValidation(false);
-
-    const outcome = await runGoogleAuth(credential, true);
-    resetConsent();
-
-    if (outcome.kind === "success") {
-      completeSession(outcome.user);
-      return;
-    }
-    if (outcome.kind === "consent_required") openConsent(credential);
-  };
-
-  const handleConsentCancel = () => {
-    if (submitting) return;
-    resetConsent();
-    dispatch({ type: "AUTH_CLEAR" });
-  };
-
   const handleError = () => {
-    if (submitting || consentOpen) return;
-    const failure: ErrorFailure = { code: "googleAuth.unauthorized" };
-    dispatch({ type: "AUTH_ERROR", payload: failure.code });
-    onFailure(failure);
+    if (submitting || refuseMissingAcceptance()) return;
+    onFailure({ code: "googleAuth.unauthorized" });
   };
 
   return (
     <div className="flex justify-center">
-      <GoogleLogin
-        onSuccess={(response) => void handleCredential(response.credential)}
-        onError={handleError}
-        useOneTap={false}
-        text="continue_with"
-        shape="rectangular"
-        theme="outline"
-        size="large"
-        {...(languagePreference ? { locale: languagePreference } : {})}
-        containerProps={{
-          "aria-busy": submitting,
-          "aria-disabled": submitting || consentOpen,
-          inert: submitting || consentOpen,
-        }}
-      />
-      {canCreateAccount ? (
-        <PrivacyConsentDialog
-          open={consentOpen}
-          providerName="Google"
-          accepted={consentAccepted}
-          showValidation={consentValidation}
-          submitting={submitting}
-          onAcceptedChange={setConsentAccepted}
-          onAccept={() => void handleConsentAccept()}
-          onCancel={handleConsentCancel}
+      <div className="relative inline-flex">
+        <GoogleLogin
+          onSuccess={(response) => void handleCredential(response.credential)}
+          onError={handleError}
+          useOneTap={false}
+          text="continue_with"
+          shape="rectangular"
+          theme="outline"
+          size="large"
+          {...(languagePreference ? { locale: languagePreference } : {})}
+          containerProps={{
+            "aria-busy": submitting,
+            "aria-disabled": submitting || requiresAcceptance,
+            inert: submitting || requiresAcceptance,
+          }}
         />
-      ) : null}
+        {requiresAcceptance ? (
+          <button
+            type="button"
+            onClick={() => onAcceptanceRequired?.()}
+            aria-label={t("signup.googleAcceptanceRequired")}
+            className="absolute inset-0 z-overlay cursor-not-allowed rounded-md focus-visible:ring-3 focus-visible:ring-ring"
+          />
+        ) : null}
+      </div>
     </div>
   );
 }

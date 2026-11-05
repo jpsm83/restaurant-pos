@@ -74,7 +74,6 @@ interface AuthTokenResponseBody {
   user?: AuthSession;
   message?: string;
   reactivationRequired?: boolean;
-  consentRequired?: boolean;
   /** Signup only: `false` when the account exists but the verification email failed. */
   verificationEmailSent?: boolean;
 }
@@ -249,7 +248,6 @@ export async function googleAuth(credentials: GoogleAuthCredentials) {
         reactivationRequired: Boolean(
           !result.data?.user && result.data?.message,
         ),
-        consentRequired: result.data?.consentRequired === true,
       } satisfies AuthLoginSnapshot,
     };
   }

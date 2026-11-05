@@ -66,23 +66,28 @@ export const loginBodySchema = z.strictObject({
 export const googleAuthIntentSchema = z.enum(["signin", "signup"]);
 
 /** One Google ID token entry path shared by sign-in and sign-up. */
-export const googleAuthBodySchema = z.strictObject({
-  credential: z
-    .string({ error: "Google credential is required." })
-    .trim()
-    .min(1, "Google credential is required."),
-  /**
-   * Optional while the legacy sign-up path still omits it. Sign-in clients
-   * send `signin` so an unknown Google identity never creates an account.
-   */
-  intent: googleAuthIntentSchema.optional(),
-  languagePreference: optionalLanguagePreferenceSchema,
-  /**
-   * The same account-creation acceptance proof as sign-up. Optional because
-   * Google is also a sign-in path; only the would-create branch reads it.
-   */
-  privacyAccepted: z.boolean().optional(),
-});
+export const googleAuthBodySchema = z
+  .strictObject({
+    credential: z
+      .string({ error: "Google credential is required." })
+      .trim()
+      .min(1, "Google credential is required."),
+    /**
+     * The surface that opened the Google control. Sign-in never creates an
+     * account; sign-up may create one only with the acceptance proof.
+     */
+    intent: googleAuthIntentSchema,
+    languagePreference: optionalLanguagePreferenceSchema,
+    /**
+     * The same account-creation acceptance proof as sign-up. Sign-in does not
+     * read it; the would-create branch requires it to be literally `true`.
+     */
+    privacyAccepted: z.boolean().optional(),
+  })
+  .refine(
+    (value) => value.intent !== "signup" || value.privacyAccepted === true,
+    { path: ["privacyAccepted"] },
+  );
 
 export const requestEmailConfirmationBodySchema = z.strictObject({
   email: emailSchema,

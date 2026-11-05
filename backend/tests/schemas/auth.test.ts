@@ -148,30 +148,40 @@ describe("loginBodySchema", () => {
 describe("googleAuthBodySchema", () => {
   it("requires a non-blank Google credential", () => {
     expect(
-      googleAuthBodySchema.safeParse({ credential: "id-token" }).success,
+      googleAuthBodySchema.safeParse({
+        credential: "id-token",
+        intent: "signin",
+      }).success,
     ).toBe(true);
-    expect(googleAuthBodySchema.safeParse({ credential: "  " }).success).toBe(
-      false,
-    );
-    expect(googleAuthBodySchema.safeParse({}).success).toBe(false);
+    expect(
+      googleAuthBodySchema.safeParse({
+        credential: "  ",
+        intent: "signin",
+      }).success,
+    ).toBe(false);
+    expect(
+      googleAuthBodySchema.safeParse({ intent: "signin" }).success,
+    ).toBe(false);
   });
 
   it("accepts an optional supported language and rejects other languages", () => {
     expect(
       googleAuthBodySchema.safeParse({
         credential: "id-token",
+        intent: "signin",
         languagePreference: "es",
       }).success,
     ).toBe(true);
     expect(
       googleAuthBodySchema.safeParse({
         credential: "id-token",
+        intent: "signin",
         languagePreference: "fr",
       }).success,
     ).toBe(false);
   });
 
-  it("accepts an optional sign-in or sign-up intent and rejects others", () => {
+  it("requires a sign-in or sign-up intent and rejects others", () => {
     expect(
       googleAuthBodySchema.safeParse({
         credential: "id-token",
@@ -182,11 +192,12 @@ describe("googleAuthBodySchema", () => {
       googleAuthBodySchema.safeParse({
         credential: "id-token",
         intent: "signup",
+        privacyAccepted: true,
       }).success,
     ).toBe(true);
     expect(
       googleAuthBodySchema.safeParse({ credential: "id-token" }).success,
-    ).toBe(true);
+    ).toBe(false);
     expect(
       googleAuthBodySchema.safeParse({
         credential: "id-token",
@@ -195,25 +206,44 @@ describe("googleAuthBodySchema", () => {
     ).toBe(false);
   });
 
-  it("accepts the shared acceptance proof as an optional boolean", () => {
-    expect(
-      googleAuthBodySchema.safeParse({ credential: "id-token" }).success,
-    ).toBe(true);
+  it("requires acceptance only for the sign-up intent", () => {
     expect(
       googleAuthBodySchema.safeParse({
         credential: "id-token",
-        privacyAccepted: true,
+        intent: "signin",
       }).success,
     ).toBe(true);
     expect(
       googleAuthBodySchema.safeParse({
         credential: "id-token",
+        intent: "signin",
         privacyAccepted: false,
       }).success,
     ).toBe(true);
     expect(
       googleAuthBodySchema.safeParse({
         credential: "id-token",
+        intent: "signup",
+        privacyAccepted: true,
+      }).success,
+    ).toBe(true);
+    expect(
+      googleAuthBodySchema.safeParse({
+        credential: "id-token",
+        intent: "signup",
+      }).success,
+    ).toBe(false);
+    expect(
+      googleAuthBodySchema.safeParse({
+        credential: "id-token",
+        intent: "signup",
+        privacyAccepted: false,
+      }).success,
+    ).toBe(false);
+    expect(
+      googleAuthBodySchema.safeParse({
+        credential: "id-token",
+        intent: "signup",
         privacyAccepted: "true",
       }).success,
     ).toBe(false);
@@ -228,6 +258,7 @@ describe("googleAuthBodySchema", () => {
       expect(
         googleAuthBodySchema.safeParse({
           credential: "id-token",
+          intent: "signin",
           [field]: true,
         }).success,
         field,
