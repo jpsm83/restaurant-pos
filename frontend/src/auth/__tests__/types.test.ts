@@ -86,11 +86,13 @@ describe("auth types", () => {
     expect(signup.firstName).toBe("A");
   });
 
-  it("GoogleAuthCredentials carries the optional acceptance proof", () => {
+  it("GoogleAuthCredentials carries the intent and optional acceptance proof", () => {
     const google: GoogleAuthCredentials = {
       credential: "google-id-token",
+      intent: "signup",
       privacyAccepted: true,
     };
+    expect(google.intent).toBe("signup");
     expect(google.privacyAccepted).toBe(true);
   });
 });

@@ -171,6 +171,30 @@ describe("googleAuthBodySchema", () => {
     ).toBe(false);
   });
 
+  it("accepts an optional sign-in or sign-up intent and rejects others", () => {
+    expect(
+      googleAuthBodySchema.safeParse({
+        credential: "id-token",
+        intent: "signin",
+      }).success,
+    ).toBe(true);
+    expect(
+      googleAuthBodySchema.safeParse({
+        credential: "id-token",
+        intent: "signup",
+      }).success,
+    ).toBe(true);
+    expect(
+      googleAuthBodySchema.safeParse({ credential: "id-token" }).success,
+    ).toBe(true);
+    expect(
+      googleAuthBodySchema.safeParse({
+        credential: "id-token",
+        intent: "recover",
+      }).success,
+    ).toBe(false);
+  });
+
   it("accepts the shared acceptance proof as an optional boolean", () => {
     expect(
       googleAuthBodySchema.safeParse({ credential: "id-token" }).success,

@@ -5,9 +5,12 @@
  * the same account the email/password forms use. A failed credential maps to
  * the localized auth failure copy through the normal machine-code rail.
  *
- * When Google would create a new User the API answers with `consentRequired`
- * instead of a session. The shared button then opens the acceptance dialog,
- * keeps the credential, and retries with the acceptance proof on accept.
+ * The sign-in surface sends `intent: "signin"`, which never creates an
+ * account and never opens the consent dialog. The legacy sign-up surface
+ * sends `intent: "signup"`; when Google would create a new User the API
+ * answers with `consentRequired` instead of a session. The shared button
+ * then opens the acceptance dialog, keeps the credential, and retries with
+ * the acceptance proof on accept.
  */
 import { GoogleLogin } from "@react-oauth/google";
 import { useState } from "react";
@@ -22,12 +25,13 @@ import {
 } from "@/auth/postLoginRedirect";
 import { markPriorSession } from "@/auth/sessionHint";
 import { useAuth } from "@/auth/store/AuthContext";
-import type { AuthSession } from "@/auth/types";
+import type { AuthSession, GoogleAuthIntent } from "@/auth/types";
 import { isSupportedLanguage } from "@/i18n/config";
 import type { ErrorFailure } from "@/i18n/errorCopy";
 import { PrivacyConsentDialog } from "@/components/PrivacyConsentDialog";
 
 interface GoogleAuthButtonProps {
+  intent: GoogleAuthIntent;
   onFailure: (failure: ErrorFailure) => void;
 }
 
@@ -37,12 +41,15 @@ type GoogleAuthOutcome =
   /** The outcome was already surfaced (failure, reactivation, or internal). */
   | { kind: "no_session" };
 
-export function GoogleAuthButton({ onFailure }: GoogleAuthButtonProps) {
+export function GoogleAuthButton({
+  intent,
+  onFailure,
+}: GoogleAuthButtonProps) {
   if (!getGoogleClientId()) return null;
-  return <EnabledGoogleAuthButton onFailure={onFailure} />;
+  return <EnabledGoogleAuthButton intent={intent} onFailure={onFailure} />;
 }
 
-function EnabledGoogleAuthButton({ onFailure }: GoogleAuthButtonProps) {
+function EnabledGoogleAuthButton({ intent, onFailure }: GoogleAuthButtonProps) {
   const { t, i18n } = useTranslation("auth");
   const navigate = useNavigate();
   const location = useLocation();
@@ -56,6 +63,7 @@ function EnabledGoogleAuthButton({ onFailure }: GoogleAuthButtonProps) {
     null,
   );
   const { data: authConfig } = useAuthConfigQuery();
+  const canCreateAccount = intent === "signup";
 
   const language = (i18n.resolvedLanguage ?? i18n.language ?? "")
     .split("-")[0]
@@ -84,7 +92,8 @@ function EnabledGoogleAuthButton({ onFailure }: GoogleAuthButtonProps) {
 
     const result = await googleAuth({
       credential,
-      ...(privacyAccepted ? { privacyAccepted } : {}),
+      intent,
+      ...(canCreateAccount && privacyAccepted ? { privacyAccepted } : {}),
       ...(languagePreference ? { languagePreference } : {}),
     });
 
@@ -138,7 +147,11 @@ function EnabledGoogleAuthButton({ onFailure }: GoogleAuthButtonProps) {
 
     const outcome = await runGoogleAuth(credential);
     if (outcome.kind === "consent_required") {
-      openConsent(credential);
+      if (canCreateAccount) {
+        openConsent(credential);
+      } else {
+        onFailure({ code: "googleAuth.internal" });
+      }
       return;
     }
     if (outcome.kind === "success") completeSession(outcome.user);
@@ -194,16 +207,18 @@ function EnabledGoogleAuthButton({ onFailure }: GoogleAuthButtonProps) {
           inert: submitting || consentOpen,
         }}
       />
-      <PrivacyConsentDialog
-        open={consentOpen}
-        providerName="Google"
-        accepted={consentAccepted}
-        showValidation={consentValidation}
-        submitting={submitting}
-        onAcceptedChange={setConsentAccepted}
-        onAccept={() => void handleConsentAccept()}
-        onCancel={handleConsentCancel}
-      />
+      {canCreateAccount ? (
+        <PrivacyConsentDialog
+          open={consentOpen}
+          providerName="Google"
+          accepted={consentAccepted}
+          showValidation={consentValidation}
+          submitting={submitting}
+          onAcceptedChange={setConsentAccepted}
+          onAccept={() => void handleConsentAccept()}
+          onCancel={handleConsentCancel}
+        />
+      ) : null}
     </div>
   );
 }

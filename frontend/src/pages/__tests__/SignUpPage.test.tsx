@@ -514,6 +514,7 @@ describe("SignUpPage", () => {
     });
     expect(mockGoogleAuth).toHaveBeenCalledWith({
       credential: "google-id-token",
+      intent: "signup",
       languagePreference: "en",
     });
   });
@@ -566,6 +567,7 @@ describe("SignUpPage", () => {
     });
     expect(mockGoogleAuth).toHaveBeenNthCalledWith(2, {
       credential: "google-id-token",
+      intent: "signup",
       privacyAccepted: true,
       languagePreference: "en",
     });

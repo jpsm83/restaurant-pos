@@ -7,6 +7,9 @@
 import type { ServiceErrorCode } from "@/services/serviceErrors";
 import type { IAddress } from "restaurant-pos-packages/interfaces/IAddress";
 import type { IPersonalDetails } from "restaurant-pos-packages/interfaces/IPersonalDetails";
+import type { GoogleAuthIntent } from "restaurant-pos-packages/schemas/auth";
+
+export type { GoogleAuthIntent };
 
 export type AuthStatus = "idle" | "loading" | "authenticated" | "unauthenticated";
 
@@ -66,6 +69,8 @@ export interface LoginCredentials {
 export interface GoogleAuthCredentials {
   /** Google ID token returned by the Google provider. */
   credential: string;
+  /** The auth surface: sign-in never creates an account. */
+  intent: GoogleAuthIntent;
   /** Supplied/browser language for a new Google User. */
   languagePreference?: "en" | "es";
   /** Composite privacy-notice and account-terms acceptance proof. */

@@ -118,6 +118,10 @@ describe("ERROR_COPY", () => {
       namespace: "auth",
       key: "api.googleEmailConflict",
     });
+    expect(getErrorCopy(failure("googleAuth.accountNotFound"))).toMatchObject({
+      namespace: "auth",
+      key: "api.googleAccountNotFound",
+    });
     expect(getErrorCopy(failure("confirmEmail.badRequest"))).toMatchObject({
       namespace: "auth",
       key: "api.invalidConfirmationLink",

@@ -62,12 +62,20 @@ export const loginBodySchema = z.strictObject({
   password: loginPasswordSchema,
 });
 
+/** The auth surface a Google entry path was opened from. */
+export const googleAuthIntentSchema = z.enum(["signin", "signup"]);
+
 /** One Google ID token entry path shared by sign-in and sign-up. */
 export const googleAuthBodySchema = z.strictObject({
   credential: z
     .string({ error: "Google credential is required." })
     .trim()
     .min(1, "Google credential is required."),
+  /**
+   * Optional while the legacy sign-up path still omits it. Sign-in clients
+   * send `signin` so an unknown Google identity never creates an account.
+   */
+  intent: googleAuthIntentSchema.optional(),
   languagePreference: optionalLanguagePreferenceSchema,
   /**
    * The same account-creation acceptance proof as sign-up. Optional because
@@ -145,6 +153,7 @@ export const setModeBodySchema = z.strictObject({
 
 export type SignupBody = z.infer<typeof signupBodySchema>;
 export type LoginBody = z.infer<typeof loginBodySchema>;
+export type GoogleAuthIntent = z.infer<typeof googleAuthIntentSchema>;
 export type GoogleAuthBody = z.infer<typeof googleAuthBodySchema>;
 export type RequestEmailConfirmationBody = z.infer<
   typeof requestEmailConfirmationBodySchema

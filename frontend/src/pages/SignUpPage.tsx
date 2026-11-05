@@ -278,7 +278,7 @@ export default function SignUpPage() {
               {isSubmitting ? t("signup.submitting") : t("signup.submit")}
             </Button>
 
-            <GoogleAuthButton onFailure={setSubmitFailure} />
+            <GoogleAuthButton intent="signup" onFailure={setSubmitFailure} />
 
             <div className="text-center">
               <Link

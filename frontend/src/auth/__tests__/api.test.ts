@@ -223,6 +223,7 @@ describe("auth api — email / password-reset endpoints", () => {
 
     const result = await googleAuth({
       credential: "google-id-token",
+      intent: "signup",
       languagePreference: "es",
       privacyAccepted: true,
     });
@@ -235,6 +236,7 @@ describe("auth api — email / password-reset endpoints", () => {
     expect(init.body).toBe(
       JSON.stringify({
         credential: "google-id-token",
+        intent: "signup",
         languagePreference: "es",
         privacyAccepted: true,
       }),
@@ -254,7 +256,7 @@ describe("auth api — email / password-reset endpoints", () => {
   it("googleAuth exposes the consent-required outcome without a session", async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ consentRequired: true }));
 
-    const result = await googleAuth({ credential: "google-id-token" });
+    const result = await googleAuth({ credential: "google-id-token", intent: "signup" });
 
     expect(result).toEqual({
       ok: true,
@@ -276,7 +278,7 @@ describe("auth api — email / password-reset endpoints", () => {
       }),
     );
 
-    const result = await googleAuth({ credential: "google-id-token" });
+    const result = await googleAuth({ credential: "google-id-token", intent: "signup" });
 
     expect(result).toEqual({
       ok: true,
@@ -304,12 +306,39 @@ describe("auth api — email / password-reset endpoints", () => {
       ),
     );
 
-    const result = await googleAuth({ credential: "bad" });
+    const result = await googleAuth({ credential: "bad", intent: "signin" });
 
     expectFailure(result, {
       code: "googleAuth.unauthorized",
       status: 401,
       serverMessage: "Invalid Google credential",
+    });
+    expect(publishAuthSignIn).not.toHaveBeenCalled();
+  });
+
+  it("googleAuth maps an unknown sign-in account to the account-not-found outcome", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(
+        {
+          type: "https://restaurant-pos.app/errors/account-not-found",
+          title: "Not Found",
+          status: 404,
+          detail: "No account found for this Google sign-in.",
+          instance: "/api/v1/auth/google",
+        },
+        404,
+      ),
+    );
+
+    const result = await googleAuth({
+      credential: "google-id-token",
+      intent: "signin",
+    });
+
+    expectFailure(result, {
+      code: "googleAuth.accountNotFound",
+      status: 404,
+      serverMessage: "No account found for this Google sign-in.",
     });
     expect(publishAuthSignIn).not.toHaveBeenCalled();
   });

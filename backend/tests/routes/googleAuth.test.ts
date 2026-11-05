@@ -303,6 +303,130 @@ describe("POST /api/v1/auth/google", () => {
     expect(stored?.privacyAcceptedAt).toBeUndefined();
   });
 
+  describe("sign-in intent", () => {
+    it("signs in an active User by Google subject without acceptance", async () => {
+      const existing = await User.create({
+        googleId: defaultIdentity.subject,
+        personalDetails: {
+          email: defaultIdentity.email,
+          password: await bcrypt.hash(password, 10),
+          emailVerified: true,
+        },
+      });
+
+      const response = await postGoogle(app, {
+        credential: "google-id-token",
+        intent: "signin",
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      expect(response.json().user.id).toBe(String(existing._id));
+      expect(await User.countDocuments()).toBe(1);
+    });
+
+    it("links a verified Google email to the existing active User without acceptance", async () => {
+      const existing = await User.create({
+        personalDetails: {
+          email: defaultIdentity.email,
+          password: await bcrypt.hash(password, 10),
+          emailVerified: false,
+        },
+      });
+
+      const response = await postGoogle(app, {
+        credential: "google-id-token",
+        intent: "signin",
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      expect(response.json().user.id).toBe(String(existing._id));
+
+      const stored = await User.findById(existing._id).lean();
+      expect(stored?.googleId).toBe(defaultIdentity.subject);
+      expect(stored?.personalDetails?.emailVerified).toBe(true);
+      expect(await User.countDocuments()).toBe(1);
+    });
+
+    it("returns account-not-found and creates no User when no account exists", async () => {
+      const response = await postGoogle(app, {
+        credential: "google-id-token",
+        intent: "signin",
+      });
+
+      expect(response.statusCode).toBe(404);
+      expect(response.headers["content-type"]).toContain(
+        "application/problem+json",
+      );
+      expect(response.json()).toMatchObject({
+        type: "https://restaurant-pos.app/errors/account-not-found",
+        title: "Not Found",
+        status: 404,
+        detail: "No account found for this Google sign-in.",
+      });
+      expect(response.json().accessToken).toBeUndefined();
+      expect(
+        response.cookies.find((cookie) => cookie.name === "refresh_token"),
+      ).toBeUndefined();
+      expect(await User.countDocuments()).toBe(0);
+      expect(sendEmailMock).not.toHaveBeenCalled();
+    });
+
+    it("keeps the reactivation response for a soft-deleted account", async () => {
+      await User.create({
+        personalDetails: {
+          email: defaultIdentity.email,
+          password: await bcrypt.hash(password, 10),
+        },
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await postGoogle(app, {
+        credential: "google-id-token",
+        intent: "signin",
+      });
+
+      expect(response.statusCode).toBe(202);
+      expect(response.json()).toEqual({
+        message: REACTIVATION_REQUIRED_MESSAGE,
+      });
+      expect(sendEmailMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps the conflict response for a different linked Google subject", async () => {
+      await User.create({
+        googleId: "different-subject",
+        personalDetails: {
+          email: defaultIdentity.email,
+          password: await bcrypt.hash(password, 10),
+          emailVerified: true,
+        },
+      });
+
+      const response = await postGoogle(app, {
+        credential: "google-id-token",
+        intent: "signin",
+      });
+
+      expect(response.statusCode).toBe(409);
+      expect(response.json().detail).toBe(
+        "This email is linked to a different Google account.",
+      );
+      expect(await User.countDocuments()).toBe(1);
+    });
+
+    it("keeps the legacy sign-up create path with an explicit signup intent", async () => {
+      const response = await postGoogle(app, {
+        credential: "google-id-token",
+        intent: "signup",
+        privacyAccepted: true,
+      });
+
+      expect(response.statusCode, response.body).toBe(201);
+      expect(await User.countDocuments()).toBe(1);
+    });
+  });
+
   it("refuses a different Google subject already linked to the email", async () => {
     const existing = await User.create({
       googleId: "different-subject",

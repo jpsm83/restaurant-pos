@@ -56,6 +56,7 @@ import {
   forbidden,
   internal,
   notFound,
+  notFoundAs,
   rateLimited,
   unauthorized,
 } from "../../errors/appError.ts";
@@ -514,9 +515,11 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
    * The server verifies the ID token before trusting any claim. Resolution is
    * existing active User by Google subject, then by verified email (linked to
    * the token's subject), then a new verified User with no password. A
-   * soft-deleted email keeps the email-confirmed reactivation path. Creating
-   * a new User requires the shared privacy/terms acceptance proof; without it
-   * the response is a successful, non-session consent-required outcome.
+   * soft-deleted email keeps the email-confirmed reactivation path. A
+   * `signin` intent stops at the not-found outcome when no account exists,
+   * so the sign-in surface never creates a User. The legacy sign-up path
+   * still creates a User once the shared privacy/terms proof is present;
+   * without it the response is a non-session consent-required outcome.
    */
   app.post<{ Body: GoogleAuthBody }>(
     "/google",
@@ -539,6 +542,12 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
       }
       if (result.kind === "google_email_conflict") {
         throw conflict("This email is linked to a different Google account.");
+      }
+      if (result.kind === "account_not_found") {
+        throw notFoundAs(
+          "No account found for this Google sign-in.",
+          "account-not-found",
+        );
       }
       if (result.kind === "consent_required") {
         return reply.code(200).send({ consentRequired: true });

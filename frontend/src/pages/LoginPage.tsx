@@ -80,6 +80,20 @@ export default function LoginPage() {
 
   const isSubmitting = state.status === "loading";
 
+  const handleGoogleFailure = (failure: ErrorFailure) => {
+    if (failure.code === "googleAuth.accountNotFound") {
+      setSubmitFailure(null);
+      toast.info(resolveError(failure), {
+        action: {
+          label: t("login.accountNotFoundAction"),
+          onClick: () => navigate(signupHref),
+        },
+      });
+      return;
+    }
+    setSubmitFailure(failure);
+  };
+
   const onSubmit = async (data: LoginFormValues) => {
     setSubmitFailure(null);
     setSessionExpired(false);
@@ -172,7 +186,10 @@ export default function LoginPage() {
               {isSubmitting ? t("login.submitting") : t("login.submit")}
             </Button>
 
-            <GoogleAuthButton onFailure={setSubmitFailure} />
+            <GoogleAuthButton
+              intent="signin"
+              onFailure={handleGoogleFailure}
+            />
 
             <div className="text-center">
               <Link

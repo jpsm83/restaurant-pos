@@ -66,6 +66,10 @@ const OVERRIDES: Partial<Record<ServiceErrorCode, ErrorCopyTemplate>> = {
     namespace: "auth",
     key: "api.googleEmailConflict",
   },
+  "googleAuth.accountNotFound": {
+    namespace: "auth",
+    key: "api.googleAccountNotFound",
+  },
   "googleAuth.notFound": { namespace: "auth", key: "api.googleAuthFailed" },
   "googleAuth.validation": { namespace: "auth", key: "api.googleAuthFailed" },
   "googleAuth.internal": { namespace: "auth", key: "api.googleAuthFailed" },

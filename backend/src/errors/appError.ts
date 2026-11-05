@@ -104,6 +104,14 @@ export const forbidden = (detail = "Forbidden"): AppError =>
 export const notFound = (detail = "Not Found"): AppError =>
   new AppError(detail, { statusCode: 404 });
 
+/**
+ * A not-found whose problem type carries a more specific machine-readable
+ * slug. The status stays `404`, but the SPA can branch on the type without
+ * reading the diagnostic detail text.
+ */
+export const notFoundAs = (detail: string, slug: ProblemSlug): AppError =>
+  new AppError(detail, { statusCode: 404, slug });
+
 export const conflict = (detail = "Conflict"): AppError =>
   new AppError(detail, { statusCode: 409 });
 

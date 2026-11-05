@@ -6,6 +6,7 @@
  * verified User, or hands a soft-deleted account back to email reactivation.
  */
 import type { Types } from "mongoose";
+import type { GoogleAuthIntent } from "restaurant-pos-packages/schemas/auth";
 
 import User from "../models/user.ts";
 import { withSoftDeleteFilter } from "../models/softDelete.ts";
@@ -41,6 +42,7 @@ interface GoogleDeletedUserLookup {
 
 export type GoogleAuthInput = {
   credential: string;
+  intent?: GoogleAuthIntent;
   languagePreference?: "en" | "es";
   privacyAccepted?: boolean;
 };
@@ -54,6 +56,7 @@ export type GoogleAuthResult =
     }
   | { kind: "reactivation"; message: string }
   | { kind: "consent_required" }
+  | { kind: "account_not_found" }
   | { kind: "google_email_conflict" }
   | { kind: "invalid_credential" }
   | { kind: "server_error_500"; message: string };
@@ -130,6 +133,12 @@ export async function handleGoogleAuth(
       return { kind: "server_error_500", message: sent.message };
     }
     return { kind: "reactivation", message: REACTIVATION_REQUIRED_MESSAGE };
+  }
+
+  // Sign-in never creates an account: an unknown Google identity is a
+  // dedicated not-found outcome. Sign-up keeps the create-with-consent path.
+  if (input.intent === "signin") {
+    return { kind: "account_not_found" };
   }
 
   if (input.privacyAccepted !== true) {
