@@ -313,9 +313,12 @@ describe("emailTemplates", () => {
     expect(html).toContain("reset your password");
     expect(html).not.toContain("href=");
     expect(html).not.toContain("http");
+    expect(html).not.toContain("expire");
+    expect(html).not.toContain("unsubscribe");
     expect(text).toContain("Hello Pat!");
     expect(text).toContain("A sign-in to your POS account just happened.");
     expect(text).not.toContain("http");
+    expect(text).not.toContain("expire");
     expect(text).not.toContain("unsubscribe");
   });
 
