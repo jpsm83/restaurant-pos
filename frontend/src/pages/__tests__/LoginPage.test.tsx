@@ -26,16 +26,19 @@ vi.mock("@react-oauth/google", () => ({
     onSuccess,
     onError,
     locale,
+    width,
     containerProps,
   }: {
     onSuccess: (response: { credential?: string }) => void;
     onError: () => void;
     locale?: string;
+    width?: number;
     containerProps?: ComponentPropsWithoutRef<"div">;
   }) => (
     <div
       data-testid="google-widget"
       data-locale={locale}
+      data-width={width}
       {...containerProps}
     >
       <button
@@ -89,6 +92,26 @@ function mockGoogleLoginSuccess() {
   mockGoogleAuth.mockResolvedValue(googleLoginSuccess);
 }
 
+function mockMeasuredWidth(width: number | (() => number)) {
+  const readWidth = typeof width === "function" ? width : () => width;
+  return vi
+    .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+    .mockImplementation(() => {
+      const measured = readWidth();
+      return {
+        width: measured,
+        height: 0,
+        top: 0,
+        left: 0,
+        right: measured,
+        bottom: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      } as DOMRect;
+    });
+}
+
 describe("LoginPage", () => {
   beforeEach(() => {
     mockDispatch.mockReset();
@@ -105,6 +128,7 @@ describe("LoginPage", () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.unstubAllEnvs();
   });
 
@@ -688,6 +712,92 @@ describe("LoginPage", () => {
     expect(
       screen.queryByRole("button", { name: /continue with google/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it.each([
+    { containerWidth: 280, expected: "280" },
+    { containerWidth: 360, expected: "360" },
+    { containerWidth: 600, expected: "400" },
+  ])(
+    "sizes the Google control to the available card width ($containerWidth)",
+    async ({ containerWidth, expected }) => {
+      mockMeasuredWidth(containerWidth);
+
+      await renderWithI18n(
+        <MemoryRouter>
+          <LoginPage />
+        </MemoryRouter>,
+      );
+
+      expect(screen.getByTestId("google-widget")).toHaveAttribute(
+        "data-width",
+        expected,
+      );
+    },
+  );
+
+  it("sizes the Google control when the auth config resolves after mount", async () => {
+    mockMeasuredWidth(360);
+    let config: { data?: { googleSignInEnabled: boolean } } = {};
+    mockUseAuthConfigQuery.mockImplementation(() => config);
+
+    const view = await renderWithI18n(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByTestId("google-widget")).not.toBeInTheDocument();
+
+    config = { data: { googleSignInEnabled: true } };
+    view.rerender(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId("google-widget")).toHaveAttribute(
+      "data-width",
+      "360",
+    );
+  });
+
+  it("updates the Google control width when the container resizes", async () => {
+    let currentWidth = 280;
+    mockMeasuredWidth(() => currentWidth);
+
+    const callbacks: ResizeObserverCallback[] = [];
+    const originalResizeObserver = globalThis.ResizeObserver;
+    globalThis.ResizeObserver = class {
+      constructor(callback: ResizeObserverCallback) {
+        callbacks.push(callback);
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
+
+    try {
+      await renderWithI18n(
+        <MemoryRouter>
+          <LoginPage />
+        </MemoryRouter>,
+      );
+
+      const widget = screen.getByTestId("google-widget");
+      expect(widget).toHaveAttribute("data-width", "280");
+
+      currentWidth = 620;
+      await act(async () => {
+        for (const callback of callbacks) {
+          callback([], {} as ResizeObserver);
+        }
+      });
+
+      expect(widget).toHaveAttribute("data-width", "400");
+    } finally {
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
   });
 
   it("passes the active language to the Google widget", async () => {

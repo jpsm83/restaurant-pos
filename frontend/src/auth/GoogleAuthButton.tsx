@@ -18,6 +18,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { googleAuth, useAuthConfigQuery } from "@/auth/api";
 import { getGoogleClientId } from "@/auth/google";
+import { useGoogleControlWidth } from "@/auth/useGoogleControlWidth";
 import {
   getPostLoginDestination,
   getReturnToParam,
@@ -72,6 +73,7 @@ function EnabledGoogleAuthButton({
   const { dispatch } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const { data: authConfig } = useAuthConfigQuery();
+  const { containerRef, width } = useGoogleControlWidth();
   const canCreateAccount = intent === "signup";
   const requiresAcceptance = canCreateAccount && privacyAccepted !== true;
 
@@ -150,32 +152,31 @@ function EnabledGoogleAuthButton({
   };
 
   return (
-    <div className="flex justify-center">
-      <div className="relative inline-flex">
-        <GoogleLogin
-          onSuccess={(response) => void handleCredential(response.credential)}
-          onError={handleError}
-          useOneTap={false}
-          text="continue_with"
-          shape="rectangular"
-          theme="outline"
-          size="large"
-          {...(languagePreference ? { locale: languagePreference } : {})}
-          containerProps={{
-            "aria-busy": submitting,
-            "aria-disabled": submitting || requiresAcceptance,
-            inert: submitting || requiresAcceptance,
-          }}
+    <div ref={containerRef} className="relative w-full">
+      <GoogleLogin
+        onSuccess={(response) => void handleCredential(response.credential)}
+        onError={handleError}
+        useOneTap={false}
+        text="continue_with"
+        shape="rectangular"
+        theme="outline"
+        size="large"
+        {...(width ? { width } : {})}
+        {...(languagePreference ? { locale: languagePreference } : {})}
+        containerProps={{
+          "aria-busy": submitting,
+          "aria-disabled": submitting || requiresAcceptance,
+          inert: submitting || requiresAcceptance,
+        }}
+      />
+      {requiresAcceptance ? (
+        <button
+          type="button"
+          onClick={() => onAcceptanceRequired?.()}
+          aria-label={t("signup.googleAcceptanceRequired")}
+          className="absolute inset-0 z-overlay cursor-not-allowed rounded-md focus-visible:ring-3 focus-visible:ring-ring"
         />
-        {requiresAcceptance ? (
-          <button
-            type="button"
-            onClick={() => onAcceptanceRequired?.()}
-            aria-label={t("signup.googleAcceptanceRequired")}
-            className="absolute inset-0 z-overlay cursor-not-allowed rounded-md focus-visible:ring-3 focus-visible:ring-ring"
-          />
-        ) : null}
-      </div>
+      ) : null}
     </div>
   );
 }
