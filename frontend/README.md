@@ -108,10 +108,11 @@ Only `VITE_`-prefixed variables are exposed to client code.
   `GOOGLE_CLIENT_ID`; a mismatch makes the backend reject every token.
 - Add **every** frontend origin that renders the Google button to the client's
   **Authorized JavaScript origins** (scheme + host + port, no path). For local
-  development that means both `http://localhost:5173` and, when used,
-  `http://127.0.0.1:5173`; add each deployed origin the same way. A missing
-  origin returns `403 origin is not allowed`. This is an OAuth-console action,
-  not an application setting.
+  development that means `http://localhost`, `http://localhost:5173`, and, when
+  used, `http://127.0.0.1` / `http://127.0.0.1:5173`; add each deployed origin
+  the same way. Google requires the portless localhost entry even when the dev
+  server uses a port. A missing origin returns `403 origin is not allowed`. This
+  is an OAuth-console action, not an application setting.
 - Google Identity Services needs `Cross-Origin-Opener-Policy:
   same-origin-allow-popups` so its popup can keep the opener for `postMessage`.
   Vite sets it for `dev` and `preview`, and the committed
@@ -173,6 +174,12 @@ Conventions:
 - **Auth:** the access token lives in the `auth/api.ts` module singleton (not
   Context); `http` reads it per request. The refresh token is an HttpOnly cookie
   sent with `withCredentials: true`. `AuthProvider` exposes session state.
+  `status: "loading"` means the session is still being bootstrapped/restored, and
+  route guards render the pending shell while it is true. Interactive form
+  submits therefore use local loading state and only change the global session on
+  success; dispatching `AUTH_LOADING` on a sign-in attempt would unmount and
+  remount the form (a visible flicker) when it fails. `state.error` is for
+  session-level/bootstrap failures, not form validation.
 - **Routing:** self-service routes (`/dashboard`, `/account/*`, `/favorites`,
   `/mode`) carry no user id; the signed-in User comes from the session. Venues
   use `/business/:businessId`. `/profile` and `/employee/*` are compatibility

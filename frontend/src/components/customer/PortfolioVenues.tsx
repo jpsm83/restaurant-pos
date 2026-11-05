@@ -1,7 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
 import type { IOwnerPortfolio } from "restaurant-pos-packages/interfaces/IOwner";
-import { Alert } from "@/components/ui/alert";
+import { VenueCompletionWarning } from "@/components/business/VenueCompletionWarning";
 import {
   Card,
   CardContent,
@@ -10,7 +9,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { canonicalBusinessProfilePath } from "@/routes/canonicalPaths";
 import { companyDisplayName } from "./companyDisplayName";
 
 type PortfolioVenuesProps = {
@@ -66,15 +64,7 @@ export function PortfolioVenues({
                   </CardHeader>
                   <CardContent className="space-y-3 pt-0">
                     {business.profileComplete ? null : (
-                      <Alert tone="warning" className="space-y-1">
-                        <p>{t("venues.list.incompleteWarning")}</p>
-                        <Link
-                          to={canonicalBusinessProfilePath(business._id)}
-                          className="font-medium underline underline-offset-4"
-                        >
-                          {t("venues.list.completeProfile")}
-                        </Link>
-                      </Alert>
+                      <VenueCompletionWarning businessId={business._id} />
                     )}
                     <Button
                       type="button"

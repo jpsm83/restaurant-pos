@@ -46,6 +46,7 @@ export default function LoginPage() {
   const { state, dispatch } = useAuth();
   const [submitFailure, setSubmitFailure] = useState<ErrorFailure | null>(null);
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const resolveError = useErrorMessage();
 
   const flashMessage =
@@ -78,8 +79,6 @@ export default function LoginPage() {
     return () => cancelAnimationFrame(id);
   }, [t]);
 
-  const isSubmitting = state.status === "loading";
-
   const handleGoogleFailure = (failure: ErrorFailure) => {
     if (failure.code === "googleAuth.accountNotFound") {
       setSubmitFailure(null);
@@ -97,29 +96,32 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormValues) => {
     setSubmitFailure(null);
     setSessionExpired(false);
-    dispatch({ type: "AUTH_LOADING" });
+    setIsSubmitting(true);
 
-    const result = await login({
-      email: data.email.trim(),
-      password: data.password,
-    });
+    try {
+      const result = await login({
+        email: data.email.trim(),
+        password: data.password,
+      });
 
-    if (!result.ok || !result.data?.user) {
-      const failure: ErrorFailure = result.ok
-        ? { code: "signIn.internal" }
-        : result.error;
-      dispatch({ type: "AUTH_ERROR", payload: failure.code });
-      setSubmitFailure(failure);
-      return;
+      if (!result.ok || !result.data?.user) {
+        const failure: ErrorFailure = result.ok
+          ? { code: "signIn.internal" }
+          : result.error;
+        setSubmitFailure(failure);
+        return;
+      }
+
+      markPriorSession();
+      const sessionUser = result.data.user;
+      dispatch({ type: "AUTH_SUCCESS", payload: sessionUser });
+      if (sessionUser.emailVerified === false) {
+        toast.info(t("login.verifyEmailToast"));
+      }
+      navigate(getPostLoginDestination(returnTo), { replace: true });
+    } finally {
+      setIsSubmitting(false);
     }
-
-    markPriorSession();
-    const sessionUser = result.data.user;
-    dispatch({ type: "AUTH_SUCCESS", payload: sessionUser });
-    if (sessionUser.emailVerified === false) {
-      toast.info(t("login.verifyEmailToast"));
-    }
-    navigate(getPostLoginDestination(returnTo), { replace: true });
   };
 
   const stateFailure: ErrorFailure | null = state.error

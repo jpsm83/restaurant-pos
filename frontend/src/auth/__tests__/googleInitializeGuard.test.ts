@@ -76,6 +76,25 @@ describe("Google initialize guard", () => {
     expect(initialize.mock.calls[1]?.[0].login_hint).toBe("second@example.com");
   });
 
+  it("reinstalls after Google re-registers initialize and still dedupes", () => {
+    const { idApi } = buildFakeGoogle();
+    const guard = createGoogleInitializeGuard();
+
+    guard.install();
+    idApi.initialize({ client_id: "client-a" });
+
+    // Google re-executing its script replaces `initialize` on the same object.
+    const reRegistered = vi.fn<Initialize>();
+    idApi.initialize = reRegistered;
+    guard.install();
+
+    idApi.initialize({ client_id: "client-a" });
+    expect(reRegistered).not.toHaveBeenCalled();
+
+    idApi.initialize({ client_id: "client-b" });
+    expect(reRegistered).toHaveBeenCalledTimes(1);
+  });
+
   it("is a no-op when the Google script has not loaded", () => {
     const guard = createGoogleInitializeGuard();
     expect(() => guard.install()).not.toThrow();

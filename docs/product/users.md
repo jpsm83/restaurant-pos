@@ -11,7 +11,7 @@ This subject covers **who a person is as a global identity and customer**, and t
 - the global **User** — one per person, the holder of every sign-in credential and of **client** personal detail;
 - **business ownership** — the **Owner** account that holds one or more **Companies**, each owning its **Business** identities, and the transfer of a business between users;
 - the **mode eligibility rule** — when a signed-in user may work in **customer** or **business** mode (exactly two modes), consuming effective layer from the access-and-permissions subject;
-- **credentials and email** — sign-up and sign-in with email and password or Google, verification, email change, and the business contact email;
+- **credentials and email** — sign-up and sign-in with email and password or Google, verification, sign-in confirmation, email change, and the business contact email;
 - **sessions** (access token, refresh session, revoke on credential change), and the **account lifecycle** — pending deletion, soft delete, and reactivation;
 - **favorites** — the venues a customer saves for quick access;
 - that creating a User requires accepting the **privacy notice** and account terms, and that **birth date** gates marketing consent and self-channel alcohol under the privacy, consent, and DSAR subject.
@@ -128,6 +128,7 @@ The **User** owns the sign-in email, an optional password, an optional **Google 
 
 - **Sign-up with email and password** sends a **verification email**. The account is usable before verification, but the flag drives in-app prompts.
 - **Sign-up with Google** creates the user already **email-verified**, because the Google account's address is verified; no verification email is sent. The person accepts the **privacy notice** and account terms before the User is created, exactly as on the email-and-password form.
+- **Every successful sign-in** — with email and password or with Google — sends a **sign-in confirmation email** to the User's sign-in email once the session is issued. The message confirms that the sign-in happened, carries **no action link**, and never gates, delays, or reverses the sign-in. How the message is delivered belongs to the emails subject.
 - A **Google identity** belongs to at most one active User, and a User links at most one Google identity. When the verified Google email matches an existing active User that holds no Google identity, Project Imperium links that Google identity to the same User and marks the sign-in email verified; it never creates a duplicate. If that User already holds a different Google identity, the link is refused, the account is left unchanged, and the person signs in with the existing method.
 - A User may hold a password, a Google identity, or both, and always keeps **at least one working sign-in method**. An account created through Google has no password; an account created with a password gains a Google identity when the person first signs in with Google using the same verified email.
 - **Google sign-in to a soft-deleted account** does not restore access. The person must complete the normal email-confirmed **reactivation**, exactly as with any other sign-in method.

@@ -103,6 +103,16 @@ function requiredCountry(country?: string): string {
 }
 
 /**
+ * Two country labels name the same portfolio country when they differ only by
+ * case or surrounding whitespace. The first venue stores the canonical label on
+ * the Owner; later venues reuse it so every row shares one spelling.
+ */
+function sameCountry(left?: string, right?: string): boolean {
+  if (typeof left !== "string" || typeof right !== "string") return false;
+  return left.trim().toLowerCase() === right.trim().toLowerCase();
+}
+
+/**
  * Refuse an ambiguous Company choice before any write. The input type prevents
  * this at compile time, but direct JavaScript callers can still send both.
  */
@@ -146,12 +156,12 @@ function assertReplayMatchesIntent(
   const businessMatches =
     existingBusiness.tradeName === input.business.tradeName &&
     existingBusiness.currencyTrade === currencyTrade &&
-    existingBusiness.address?.country === country;
+    sameCountry(existingBusiness.address?.country, country);
   const companyFieldsMatch = input.company
     ? optionalField(input.company.legalName) === company.legalName &&
       optionalField(input.company.taxNumber) === company.taxNumber
     : true;
-  const companyMatches = company.country === country;
+  const companyMatches = sameCountry(company.country, country);
 
   if (!businessMatches || !companyFieldsMatch || !companyMatches) {
     throw new OwnerCompanyCreationError(
@@ -239,35 +249,42 @@ const ownerCompanyCreation = async (
       };
     }
 
-    const country = requiredCountry(input.business.country);
+    const submittedCountry = requiredCountry(input.business.country);
 
     let owner = await Owner.findOne({ userId: input.userId }).session(session);
+    let country = submittedCountry;
     if (!owner) {
       const [createdOwner] = await Owner.create(
         [
           {
             userId: input.userId,
-            country,
+            country: submittedCountry,
             subscription: "Free",
           },
         ],
         { session },
       );
       owner = createdOwner;
-    } else if (owner.country !== country) {
-      throw new OwnerCompanyCreationError(
-        "owner-country-mismatch",
-        "Venue country must match the Owner's portfolio country!",
-      );
-    } else if (!input.companyId && input.company === undefined) {
-      const companyCount = await Company.countDocuments({
-        ownerId: owner._id,
-      }).session(session);
-      if (companyCount > 0) {
+    } else {
+      if (!sameCountry(owner.country, submittedCountry)) {
         throw new OwnerCompanyCreationError(
-          "company-choice-required",
-          "A Company choice is required for an additional venue!",
+          "owner-country-mismatch",
+          "Venue country must match the Owner's portfolio country!",
         );
+      }
+      // Reuse the Owner's stored spelling so later Companies and Businesses
+      // stay identical to the first venue even when the client changes case.
+      country = owner.country;
+      if (!input.companyId && input.company === undefined) {
+        const companyCount = await Company.countDocuments({
+          ownerId: owner._id,
+        }).session(session);
+        if (companyCount > 0) {
+          throw new OwnerCompanyCreationError(
+            "company-choice-required",
+            "A Company choice is required for an additional venue!",
+          );
+        }
       }
     }
 
@@ -295,7 +312,7 @@ const ownerCompanyCreation = async (
           "Company does not belong to this User's Owner!",
         );
       }
-      if (joinedCompany.country !== country) {
+      if (!sameCountry(joinedCompany.country, country)) {
         throw new OwnerCompanyCreationError(
           "company-country-mismatch",
           "Company country must match the Owner's portfolio country!",

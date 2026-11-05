@@ -10,7 +10,7 @@ This subject covers **every email Project Imperium sends** — the messages that
 
 - the **email categories** and the complete **catalogue** of messages Project Imperium sends;
 - the **one sending identity** behind every email, and how a venue is named in its own messages;
-- **account and security email** — sign-in verification, password reset, the sign-in email change, reactivation, and business contact-email verification — and their **one-time links**;
+- **account and security email** — sign-in verification, sign-in confirmation, password reset, the sign-in email change, reactivation, and business contact-email verification — and their **one-time links**;
 - the **anti-enumeration** behaviour of the unauthenticated request flows;
 - the **operational email** — the emailed copies of the notifications that are also emailed;
 - the **engagement email** of a venue's broadcasts, and its **unsubscribe** control;
@@ -42,7 +42,7 @@ It deliberately does **not** cover:
 
 ### Terms this subject introduces
 
-- **Account email** — a message about a person's identity or security, or a business's contact-email verification: sign-in verification, password reset, sign-in email change confirmation, sign-in email change notice, reactivation, and business contact-email verification.
+- **Account email** — a message about a person's identity or security, or a business's contact-email verification: sign-in verification, sign-in confirmation, password reset, sign-in email change confirmation, sign-in email change notice, reactivation, and business contact-email verification.
 - **Operational email** — the emailed copy of an operational notification: an order confirmation/receipt, a reservation pending, deposit-requested, or decided message, a business-profile-updated message to managers, a **manager-to-customer one-shot email**, a **business reply to a review**, a **delivery review invite**, and **platform billing** messages (billing documents, arrears dunning, freeze, and post-freeze pay-to-restart). Venue-facing operational mail names the venue it concerns; platform-billing mail is Imperium-initiated and may be portfolio-scoped.
 - **Engagement email** — a venue's one-way broadcast to its related customers: a **Birthday**, **Promotion**, or **Event** email. It is **venue-initiated**.
 - **Sending identity** — the single platform address every outbound email is sent from, together with the venue name Project Imperium shows on venue-initiated mail.
@@ -73,6 +73,7 @@ Project Imperium sends account email for:
 
 - **sign-in verification** — confirming a new user's sign-in email after email-and-password sign-up; a Google-created user arrives verified and no verification email is sent;
 - **resend verification** — the same message, re-requested;
+- **sign-in confirmation** — a security notice sent to the **sign-in email** after **every successful sign-in**, by email and password or Google; it carries **no action link** and never gates, delays, or reverses the sign-in;
 - **password reset** — a link to set a new password, including for a Google-only account that has no password yet;
 - **sign-in email change confirmation** — a link sent to the **new** address to confirm the change;
 - **sign-in email change notice** — a security warning sent to the **old** address once a change completes; it carries **no link**;
@@ -135,7 +136,7 @@ An operational email is the **emailed copy** of an in-app notification where one
 
 - Email is **best-effort**: a failed send is **retried on a transient failure** and then **logged**. It never blocks the action that triggered it, consistent with the platform rule that a communication failure never blocks a business action. An emailed receipt is never a settlement requirement; paper is the normal path and a print failure never blocks payment.
 - A **permanent** failure is not retried and is dropped for operational and engagement email.
-- **Account email is the exception.** Because the person is waiting to complete an action, its send failure is **surfaced to the requester** and the pending link is **rolled back** (§3.2).
+- **A link-bearing account email is the exception.** Because the person is waiting to complete an action, its send failure is **surfaced to the requester** and the pending link is **rolled back** (§3.2). A **sign-in confirmation** carries no link, so its failure is best-effort and never blocks or reverses the sign-in.
 - Project Imperium does **not** track bounces or spam complaints; delivery is best-effort and there is no committed bounce or complaint handling.
 - The **cooldown and idempotency** that suppress repeated *triggers* belong to the notifications subject; this subject owns the send, not the trigger suppression.
 

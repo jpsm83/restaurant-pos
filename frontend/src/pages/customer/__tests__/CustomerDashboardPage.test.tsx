@@ -38,6 +38,8 @@ vi.mock("@/auth/store/AuthContext", () => ({
 const incompleteWarning =
   "This venue must be completed before it can go live.";
 const completeProfileLink = "Complete venue profile";
+const completeAddressLink = "Complete venue address";
+const completeCompanyLink = "Complete Company details";
 
 const emptyPortfolio = {
   owner: null,
@@ -356,15 +358,19 @@ describe("CustomerDashboardPage", () => {
     await user.click(screen.getByRole("button", { name: "Create venue" }));
 
     await waitFor(() => {
-      expect(mockPost).toHaveBeenCalledWith("/api/v1/business", {
-        tradeName: "Demo Bistro",
-        country: "Spain",
-        currencyTrade: "USD",
-        company: {
-          legalName: "Demo Bistro SL",
-          taxNumber: "B12345678",
+      expect(mockPost).toHaveBeenCalledWith(
+        "/api/v1/business",
+        {
+          tradeName: "Demo Bistro",
+          country: "Spain",
+          currencyTrade: "USD",
+          company: {
+            legalName: "Demo Bistro SL",
+            taxNumber: "B12345678",
+          },
         },
-      });
+        expect.anything(),
+      );
     });
     expect(await screen.findByText("Demo Bistro")).toBeInTheDocument();
     expect(
@@ -398,12 +404,16 @@ describe("CustomerDashboardPage", () => {
     await user.click(screen.getByRole("button", { name: "Create venue" }));
 
     await waitFor(() => {
-      expect(mockPost).toHaveBeenCalledWith("/api/v1/business", {
-        tradeName: "Demo Bistro",
-        country: "Spain",
-        currencyTrade: "USD",
-        company: {},
-      });
+      expect(mockPost).toHaveBeenCalledWith(
+        "/api/v1/business",
+        {
+          tradeName: "Demo Bistro",
+          country: "Spain",
+          currencyTrade: "USD",
+          company: {},
+        },
+        expect.anything(),
+      );
     });
     expect(await screen.findByText("Demo Bistro")).toBeInTheDocument();
     expect(
@@ -483,6 +493,12 @@ describe("CustomerDashboardPage", () => {
     expect(
       screen.getByRole("link", { name: completeProfileLink }),
     ).toHaveAttribute("href", "/business/b1/settings/profile");
+    expect(
+      screen.getByRole("link", { name: completeAddressLink }),
+    ).toHaveAttribute("href", "/business/b1/settings/address");
+    expect(
+      screen.getByRole("link", { name: completeCompanyLink }),
+    ).toHaveAttribute("href", "/business/b1/company");
   });
 
   it("shows no warning for a venue with a complete identity/contact profile and Company tax identity", async () => {
@@ -570,6 +586,12 @@ describe("CustomerDashboardPage", () => {
     expect(
       screen.getByRole("link", { name: "Completar perfil del local" }),
     ).toHaveAttribute("href", "/business/b1/settings/profile");
+    expect(
+      screen.getByRole("link", { name: "Completar dirección del local" }),
+    ).toHaveAttribute("href", "/business/b1/settings/address");
+    expect(
+      screen.getByRole("link", { name: "Completar datos de la empresa" }),
+    ).toHaveAttribute("href", "/business/b1/company");
     expect(screen.queryByText(incompleteWarning)).not.toBeInTheDocument();
     expect(
       screen.queryByRole("link", { name: completeProfileLink }),
@@ -642,12 +664,16 @@ describe("CustomerDashboardPage", () => {
     await user.click(screen.getByRole("button", { name: "Create venue" }));
 
     await waitFor(() => {
-      expect(mockPost).toHaveBeenCalledWith("/api/v1/business", {
-        tradeName: "New Cafe",
-        country: "Spain",
-        currencyTrade: "USD",
-        companyId: "c2",
-      });
+      expect(mockPost).toHaveBeenCalledWith(
+        "/api/v1/business",
+        {
+          tradeName: "New Cafe",
+          country: "Spain",
+          currencyTrade: "USD",
+          companyId: "c2",
+        },
+        expect.anything(),
+      );
     });
     expect(await screen.findByText("New Cafe")).toBeInTheDocument();
     expect(
@@ -703,15 +729,19 @@ describe("CustomerDashboardPage", () => {
     await user.click(screen.getByRole("button", { name: "Create venue" }));
 
     await waitFor(() => {
-      expect(mockPost).toHaveBeenCalledWith("/api/v1/business", {
-        tradeName: "Second Bistro",
-        country: "Spain",
-        currencyTrade: "USD",
-        company: {
-          legalName: "Second Taxpayer SL",
-          taxNumber: "B87654321",
+      expect(mockPost).toHaveBeenCalledWith(
+        "/api/v1/business",
+        {
+          tradeName: "Second Bistro",
+          country: "Spain",
+          currencyTrade: "USD",
+          company: {
+            legalName: "Second Taxpayer SL",
+            taxNumber: "B87654321",
+          },
         },
-      });
+        expect.anything(),
+      );
     });
   });
 

@@ -901,6 +901,7 @@ describe("Customer chrome and Business shell acceptance", () => {
     expect(mockPost).toHaveBeenCalledWith(
       "/api/v1/business",
       expect.objectContaining({ tradeName: "New Venue", country: "USA" }),
+      expect.anything(),
     );
   });
 

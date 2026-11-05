@@ -48,6 +48,15 @@ export type UpdateCompanyResult = {
   taxNumber?: string;
 };
 
+/** Generates the stable operation id a venue-registration retry reuses. */
+export function createVenueOperationId(): string {
+  const uuid =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  return `venue-create:${uuid}`;
+}
+
 /** The Company that owns this venue in the caller's portfolio, if any. */
 export function findOwnedCompany(
   portfolio: Pick<IOwnerPortfolio, "companies"> | undefined,
@@ -91,6 +100,7 @@ export async function fetchOwnerPortfolio(
  */
 export async function createVenue(
   input: CreateVenueInput,
+  idempotencyKey = createVenueOperationId(),
 ): Promise<CreateVenueResult> {
   const companyId =
     "companyId" in input && typeof input.companyId === "string"
@@ -100,19 +110,27 @@ export async function createVenue(
   const legalName = company?.legalName?.trim();
   const taxNumber = company?.taxNumber?.trim();
   try {
-    const { data } = await http.post<CreateVenueResult>("/api/v1/business", {
-      tradeName: input.tradeName.trim(),
-      country: input.country.trim(),
-      currencyTrade: input.currencyTrade,
-      ...(companyId
-        ? { companyId }
-        : {
-            company: {
-              ...(legalName ? { legalName } : {}),
-              ...(taxNumber ? { taxNumber } : {}),
-            },
-          }),
-    });
+    const { data } = await http.post<CreateVenueResult>(
+      "/api/v1/business",
+      {
+        tradeName: input.tradeName.trim(),
+        country: input.country.trim(),
+        currencyTrade: input.currencyTrade,
+        ...(companyId
+          ? { companyId }
+          : {
+              company: {
+                ...(legalName ? { legalName } : {}),
+                ...(taxNumber ? { taxNumber } : {}),
+              },
+            }),
+      },
+      {
+        headers: {
+          "X-Idempotency-Key": idempotencyKey,
+        },
+      },
+    );
     return data;
   } catch (error) {
     throw toServiceRequestError(error, "businessCreate");
@@ -131,7 +149,13 @@ export function useOwnerPortfolioQuery(userId: string | undefined) {
 export function useCreateVenueMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: createVenue,
+    mutationFn: ({
+      input,
+      idempotencyKey,
+    }: {
+      input: CreateVenueInput;
+      idempotencyKey?: string;
+    }) => createVenue(input, idempotencyKey),
     onSuccess: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.portfolio.all() }),

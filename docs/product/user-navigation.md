@@ -71,6 +71,7 @@ Terms reused rather than redefined here: **User**, **Business**, **Owner**, **Em
 
 - The **Customer** surface is the **default public landing**: anyone may browse discovery and public venue profiles **without signing in**.
 - Sign-in and sign-up are offered from the **avatar** (or equivalent chrome control). After authenticating, the person **remains on the Customer surface** unless they switch mode.
+- The **sign-in page** always offers **email and password** entry, **Google** entry, a **forgotten-password** path to the password-reset request destination, and a **create-account** path to sign-up. The forgotten-password path is available without first knowing whether an account exists.
 - An unsigned visitor may **navigate customer ordering** and **build a basket**. Project Imperium requires **sign-in or sign-up** when **payment** is requested, and for other **account-bound** actions. The open basket is **preserved** across that identity step.
 - Account-bound actions include at least: **favorites**, **inbox / notifications**, **order history**, **customer account area** settings, and **payment** on self-service channels. Reservations and other subjects may require a signed-in User as those subjects already state.
 
@@ -201,6 +202,7 @@ Ordinary employees may gain individual **Service** destinations (control screens
 | --- | --- |
 | Browse Customer without signing in | Anyone |
 | Sign in / sign up from avatar | Anyone |
+| Recover a forgotten password from the sign-in page | Anyone |
 | Open customer account area | Signed-in user |
 | Switch to Business via mode toggle | Signed-in user with eligible business access |
 | Use venue tabs | Person with more than one eligible venue in Business |

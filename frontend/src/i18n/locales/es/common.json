@@ -4,6 +4,12 @@
     "route": "Cargando…",
     "checkingWorkspaceMode": "Comprobando modo del espacio de trabajo…"
   },
+  "venueCompletion": {
+    "warning": "Este local debe completarse antes de que pueda publicarse.",
+    "profile": "Completar perfil del local",
+    "address": "Completar dirección del local",
+    "company": "Completar datos de la empresa"
+  },
   "live": {
     "disconnected": "Desconectado",
     "reconnecting": "Reconectando",

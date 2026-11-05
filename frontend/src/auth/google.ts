@@ -49,15 +49,23 @@ export function getGoogleClientId(): string | null {
  */
 export function createGoogleInitializeGuard(): { install: () => void } {
   let patchedIdApi: GoogleIdApi | null = null;
+  let patchedInitialize: GoogleIdApi["initialize"] | null = null;
+  let activeConfigKey: string | null = null;
+  let activeCallback: GoogleIdConfiguration["callback"];
 
   return {
     install() {
       const idApi = window.google?.accounts?.id;
-      if (!idApi || idApi === patchedIdApi) return;
+      if (!idApi) return;
+      // Google re-registers `initialize` when its script executes again (React
+      // StrictMode mounts the provider's script-loading effect twice), so the
+      // method identity—not just the API object—tells us whether the guard is
+      // still installed.
+      if (idApi === patchedIdApi && idApi.initialize === patchedInitialize) {
+        return;
+      }
 
       const originalInitialize = idApi.initialize.bind(idApi);
-      let activeConfigKey: string | null = null;
-      let activeCallback: GoogleIdConfiguration["callback"];
 
       idApi.initialize = (config) => {
         activeCallback = config.callback ?? activeCallback;
@@ -75,6 +83,7 @@ export function createGoogleInitializeGuard(): { install: () => void } {
       };
 
       patchedIdApi = idApi;
+      patchedInitialize = idApi.initialize;
     },
   };
 }

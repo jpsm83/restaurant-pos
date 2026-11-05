@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { useErrorMessage, type ErrorFailure } from "@/i18n/errorCopy";
 import {
+  createVenueOperationId,
   useCreateVenueMutation,
   type CreateVenueInput,
 } from "@/services/portfolio/portfolioService";
@@ -42,6 +43,8 @@ export function AddVenueForm(props: {
   defaultCountry: string | null;
   /** Pre-select this Company when it appears in `companies` (Company page entry). */
   defaultCompanyId?: string;
+  /** Hide the Company choice and register under `defaultCompanyId` (Company page entry). */
+  lockCompany?: boolean;
   onCancel: () => void;
   onCreated: () => void;
 }) {
@@ -50,8 +53,14 @@ export function AddVenueForm(props: {
   const resolveError = useErrorMessage();
   const [failure, setFailure] = useState<ErrorFailure | null>(null);
   const [companyError, setCompanyError] = useState<string | null>(null);
+  const submissionRef = useRef<{ key: string; signature: string } | null>(null);
   const companies = props.companies ?? [];
+  const lockedCompany = props.lockCompany
+    ? companies.find((company) => company._id === props.defaultCompanyId)
+    : undefined;
+  const isCompanyLocked = lockedCompany !== undefined;
   const [companyChoice, setCompanyChoice] = useState<string | undefined>(() => {
+    if (lockedCompany) return lockedCompany._id;
     if (
       props.defaultCompanyId &&
       companies.some((company) => company._id === props.defaultCompanyId)
@@ -60,7 +69,7 @@ export function AddVenueForm(props: {
     }
     return companies.length > 0 ? undefined : NEW_COMPANY;
   });
-  const isNewCompany = companyChoice === NEW_COMPANY;
+  const isNewCompany = !isCompanyLocked && companyChoice === NEW_COMPANY;
 
   const schema = useMemo(
     () =>
@@ -107,8 +116,18 @@ export function AddVenueForm(props: {
           }
         : { companyId: companyChoice }),
     };
+    const signature = JSON.stringify(input);
+    if (submissionRef.current?.signature !== signature) {
+      submissionRef.current = {
+        key: createVenueOperationId(),
+        signature,
+      };
+    }
     try {
-      await createVenueMutation.mutateAsync(input);
+      await createVenueMutation.mutateAsync({
+        input,
+        idempotencyKey: submissionRef.current.key,
+      });
       props.onCreated();
     } catch (error) {
       setFailure(
@@ -176,7 +195,25 @@ export function AddVenueForm(props: {
         </div>
       </div>
 
-      {companies.length > 0 ? (
+      {lockedCompany ? (
+        <div className="space-y-2">
+          <Label>{t("venues.form.fields.company")}</Label>
+          <p className="text-sm font-medium text-foreground">
+            {companyDisplayName(
+              lockedCompany,
+              t("venues.companyFallback", {
+                index:
+                  companies.findIndex(
+                    (company) => company._id === lockedCompany._id,
+                  ) + 1,
+              }),
+            )}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {t("venues.form.company.existingHint")}
+          </p>
+        </div>
+      ) : companies.length > 0 ? (
         <div className="space-y-2">
           <Label htmlFor="venue-company">
             {t("venues.form.fields.company")}

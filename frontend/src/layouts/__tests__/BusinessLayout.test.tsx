@@ -372,6 +372,77 @@ describe("BusinessLayout", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("warns inside the Business shell when the owned venue profile is incomplete", async () => {
+    mockPortfolio.value = {
+      owner: { _id: "o1", country: "USA", subscription: "Free" },
+      country: "USA",
+      subscription: "Free",
+      companies: [
+        {
+          _id: "c1",
+          country: "USA",
+          businesses: [
+            {
+              _id: "b1",
+              tradeName: "Owned Venue",
+              currencyTrade: "USD",
+              companyId: "c1",
+              profileComplete: false,
+            },
+          ],
+        },
+      ],
+    };
+
+    await renderBusinessLayout();
+
+    expect(
+      await screen.findByText(
+        "This venue must be completed before it can go live.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Complete venue profile" }),
+    ).toHaveAttribute("href", "/business/b1/settings/profile");
+    expect(
+      screen.getByRole("link", { name: "Complete venue address" }),
+    ).toHaveAttribute("href", "/business/b1/settings/address");
+    expect(
+      screen.getByRole("link", { name: "Complete Company details" }),
+    ).toHaveAttribute("href", "/business/b1/company");
+  });
+
+  it("does not warn inside the Business shell for a complete venue profile", async () => {
+    mockPortfolio.value = {
+      owner: { _id: "o1", country: "USA", subscription: "Free" },
+      country: "USA",
+      subscription: "Free",
+      companies: [
+        {
+          _id: "c1",
+          country: "USA",
+          businesses: [
+            {
+              _id: "b1",
+              tradeName: "Owned Venue",
+              currencyTrade: "USD",
+              companyId: "c1",
+              profileComplete: true,
+            },
+          ],
+        },
+      ],
+    };
+
+    await renderBusinessLayout();
+
+    expect(
+      screen.queryByText(
+        "This venue must be completed before it can go live.",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
   it("falls back to the portfolio while the venue list is empty", async () => {
     mockVenues.value = [];
     mockPortfolio.value = {
@@ -448,6 +519,7 @@ describe("BusinessLayout", () => {
     expect(mockPost).toHaveBeenCalledWith(
       "/api/v1/business",
       expect.objectContaining({ tradeName: "New Venue", country: "USA" }),
+      expect.anything(),
     );
   });
 

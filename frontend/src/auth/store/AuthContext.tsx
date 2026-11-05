@@ -11,6 +11,13 @@
  * ## Actions
  * `AUTH_LOADING` | `AUTH_SUCCESS` | `AUTH_CLEAR` | `AUTH_ERROR` — pages call **`login`/`signup`** from **`api.ts`**, then dispatch success with the returned `user` payload.
  *
+ * `AUTH_LOADING` is reserved for session bootstrap/restore. Route guards treat
+ * `status === "loading"` as "session still unknown" and swap the whole page for
+ * `SessionLoading`, so interactive form submits must use local state instead:
+ * dispatching `AUTH_LOADING` on a failed sign-in would unmount and remount the
+ * form (the visible flicker). Form failures likewise stay local; `state.error`
+ * is for session-level/bootstrap failures.
+ *
  * This is **JWT identity**; the workspace mode lives on the refresh session — see **`AuthModeProvider`** (`@/auth` re-export from `context`).
  */
 /* eslint-disable react-refresh/only-export-components */

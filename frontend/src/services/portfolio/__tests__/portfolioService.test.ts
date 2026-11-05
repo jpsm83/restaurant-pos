@@ -124,25 +124,32 @@ describe("portfolioService", () => {
       },
     });
 
-    const result = await createVenue({
-      tradeName: "  Demo Bistro  ",
-      country: "  Spain ",
-      currencyTrade: "EUR",
-      company: {
-        legalName: "  Demo Bistro SL ",
-        taxNumber: " B12345678 ",
+    const result = await createVenue(
+      {
+        tradeName: "  Demo Bistro  ",
+        country: "  Spain ",
+        currencyTrade: "EUR",
+        company: {
+          legalName: "  Demo Bistro SL ",
+          taxNumber: " B12345678 ",
+        },
       },
-    });
+      "venue-create:test",
+    );
 
-    expect(mockPost).toHaveBeenCalledWith("/api/v1/business", {
-      tradeName: "Demo Bistro",
-      country: "Spain",
-      currencyTrade: "EUR",
-      company: {
-        legalName: "Demo Bistro SL",
-        taxNumber: "B12345678",
+    expect(mockPost).toHaveBeenCalledWith(
+      "/api/v1/business",
+      {
+        tradeName: "Demo Bistro",
+        country: "Spain",
+        currencyTrade: "EUR",
+        company: {
+          legalName: "Demo Bistro SL",
+          taxNumber: "B12345678",
+        },
       },
-    });
+      { headers: { "X-Idempotency-Key": "venue-create:test" } },
+    );
     expect(result.company.legalName).toBe("Demo Bistro SL");
   });
 
@@ -154,22 +161,29 @@ describe("portfolioService", () => {
       },
     });
 
-    await createVenue({
-      tradeName: " Joined Venue ",
-      country: " Spain ",
-      currencyTrade: "EUR",
-      companyId: " c1 ",
-    });
+    await createVenue(
+      {
+        tradeName: " Joined Venue ",
+        country: " Spain ",
+        currencyTrade: "EUR",
+        companyId: " c1 ",
+      },
+      "venue-create:test",
+    );
 
-    expect(mockPost).toHaveBeenCalledWith("/api/v1/business", {
-      tradeName: "Joined Venue",
-      country: "Spain",
-      currencyTrade: "EUR",
-      companyId: "c1",
-    });
+    expect(mockPost).toHaveBeenCalledWith(
+      "/api/v1/business",
+      {
+        tradeName: "Joined Venue",
+        country: "Spain",
+        currencyTrade: "EUR",
+        companyId: "c1",
+      },
+      { headers: { "X-Idempotency-Key": "venue-create:test" } },
+    );
   });
 
-  it("omits blank Company fields from the registration payload", async () => {
+  it("sends a generated idempotency key when the caller does not supply one", async () => {
     mockPost.mockResolvedValue({
       data: {
         business: { _id: "b1", tradeName: "Draft", currencyTrade: "USD" },
@@ -181,15 +195,43 @@ describe("portfolioService", () => {
       tradeName: "Draft",
       country: "USA",
       currencyTrade: "USD",
-      company: { legalName: " ", taxNumber: "" },
-    });
-
-    expect(mockPost).toHaveBeenCalledWith("/api/v1/business", {
-      tradeName: "Draft",
-      country: "USA",
-      currencyTrade: "USD",
       company: {},
     });
+
+    const config = mockPost.mock.calls[0]?.[2] as {
+      headers?: Record<string, string>;
+    };
+    expect(config.headers?.["X-Idempotency-Key"]).toMatch(/^venue-create:/);
+  });
+
+  it("omits blank Company fields from the registration payload", async () => {
+    mockPost.mockResolvedValue({
+      data: {
+        business: { _id: "b1", tradeName: "Draft", currencyTrade: "USD" },
+        company: { _id: "c1", country: "USA" },
+      },
+    });
+
+    await createVenue(
+      {
+        tradeName: "Draft",
+        country: "USA",
+        currencyTrade: "USD",
+        company: { legalName: " ", taxNumber: "" },
+      },
+      "venue-create:test",
+    );
+
+    expect(mockPost).toHaveBeenCalledWith(
+      "/api/v1/business",
+      {
+        tradeName: "Draft",
+        country: "USA",
+        currencyTrade: "USD",
+        company: {},
+      },
+      { headers: { "X-Idempotency-Key": "venue-create:test" } },
+    );
   });
 
   it("invalidates the portfolio and accessible-venue reads after creation", async () => {
@@ -207,13 +249,21 @@ describe("portfolioService", () => {
 
     await act(async () => {
       await result.current.mutateAsync({
-        tradeName: "New Venue",
-        country: "USA",
-        currencyTrade: "USD",
-        company: {},
+        input: {
+          tradeName: "New Venue",
+          country: "USA",
+          currencyTrade: "USD",
+          company: {},
+        },
+        idempotencyKey: "venue-create:mutation",
       });
     });
 
+    expect(mockPost).toHaveBeenCalledWith(
+      "/api/v1/business",
+      expect.objectContaining({ tradeName: "New Venue" }),
+      { headers: { "X-Idempotency-Key": "venue-create:mutation" } },
+    );
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["portfolio"] });
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["auth", "venues"],

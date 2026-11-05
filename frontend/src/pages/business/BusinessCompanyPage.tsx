@@ -251,6 +251,7 @@ export default function BusinessCompanyPage() {
               companies={portfolioQuery.data?.companies}
               defaultCountry={portfolioQuery.data?.country ?? null}
               defaultCompanyId={company._id}
+              lockCompany
               onCancel={() => setIsAddingVenue(false)}
               onCreated={() => setIsAddingVenue(false)}
             />

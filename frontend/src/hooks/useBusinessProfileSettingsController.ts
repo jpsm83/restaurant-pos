@@ -361,6 +361,8 @@ export function useBusinessProfileSettingsController(
 
   const onSubmit = async (values: BusinessProfileFormValues) => {
     setSubmitError(null);
+    const tradeNameChanged =
+      values.tradeName.trim() !== (profileQuery.data?.tradeName ?? "").trim();
     const payload = formValuesToUpdatePayload(values, {
       // Owner access is admin-equivalent even when the snapshot omits a layer.
       actorLayer: canAdminister ? "admin" : access.effectiveLayer,
@@ -375,6 +377,11 @@ export function useBusinessProfileSettingsController(
       await queryClient.invalidateQueries({
         queryKey: queryKeys.portfolio.all(),
       });
+      if (tradeNameChanged) {
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.auth.venues(),
+        });
+      }
 
       const refreshed = await profileQuery.refetch();
       if (refreshed?.data) {

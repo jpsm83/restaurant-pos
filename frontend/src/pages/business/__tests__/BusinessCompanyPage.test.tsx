@@ -368,9 +368,14 @@ describe("BusinessCompanyPage", () => {
 
     await user.click(await screen.findByRole("button", { name: "Add venue" }));
 
-    expect(screen.getByRole("combobox", { name: "Company" })).toHaveTextContent(
-      "Demo Bistro SL",
-    );
+    expect(
+      screen.queryByRole("combobox", { name: "Company" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "This venue joins the selected Company and shares its tax identity.",
+      ),
+    ).toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Trade name"), "New Venue");
     await user.click(screen.getByRole("button", { name: "Create venue" }));
@@ -379,6 +384,7 @@ describe("BusinessCompanyPage", () => {
       expect(mockPost).toHaveBeenCalledWith(
         "/api/v1/business",
         expect.objectContaining({ companyId: "c1", tradeName: "New Venue" }),
+        expect.anything(),
       );
     });
     expect(mockPost.mock.calls[0][1]).not.toHaveProperty("company");
@@ -389,41 +395,61 @@ describe("BusinessCompanyPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("keeps offering another Company or a new Company from the shared form", async () => {
+  it("locks the new venue to the active Company even when others exist", async () => {
     mockGet.mockResolvedValue({ data: portfolioWithSecondCompany });
+    mockPost.mockResolvedValue({
+      data: {
+        business: {
+          _id: "b3",
+          tradeName: "Locked Venue",
+          currencyTrade: "USD",
+          companyId: "c1",
+        },
+        company: {
+          _id: "c1",
+          country: "Spain",
+          legalName: "Demo Bistro SL",
+          taxNumber: "B12345678",
+        },
+      },
+    });
     const user = userEvent.setup();
 
     await renderPage();
 
     await user.click(await screen.findByRole("button", { name: "Add venue" }));
 
-    const companySelect = screen.getByRole("combobox", { name: "Company" });
-    expect(companySelect).toHaveTextContent("Demo Bistro SL");
-
-    await user.click(companySelect);
-    await user.click(
-      await screen.findByRole("option", { name: "Second Taxpayer SL" }),
-    );
+    expect(
+      screen.queryByRole("combobox", { name: "Company" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: "Second Taxpayer SL" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: "New Company" }),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByLabelText("Company legal name", {
         selector: "#venue-legal-name",
       }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "This venue joins the selected Company and shares its tax identity.",
+      ),
+    ).toBeInTheDocument();
 
-    await user.click(screen.getByRole("combobox", { name: "Company" }));
-    await user.click(
-      await screen.findByRole("option", { name: "New Company" }),
-    );
-    expect(
-      screen.getByLabelText("Company legal name", {
-        selector: "#venue-legal-name",
-      }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByLabelText("Company tax number", {
-        selector: "#venue-tax-number",
-      }),
-    ).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Trade name"), "Locked Venue");
+    await user.click(screen.getByRole("button", { name: "Create venue" }));
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith(
+        "/api/v1/business",
+        expect.objectContaining({ tradeName: "Locked Venue", companyId: "c1" }),
+        expect.anything(),
+      );
+    });
+    expect(mockPost.mock.calls[0][1]).not.toHaveProperty("company");
   });
 
   it("shows no Company data to a User without the owning Owner", async () => {

@@ -4,6 +4,12 @@
     "route": "Loading…",
     "checkingWorkspaceMode": "Checking workspace mode…"
   },
+  "venueCompletion": {
+    "warning": "This venue must be completed before it can go live.",
+    "profile": "Complete venue profile",
+    "address": "Complete venue address",
+    "company": "Complete Company details"
+  },
   "live": {
     "disconnected": "Disconnected",
     "reconnecting": "Reconnecting",

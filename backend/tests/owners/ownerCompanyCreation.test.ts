@@ -653,6 +653,32 @@ describe("ownerCompanyCreation", () => {
     ).resolves.toBe(0);
   });
 
+  it("accepts a later venue whose country differs only by case and reuses the Owner spelling", async () => {
+    const user = await createUser("country-case-insensitive");
+    const first = await ownerCompanyCreation({
+      userId: user._id,
+      business: venue("Spain"),
+    });
+
+    const second = await ownerCompanyCreation({
+      userId: user._id,
+      business: {
+        _id: new Types.ObjectId(),
+        tradeName: "Second Venue",
+        currencyTrade: "EUR",
+        country: "  spain ",
+      },
+      company: {},
+    });
+
+    expect(second.owner.country).toBe("Spain");
+    expect(second.company.country).toBe("Spain");
+    expect(second.business.address?.country).toBe("Spain");
+    await expect(
+      Company.countDocuments({ ownerId: first.owner._id }),
+    ).resolves.toBe(2);
+  });
+
   it("rejects a Company whose country differs from the Owner portfolio", async () => {
     const user = await createUser("company-country");
     const first = await ownerCompanyCreation({

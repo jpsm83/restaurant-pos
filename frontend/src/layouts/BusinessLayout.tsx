@@ -24,6 +24,7 @@ import { AppPendingShell } from "@/components/AppPendingShell";
 import ActorSidebar from "@/components/ActorSidebar";
 import { BusinessOwnerChrome } from "@/components/business/BusinessOwnerChrome";
 import { BusinessVenueTabs } from "@/components/business/BusinessVenueTabs";
+import { VenueCompletionWarning } from "@/components/business/VenueCompletionWarning";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -95,6 +96,9 @@ export default function BusinessLayout() {
   const isOwner = activeVenue
     ? activeVenue.source === "ownership"
     : hasOwnedBusiness(portfolioQuery.data, businessId);
+  const portfolioBusiness = portfolioQuery.data?.companies
+    .flatMap((company) => company.businesses)
+    .find((business) => business._id === businessId);
 
   const dashboardTo = canonicalBusinessDashboardRoutePath(businessId);
   const peopleTo = canonicalBusinessPeoplePath(businessId);
@@ -219,6 +223,11 @@ export default function BusinessLayout() {
         {switchFailure ? (
           <div className="px-6 pt-4">
             <Alert>{resolveError(switchFailure)}</Alert>
+          </div>
+        ) : null}
+        {portfolioBusiness && !portfolioBusiness.profileComplete ? (
+          <div className="px-6 pt-4">
+            <VenueCompletionWarning businessId={businessId} />
           </div>
         ) : null}
         <Suspense key={pathname} fallback={<AppPendingShell variant="route" />}>

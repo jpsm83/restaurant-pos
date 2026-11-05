@@ -394,6 +394,77 @@ describe("BusinessProfileSettingsPage (Phase 3.1)", () => {
     });
   });
 
+  it("invalidates the accessible-venue read when the trade name changes", async () => {
+    mockUseBusinessProfileQuery.mockReturnValue({
+      data: makeBusinessProfileDto(),
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn().mockResolvedValue({ data: makeBusinessProfileDto() }),
+    });
+    const user = userEvent.setup();
+
+    const view = await renderWithQueryClient(
+      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
+        <Routes>
+          <Route
+            path="/business/:businessId/settings/profile"
+            element={<BusinessProfileSettingsPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+    const venuesKey = queryKeys.auth.venues();
+    view.queryClient.setQueryData(venuesKey, []);
+
+    await user.clear(screen.getByLabelText("Trade name"));
+    await user.type(screen.getByLabelText("Trade name"), "Renamed Bistro");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => {
+      expect(view.queryClient.getQueryState(venuesKey)?.isInvalidated).toBe(
+        true,
+      );
+    });
+  });
+
+  it("keeps the accessible-venue read fresh when the trade name is unchanged", async () => {
+    mockUseBusinessProfileQuery.mockReturnValue({
+      data: makeBusinessProfileDto(),
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn().mockResolvedValue({ data: makeBusinessProfileDto() }),
+    });
+    const user = userEvent.setup();
+
+    const view = await renderWithQueryClient(
+      <MemoryRouter initialEntries={["/business/64b000000000000000000001/settings/profile"]}>
+        <Routes>
+          <Route
+            path="/business/:businessId/settings/profile"
+            element={<BusinessProfileSettingsPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+    const venuesKey = queryKeys.auth.venues();
+    view.queryClient.setQueryData(venuesKey, []);
+
+    await user.clear(screen.getByLabelText("Phone number"));
+    await user.type(screen.getByLabelText("Phone number"), "+10000000001");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => {
+      expect(mockToastSuccess).toHaveBeenCalledWith(
+        "Business profile saved successfully.",
+      );
+    });
+    expect(view.queryClient.getQueryState(venuesKey)?.isInvalidated).toBe(
+      false,
+    );
+  });
+
   it("shows an unverified state for a contact email that is not verified", async () => {
     mockUseBusinessProfileQuery.mockReturnValue({
       data: { ...makeBusinessProfileDto(), emailVerified: false },
