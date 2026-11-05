@@ -25,6 +25,12 @@ import {
 interface GoogleLinkedUserLookup {
   _id: Types.ObjectId;
   refreshSessionVersion?: number;
+  languagePreference?: "en" | "es" | null;
+  personalDetails?: {
+    email?: string;
+    username?: string;
+    firstName?: string;
+  } | null;
 }
 
 interface GoogleEmailUserLookup extends GoogleLinkedUserLookup {
@@ -51,13 +57,32 @@ export type GoogleAuthResult =
       kind: "session";
       userId: string;
       refreshSessionVersion: number;
-      created: boolean;
+      created: false;
+      email: string;
+      greetingName?: string;
+      languagePreference?: "en" | "es" | null;
+    }
+  | {
+      kind: "session";
+      userId: string;
+      refreshSessionVersion: number;
+      created: true;
     }
   | { kind: "reactivation"; message: string }
   | { kind: "account_not_found" }
   | { kind: "google_email_conflict" }
   | { kind: "invalid_credential" }
   | { kind: "server_error_500"; message: string };
+
+function greetingNameFor(
+  user: GoogleLinkedUserLookup,
+): string | undefined {
+  return (
+    user.personalDetails?.username?.trim() ||
+    user.personalDetails?.firstName?.trim() ||
+    undefined
+  );
+}
 
 export async function handleGoogleAuth(
   verifier: GoogleVerifier,
@@ -78,7 +103,9 @@ export async function handleGoogleAuth(
   const linkedUser = await User.findOne(
     withSoftDeleteFilter({ googleId: identity.subject }),
   )
-    .select("_id refreshSessionVersion")
+    .select(
+      "_id refreshSessionVersion languagePreference personalDetails.email personalDetails.username personalDetails.firstName",
+    )
     .lean<GoogleLinkedUserLookup>();
 
   if (linkedUser) {
@@ -87,13 +114,18 @@ export async function handleGoogleAuth(
       userId: String(linkedUser._id),
       refreshSessionVersion: linkedUser.refreshSessionVersion ?? 0,
       created: false,
+      email: linkedUser.personalDetails?.email ?? email,
+      greetingName: greetingNameFor(linkedUser),
+      languagePreference: linkedUser.languagePreference ?? null,
     };
   }
 
   const userByEmail = await User.findOne(
     withSoftDeleteFilter({ "personalDetails.email": email }),
   )
-    .select("_id googleId refreshSessionVersion")
+    .select(
+      "_id googleId refreshSessionVersion languagePreference personalDetails.email personalDetails.username personalDetails.firstName",
+    )
     .lean<GoogleEmailUserLookup>();
 
   if (userByEmail) {
@@ -113,6 +145,9 @@ export async function handleGoogleAuth(
       userId: String(userByEmail._id),
       refreshSessionVersion: userByEmail.refreshSessionVersion ?? 0,
       created: false,
+      email: userByEmail.personalDetails?.email ?? email,
+      greetingName: greetingNameFor(userByEmail),
+      languagePreference: userByEmail.languagePreference ?? null,
     };
   }
 

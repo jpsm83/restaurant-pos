@@ -801,6 +801,194 @@ describe("POST /api/v1/auth/google", () => {
     });
   });
 
+  describe("sign-in confirmation", () => {
+    function lastEmailPayload() {
+      const payload = sendEmailMock.mock.calls.at(-1)?.[0] as {
+        to?: string;
+        subject?: string;
+        text?: string;
+        html?: string;
+      };
+      if (!payload) throw new Error("no email was sent");
+      return payload;
+    }
+
+    it("sends one localized confirmation for a sign-in intent resolving an active User by subject", async () => {
+      await User.create({
+        googleId: defaultIdentity.subject,
+        languagePreference: "es",
+        personalDetails: {
+          email: defaultIdentity.email,
+          password: await bcrypt.hash(password, 10),
+          firstName: "Pat",
+          emailVerified: true,
+        },
+      });
+
+      const response = await postGoogle(app, {
+        credential: "google-id-token",
+        intent: "signin",
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      expect(sendEmailMock).toHaveBeenCalledTimes(1);
+      const payload = lastEmailPayload();
+      expect(payload.to).toBe(defaultIdentity.email);
+      expect(payload.subject).toBe(
+        "Nuevo inicio de sesión en tu cuenta de POS",
+      );
+      expect(payload.text).toContain("Hola Pat!");
+      expect(payload.text).not.toContain("http");
+      expect(payload.html).not.toContain("href=");
+    });
+
+    it("prefers the saved username for the greeting", async () => {
+      await User.create({
+        googleId: defaultIdentity.subject,
+        personalDetails: {
+          email: defaultIdentity.email,
+          password: await bcrypt.hash(password, 10),
+          firstName: "Pat",
+          username: "patty",
+          emailVerified: true,
+        },
+      });
+
+      const response = await postGoogle(app, {
+        credential: "google-id-token",
+        intent: "signin",
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      expect(sendEmailMock).toHaveBeenCalledTimes(1);
+      const payload = lastEmailPayload();
+      expect(payload.subject).toBe("New Sign-In to Your POS Account");
+      expect(payload.text).toContain("Hello patty!");
+    });
+
+    it("sends one confirmation for a signup intent that resolves an existing active User", async () => {
+      const existing = await User.create({
+        personalDetails: {
+          email: defaultIdentity.email,
+          password: await bcrypt.hash(password, 10),
+          firstName: "Existing",
+          emailVerified: false,
+        },
+      });
+
+      const response = await postGoogle(app, {
+        credential: "google-id-token",
+        intent: "signup",
+        privacyAccepted: true,
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      expect(response.json().user.id).toBe(String(existing._id));
+      expect(sendEmailMock).toHaveBeenCalledTimes(1);
+      const payload = lastEmailPayload();
+      expect(payload.to).toBe(defaultIdentity.email);
+      expect(payload.subject).toBe("New Sign-In to Your POS Account");
+      expect(payload.text).toContain("Hello Existing!");
+
+      const stored = await User.findById(existing._id).lean();
+      expect(stored?.googleId).toBe(defaultIdentity.subject);
+    });
+
+    it("sends nothing when Google sign-up creates a new User", async () => {
+      const response = await postGoogle(app);
+
+      expect(response.statusCode, response.body).toBe(201);
+      expect(sendEmailMock).not.toHaveBeenCalled();
+    });
+
+    it("sends nothing for an unknown Google account", async () => {
+      const response = await postGoogle(app, {
+        credential: "google-id-token",
+        intent: "signin",
+      });
+
+      expect(response.statusCode).toBe(404);
+      expect(sendEmailMock).not.toHaveBeenCalled();
+    });
+
+    it("sends nothing when the Google email conflicts with a different linked identity", async () => {
+      await User.create({
+        googleId: "different-subject",
+        personalDetails: {
+          email: defaultIdentity.email,
+          password: await bcrypt.hash(password, 10),
+          emailVerified: true,
+        },
+      });
+
+      const response = await postGoogle(app, {
+        credential: "google-id-token",
+        intent: "signin",
+      });
+
+      expect(response.statusCode).toBe(409);
+      expect(sendEmailMock).not.toHaveBeenCalled();
+    });
+
+    it("sends only the reactivation email for a soft-deleted account", async () => {
+      await User.create({
+        personalDetails: {
+          email: defaultIdentity.email,
+          password: await bcrypt.hash(password, 10),
+        },
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await postGoogle(app, {
+        credential: "google-id-token",
+        intent: "signin",
+      });
+
+      expect(response.statusCode).toBe(202);
+      expect(sendEmailMock).toHaveBeenCalledTimes(1);
+      expect(lastEmailPayload().subject).toBe(
+        "Confirm Your Email - POS",
+      );
+    });
+
+    it("leaves the response and session unchanged when the confirmation send fails", async () => {
+      sendEmailMock.mockResolvedValue({
+        channel: "email",
+        success: false,
+        sentCount: 0,
+        error: "SMTP down",
+      });
+      await User.create({
+        googleId: defaultIdentity.subject,
+        personalDetails: {
+          email: defaultIdentity.email,
+          password: await bcrypt.hash(password, 10),
+          emailVerified: true,
+        },
+      });
+
+      const response = await postGoogle(app, {
+        credential: "google-id-token",
+        intent: "signin",
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      expect(response.json().accessToken).toEqual(expect.any(String));
+      expect(sendEmailMock).toHaveBeenCalledTimes(1);
+
+      const me = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: {
+          authorization: `Bearer ${response.json().accessToken as string}`,
+        },
+      });
+      expect(me.statusCode).toBe(200);
+      expect(me.json().user.email).toBe(defaultIdentity.email);
+    });
+  });
+
   describe("cross-slice identity regression", () => {
     it("refuses a Google-only User's earlier refresh session after a password reset", async () => {
       const created = await postGoogle(app);

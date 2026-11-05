@@ -580,6 +580,18 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
         },
       );
 
+      // Only a session for an existing active User is a sign-in; a Google
+      // sign-up that created the account is not. Reuse the shared notice
+      // after the session is issued so a failed send cannot affect it.
+      if (!result.created) {
+        void sendSignInConfirmationEmail({
+          to: result.email,
+          greetingName: result.greetingName,
+          language: result.languagePreference,
+          logger: req.log,
+        });
+      }
+
       return reply.code(result.created ? 201 : 200).send({
         accessToken,
         user,
