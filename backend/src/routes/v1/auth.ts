@@ -49,6 +49,7 @@ import { sendAccountExistsEmail } from "../../auth/accountExistsEmail.ts";
 import { handleRequestEmailChange } from "../../auth/requestEmailChange.ts";
 import { handleRequestPasswordReset } from "../../auth/requestPasswordReset.ts";
 import { handleResendEmailConfirmationForAuthenticatedAccount } from "../../auth/resendEmailConfirmation.ts";
+import { sendSignInConfirmationEmail } from "../../auth/signInConfirmationEmail.ts";
 import { handleResetPassword } from "../../auth/resetPassword.ts";
 import {
   badRequest,
@@ -462,13 +463,16 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
         ...withSoftDeleteFilter({ "personalDetails.email": email }),
       })
         .select(
-          "_id personalDetails.email personalDetails.password refreshSessionVersion",
+          "_id languagePreference personalDetails.email personalDetails.password personalDetails.username personalDetails.firstName refreshSessionVersion",
         )
         .lean()) as {
         _id: unknown;
+        languagePreference?: string | null;
         personalDetails: {
           email?: string;
           password?: string;
+          username?: string;
+          firstName?: string;
         };
         refreshSessionVersion?: number;
       } | null;
@@ -500,6 +504,18 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
           presentedRefreshToken: presentedRefreshToken(req),
         },
       );
+
+      // Security notice after the session is issued: best-effort, never on the
+      // response path, so a slow or failed send cannot affect the sign-in.
+      void sendSignInConfirmationEmail({
+        to: user.personalDetails.email ?? email,
+        greetingName:
+          user.personalDetails.username?.trim() ||
+          user.personalDetails.firstName?.trim() ||
+          undefined,
+        language: user.languagePreference,
+        logger: req.log,
+      });
 
       return reply.code(200).send({
         accessToken,

@@ -6,6 +6,7 @@ import {
   buildEmailChangeNoticeContent,
   buildEmailConfirmationContent,
   buildPasswordResetEmailContent,
+  buildSignInConfirmationContent,
   formatAuthEmailTtlPhrase,
 } from "../../src/auth/emailTemplates.ts";
 
@@ -299,6 +300,62 @@ describe("emailTemplates", () => {
 
     expect(subject).toBe("Your POS Sign-In Email Was Changed");
     expect(html).toContain("New sign-in email");
+  });
+
+  it("buildSignInConfirmationContent confirms the sign-in with no link or token", () => {
+    const { subject, html, text } = buildSignInConfirmationContent({
+      greetingName: "Pat",
+    });
+
+    expect(subject).toBe("New Sign-In to Your POS Account");
+    expect(html).toContain("Hello Pat!");
+    expect(html).toContain("A sign-in to your POS account just happened.");
+    expect(html).toContain("reset your password");
+    expect(html).not.toContain("href=");
+    expect(html).not.toContain("http");
+    expect(text).toContain("Hello Pat!");
+    expect(text).toContain("A sign-in to your POS account just happened.");
+    expect(text).not.toContain("http");
+    expect(text).not.toContain("unsubscribe");
+  });
+
+  it("builds the sign-in confirmation in Spanish without a link", () => {
+    const { subject, html, text } = buildSignInConfirmationContent({
+      greetingName: "Pat",
+      language: "es",
+    });
+
+    expect(subject).toBe("Nuevo inicio de sesión en tu cuenta de POS");
+    expect(html).toContain("Hola Pat!");
+    expect(html).toContain(
+      "Acaba de producirse un inicio de sesión en tu cuenta de POS.",
+    );
+    expect(html).toContain("Si no fuiste tú");
+    expect(html).not.toContain("href=");
+    expect(text).toContain("Hola Pat!");
+    expect(text).not.toContain("http");
+  });
+
+  it("uses a neutral sign-in confirmation greeting when no name is stored", () => {
+    const english = buildSignInConfirmationContent({});
+    expect(english.html).toContain("Hello there!");
+    expect(english.text).toContain("Hello there!");
+
+    const spanish = buildSignInConfirmationContent({ language: "es" });
+    expect(spanish.html).toContain("Hola!");
+    expect(spanish.html).not.toContain("there");
+    expect(spanish.text).toContain("Hola!");
+    expect(spanish.text).not.toContain("there");
+  });
+
+  it("falls back to English for an unsupported sign-in confirmation preference", () => {
+    const { subject, html } = buildSignInConfirmationContent({
+      greetingName: "Pat",
+      language: "fr",
+    });
+
+    expect(subject).toBe("New Sign-In to Your POS Account");
+    expect(html).toContain("Hello Pat!");
   });
 
   it("buildPasswordResetEmailContent includes link and fixed expiry copy", () => {
