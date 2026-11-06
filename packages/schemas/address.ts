@@ -9,7 +9,11 @@
  */
 import { z } from "zod";
 
-import { coercedNumberSchema, sanitizedString } from "./primitives.ts";
+import {
+  coercedNumberSchema,
+  freeTextString,
+  sanitizedString,
+} from "./primitives.ts";
 
 export const addressSchema = z.strictObject({
   country: sanitizedString("Country is required!"),
@@ -21,7 +25,7 @@ export const addressSchema = z.strictObject({
   doorNumber: sanitizedString().optional(),
   complement: sanitizedString().optional(),
   region: sanitizedString().optional(),
-  additionalDetails: sanitizedString().optional(),
+  additionalDetails: freeTextString().optional(),
   coordinates: z
     .tuple([coercedNumberSchema, coercedNumberSchema])
     .optional(),

@@ -96,7 +96,11 @@
       "doorNumber": "Número de puerta / unidad",
       "complement": "Complemento",
       "postCode": "Código postal",
-      "region": "Región"
+      "region": "Región",
+      "additionalDetails": "Detalles adicionales"
+    },
+    "helpers": {
+      "additionalDetails": "Opcional. Añade cualquier información que ayude a encontrar o acceder a esta dirección, como un código de acceso o notas de entrega."
     },
     "actions": {
       "save": "Guardar dirección",

@@ -72,6 +72,7 @@ const ADDRESS_FIELDS = [
   "Complement",
   "Post code",
   "Region",
+  "Additional details",
 ];
 
 function renderPage() {
@@ -104,6 +105,12 @@ describe("CustomerAddressPage", () => {
     expect(screen.getByLabelText("Street")).toHaveValue("Main St");
     expect(screen.getByLabelText("Building number")).toHaveValue("123");
     expect(screen.getByLabelText("Post code")).toHaveValue("90001");
+    expect(screen.getByLabelText("Additional details")).toHaveValue(
+      "Gate code 1234",
+    );
+    expect(
+      screen.queryByRole("textbox", { name: /coordinates/i }),
+    ).not.toBeInTheDocument();
     expect(mockGetUserProfile).toHaveBeenCalledWith("u1");
   });
 
@@ -112,6 +119,7 @@ describe("CustomerAddressPage", () => {
     const updatedAddress = {
       ...profile.personalDetails.address,
       street: "Second St",
+      additionalDetails: "Use the side gate\nRing twice",
     };
     mockUpdateUserProfile.mockResolvedValue({
       ok: true,
@@ -131,6 +139,12 @@ describe("CustomerAddressPage", () => {
     const street = await screen.findByLabelText("Street");
     await user.clear(street);
     await user.type(street, "Second St");
+    const additionalDetails = screen.getByLabelText("Additional details");
+    await user.clear(additionalDetails);
+    await user.type(
+      additionalDetails,
+      "<b>Use the side gate</b>{enter}Ring twice",
+    );
     await user.click(screen.getByRole("button", { name: "Save address" }));
 
     await waitFor(() => {
@@ -146,7 +160,7 @@ describe("CustomerAddressPage", () => {
       country: "USA",
       street: "Second St",
       postCode: "90001",
-      additionalDetails: "Gate code 1234",
+      additionalDetails: "Use the side gate\nRing twice",
       coordinates: [-118.24, 34.05],
     });
     await waitFor(() => {

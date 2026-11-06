@@ -11,11 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 
-type EditableAddressField = keyof Omit<
-  UserProfileAddress,
-  "additionalDetails" | "coordinates"
->;
+type EditableAddressField = keyof Omit<UserProfileAddress, "coordinates">;
 
 type AddressForm = Record<EditableAddressField, string>;
 
@@ -29,6 +27,7 @@ const EMPTY_ADDRESS: AddressForm = {
   complement: "",
   postCode: "",
   region: "",
+  additionalDetails: "",
 };
 
 function formFromProfile(profile: UserProfile): AddressForm {
@@ -43,6 +42,7 @@ function formFromProfile(profile: UserProfile): AddressForm {
     complement: address?.complement ?? "",
     postCode: address?.postCode ?? "",
     region: address?.region ?? "",
+    additionalDetails: address?.additionalDetails ?? "",
   };
 }
 
@@ -61,18 +61,11 @@ function cleanAddress(
   if (address.doorNumber.trim()) cleaned.doorNumber = address.doorNumber.trim();
   if (address.complement.trim()) cleaned.complement = address.complement.trim();
   if (address.region.trim()) cleaned.region = address.region.trim();
-  if (stored?.additionalDetails) {
-    cleaned.additionalDetails = stored.additionalDetails;
+  if (address.additionalDetails.trim()) {
+    cleaned.additionalDetails = address.additionalDetails.trim();
   }
   if (stored?.coordinates) cleaned.coordinates = stored.coordinates;
   return cleaned;
-}
-
-function addressIsComplete(
-  address: AddressForm,
-  stored: UserProfileAddress | null,
-): boolean {
-  return addressSchema.safeParse(cleanAddress(address, stored)).success;
 }
 
 function addressHasAnyValue(address: AddressForm): boolean {
@@ -141,18 +134,19 @@ export default function CustomerAddressPage() {
     setSaveMessage(null);
 
     const hasAddressValue = addressHasAnyValue(form);
-    if (hasAddressValue && !addressIsComplete(form, storedAddress)) {
-      setValidationMessage(t("address.errors.incomplete"));
-      return;
-    }
-
     const data = new FormData();
-    data.append(
-      "address",
-      hasAddressValue
-        ? JSON.stringify(cleanAddress(form, storedAddress))
-        : "",
-    );
+    if (hasAddressValue) {
+      const parsed = addressSchema.safeParse(
+        cleanAddress(form, storedAddress),
+      );
+      if (!parsed.success) {
+        setValidationMessage(t("address.errors.incomplete"));
+        return;
+      }
+      data.append("address", JSON.stringify(parsed.data));
+    } else {
+      data.append("address", "");
+    }
 
     setSaving(true);
     const result = await updateUserProfile(userId, data);
@@ -278,6 +272,25 @@ export default function CustomerAddressPage() {
                 value={form.region}
                 onChange={(e) => setAddressField("region", e.target.value)}
               />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="address-additional-details">
+                {t("address.fields.additionalDetails")}
+              </Label>
+              <Textarea
+                id="address-additional-details"
+                value={form.additionalDetails}
+                aria-describedby="address-additional-details-help"
+                onChange={(e) =>
+                  setAddressField("additionalDetails", e.target.value)
+                }
+              />
+              <p
+                id="address-additional-details-help"
+                className="text-xs text-muted-foreground"
+              >
+                {t("address.helpers.additionalDetails")}
+              </p>
             </div>
           </div>
 

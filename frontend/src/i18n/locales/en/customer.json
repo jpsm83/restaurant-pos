@@ -96,7 +96,11 @@
       "doorNumber": "Door / unit number",
       "complement": "Complement",
       "postCode": "Post code",
-      "region": "Region"
+      "region": "Region",
+      "additionalDetails": "Additional details"
+    },
+    "helpers": {
+      "additionalDetails": "Optional. Add anything else that helps find or reach this address, such as a gate code or delivery notes."
     },
     "actions": {
       "save": "Save address",
