@@ -902,6 +902,27 @@ describe("Users Routes", () => {
       expect(stored?.personalDetails.imageSource).toBe("removed");
     });
 
+    it("records removal for a legacy Google URL without deleting it", async () => {
+      const app = await getTestApp();
+      deleteFilesCloudinaryMock.mockClear();
+      const user = await createValidUser("removelegacygooglephoto", {
+        imageUrl: "https://lh3.googleusercontent.com/a/legacy-avatar.png",
+      });
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/users/${user._id}/image`,
+        headers: { authorization: await tokenFor(user) },
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      expect(deleteFilesCloudinaryMock).not.toHaveBeenCalled();
+
+      const stored = await User.findById(user._id).lean();
+      expect(stored?.personalDetails.imageUrl).toBeUndefined();
+      expect(stored?.personalDetails.imageSource).toBe("removed");
+    });
+
     it("leaves a never-set avatar provider-fillable", async () => {
       const app = await getTestApp();
       const user = await createValidUser("removenophoto");

@@ -4,7 +4,29 @@ import { CLOUDINARY_ROOT_FOLDER } from "./cloudinaryConfig.ts";
 export function ownedPublicIdFor(
   imageUrl: string | undefined
 ): string | undefined {
-  return imageUrl?.match(new RegExp(`${CLOUDINARY_ROOT_FOLDER}/[^.]+`))?.[0];
+  if (!imageUrl) return undefined;
+
+  let url: URL;
+  try {
+    url = new URL(imageUrl);
+  } catch {
+    return undefined;
+  }
+
+  if (
+    url.hostname !== "res.cloudinary.com" &&
+    !url.hostname.endsWith(".cloudinary.com")
+  ) {
+    return undefined;
+  }
+
+  const rootPath = `/${CLOUDINARY_ROOT_FOLDER}/`;
+  const rootIndex = url.pathname.indexOf(rootPath);
+  if (rootIndex === -1) return undefined;
+
+  return url.pathname
+    .slice(rootIndex + 1)
+    .replace(/\.[^/.]+$/, "");
 }
 
 /** Whether a URL points at an asset Project Imperium owns and may delete. */
