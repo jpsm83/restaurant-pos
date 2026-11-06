@@ -80,7 +80,8 @@ Terms reused rather than redefined here: **User**, **Business**, **Owner**, **Em
 - **Unsigned:** the avatar offers **Sign in** and **Sign up**. The public navbar keeps its interactive **language switcher**.
 - **Signed-in:** the avatar shows the User's stored **profile picture** when one exists, including a picture supplied by Google sign-up or linking; without one it shows initials. A profile-photo change updates the chrome avatar without re-authentication while the person stays signed in.
 - The **signed-in avatar** opens a short navigation menu containing the current Customer | Business summary, the current **language as a read-only flag plus language name**, **Account** (enters the account area), **Preferences** (opens the Preferences page), and **Log out**. The menu exposes no language dropdown and no Light / Dark / System control; it is navigation, not settings. The **Customer | Business** mode toggle stays separate chrome (§3.4), not an avatar-menu item.
-- The **account area is the single global User surface**. Every destination opens from either Customer or Business mode without changing the stored mode. It has its **own left sidebar** listing **Profile**, **Address**, **Notifications**, **Preferences**, and **Orders**, plus related account settings such as **saved payment methods**, **email**, **marketing consent**, and **Download my data**.
+- The **account area is the single global User surface**. Every destination opens from either Customer or Business mode without changing the stored mode. It has its **own left sidebar** listing **Profile**, **Address**, **Sign-in & security**, **Notifications**, **Preferences**, and **Orders**, plus related account settings such as **saved payment methods**, **marketing consent**, and **Download my data**.
+- **Sign-in & security** is the credential and account-facts destination. It shows the read-only sign-in email with the verified email-change entry, an unverified-email banner with resend, read-only Google connected/not-connected status, and read-only account facts: account creation time, email-verified state, privacy notice acceptance time, whether an email change is pending and when it was requested, when the last verification message was requested, and whether a password and/or Google identity exists. It never renders tokens, token expiries, the pending email address, the Google subject, internal session counters, or marketing consent and reset-request timestamps.
 - **Orders** is the stable account destination for the person's order history. Until the order-history surface ships, it renders a localized **not built yet** state and reads no orders.
 - **Preferences** is the single editor for the person's **language** and **appearance** (Light / Dark / System). Changes apply immediately and persist on the User. It is user-scoped: opening it from either mode never changes the stored Customer | Business mode.
 - **Saved payment methods** are the person's instruments for **in-app customer checkout**. Venue POS payment recording stays with the payments-and-tax subject; this subject only places the account nav item.
@@ -161,7 +162,8 @@ This subject names destinations the chrome must be able to reach. Behaviour insi
 | Public discovery (search and filter, or map of closest venues) / venue profile | Customer, signed out or in |
 | Manage home (business main) | Manager- or admin-layer effective users entering Business |
 | Customer ordering basket / pay gate | Customer; identity at payment |
-| Account area (profile, address, payment methods, email, notifications, Preferences, Orders, marketing consent, Download my data, …) | Avatar → Account |
+| Account area (profile, address, Sign-in & security, payment methods, notifications, Preferences, Orders, marketing consent, Download my data, …) | Avatar → Account |
+| Sign-in & security (sign-in email, verification, Google status, account facts) | Account sidebar |
 | Preferences (language and appearance) | Avatar → Preferences; account sidebar |
 | Orders (order history) | Account sidebar |
 | Favorites | Customer, signed-in |
@@ -174,7 +176,7 @@ This subject names destinations the chrome must be able to reach. Behaviour insi
 | Cash-out | Service (supervisor layer+; approve another wallet / house movements) |
 | Floor plans (layout editor) | Manage → Floor plans |
 | Manage feature groups (Venue, People, Menu, Supply, Service setup, Money) | Manage header |
-| Notifications / Personal details / Preferences / Orders | Account area (either mode) |
+| Notifications / Personal details / Sign-in & security / Preferences / Orders | Account area (either mode) |
 | Venue tabs | Multi-venue Business |
 | Owner chrome: Add venue, Plan, Company, Billing | Owner on an owned venue tab |
 

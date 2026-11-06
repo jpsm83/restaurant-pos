@@ -25,7 +25,7 @@
  *
  * ## How it wires to the router
  * `appRoutes.tsx` declares concrete `<Route path="…">` segments (`dashboard`, `account/profile`,
- * `account/address`, `favorites`, `settings/profile`, …). Those paths must match what the
+ * `account/address`, `account/security`, `favorites`, `settings/profile`, …). Those paths must match what the
  * `canonical*` helpers build. If you add a new shell segment, add a helper here and use it in
  * guards + post-login + any feature navigation. Legacy `/:userId/...` URLs redirect in
  * `appRoutes.tsx`.
@@ -104,6 +104,10 @@ export function canonicalAccountProfilePath(): string {
 
 export function canonicalAccountAddressPath(): string {
   return `${canonicalAccountPath()}/address`;
+}
+
+export function canonicalAccountSecurityPath(): string {
+  return `${canonicalAccountPath()}/security`;
 }
 
 export function canonicalAccountNotificationsPath(): string {

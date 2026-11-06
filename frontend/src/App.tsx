@@ -7,7 +7,7 @@
  * | `/business/:businessId` | `BusinessRouteShell` + `BusinessLayout` |
  * | `/mode` | `ProtectedRoute` — Customer | Business mode selection |
  * | `/dashboard`, `/favorites` | `CustomerRouteShell` + `CustomerLayout` |
- * | `/account`, `/account/profile`, `/account/address`, `/account/notifications`, `/account/preferences`, `/account/orders` | `ProtectedRoute` + `CustomerAccountLayout` — global User surface, no mode guard |
+ * | `/account`, `/account/profile`, `/account/address`, `/account/security`, `/account/notifications`, `/account/preferences`, `/account/orders` | `ProtectedRoute` + `CustomerAccountLayout` — global User surface, no mode guard |
  * | `/business/:businessId/notifications` | legacy redirect to `/account/notifications` |
  * | `/profile` | legacy redirect to `/account/profile` |
  * | `/employee/*` | `ProtectedRoute` + compatibility redirects (no employee shell) |

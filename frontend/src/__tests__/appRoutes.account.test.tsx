@@ -40,6 +40,10 @@ vi.mock("@/pages/customer/CustomerAddressPage", () => ({
   default: () => <div data-testid="address-page-stub">Address page</div>,
 }));
 
+vi.mock("@/pages/customer/CustomerSecurityPage", () => ({
+  default: () => <div data-testid="security-page-stub">Security page</div>,
+}));
+
 vi.mock("@/pages/customer/CustomerPreferencesPage", () => ({
   default: () => (
     <div data-testid="preferences-page-stub">Preferences page</div>
@@ -110,6 +114,15 @@ describe("customer account routing", () => {
     );
   });
 
+  it("renders the Sign-in & security destination under /account", async () => {
+    await renderRoutes("/account/security");
+
+    expect(await screen.findByTestId("security-page-stub")).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(
+      /^\/account\/security$/,
+    );
+  });
+
   it("renders the Notifications destination under /account", async () => {
     await renderRoutes("/account/notifications");
 
@@ -144,6 +157,7 @@ describe("customer account routing", () => {
   it.each([
     ["/account/profile", "profile-page-stub"],
     ["/account/address", "address-page-stub"],
+    ["/account/security", "security-page-stub"],
     ["/account/notifications", "notifications-page-stub"],
     ["/account/preferences", "preferences-page-stub"],
     ["/account/orders", "orders-page-stub"],

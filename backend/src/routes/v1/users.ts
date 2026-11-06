@@ -8,6 +8,12 @@
  * client profile. The anonymous listing and creation routes are gone; self
  * sign-up is the only account-creation path.
  *
+ * The read response is an explicit client whitelist plus a derived
+ * `accountStatus` object: account creation, email-verification, privacy
+ * acceptance, pending-email-change, verification-request, and credential
+ * presence facts. The pending address, token values and expiries, Google
+ * subject, password hash, and session counters are never returned.
+ *
  * Account deletion is not registered. The two-phase pending-deletion
  * lifecycle, owned-Business resolution, reactivation, and grace window are
  * owned by build-order row 11.5. Every error is raised as an `AppError` so the
@@ -28,6 +34,11 @@ import {
   unauthorized,
 } from "../../errors/appError.ts";
 import { parseMultipart, type MultipartFile } from "../../schemas/multipart.ts";
+import {
+  SELF_PROFILE_READ_SELECTION,
+  toSelfProfileResponse,
+  type SelfProfileSource,
+} from "../../users/selfProfile.ts";
 import {
   updateUserBodySchema,
   userIdParamsSchema,
@@ -61,9 +72,9 @@ async function uploadImage(
 const IMAGE_FIELD = "imageUrl";
 
 /**
- * Fields the client profile read/write returns. The Google identity, password,
- * one-time tokens, session generation, notification/order pointers, and
- * soft-delete metadata stay server-owned and never leave this module.
+ * Exclusion projection for the profile-update response. The Google identity,
+ * password, one-time tokens, session generation, notification/order pointers,
+ * and soft-delete metadata stay server-owned and never leave this module.
  */
 const CLIENT_PROFILE_PROJECTION = {
   googleId: 0,
@@ -132,13 +143,13 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
 
       const user = await User.findOne(
         withSoftDeleteFilter({ _id: userId }),
-        CLIENT_PROFILE_PROJECTION,
-      ).lean();
+        SELF_PROFILE_READ_SELECTION,
+      ).lean<SelfProfileSource>();
 
       if (!user) {
         throw notFound("User not found!");
       }
-      return reply.code(200).send(user);
+      return reply.code(200).send(toSelfProfileResponse(user));
     },
   );
 

@@ -85,6 +85,37 @@
     },
     "saveSuccess": "Tu perfil se ha guardado."
   },
+  "security": {
+    "title": "Inicio de sesión y seguridad",
+    "email": {
+      "title": "Correo de acceso",
+      "label": "Correo de acceso",
+      "verified": "Este correo está verificado.",
+      "notVerified": "Este correo aún no está verificado."
+    },
+    "google": {
+      "title": "Acceso con Google",
+      "connected": "Google conectado",
+      "notConnected": "Google no conectado",
+      "description": "Esto indica si hay una cuenta de Google vinculada a tu perfil. Aquí solo se puede consultar."
+    },
+    "facts": {
+      "title": "Datos de la cuenta",
+      "createdAt": "Cuenta creada",
+      "emailVerified": "Correo verificado",
+      "privacyAcceptedAt": "Aviso de privacidad aceptado",
+      "pendingEmailChange": "Cambio de correo pendiente",
+      "pendingEmailRequestedAt": "Cambio de correo solicitado",
+      "verificationRequestedAt": "Último correo de verificación solicitado",
+      "hasPassword": "Contraseña",
+      "hasGoogleIdentity": "Identidad de Google"
+    },
+    "values": {
+      "yes": "Sí",
+      "no": "No",
+      "notRecorded": "Sin registro"
+    }
+  },
   "address": {
     "title": "Dirección",
     "fields": {

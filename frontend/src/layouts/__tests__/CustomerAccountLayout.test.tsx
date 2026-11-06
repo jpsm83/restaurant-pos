@@ -91,6 +91,12 @@ describe("CustomerAccountLayout", () => {
       "data-active",
       "false",
     );
+    expect(
+      screen.getByRole("link", { name: "Sign-in & security" }),
+    ).toHaveAttribute("href", "/account/security");
+    expect(
+      screen.getByRole("link", { name: "Sign-in & security" }),
+    ).toHaveAttribute("data-active", "false");
     expect(screen.getByRole("link", { name: "Notifications" })).toHaveAttribute(
       "href",
       "/account/notifications",
@@ -118,6 +124,7 @@ describe("CustomerAccountLayout", () => {
     ).toEqual([
       "Profile",
       "Address",
+      "Sign-in & security",
       "Notifications",
       "Preferences",
       "Orders",

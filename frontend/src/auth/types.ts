@@ -96,6 +96,22 @@ export type UserProfilePersonalDetails = Omit<
   "password" | "emailVerified"
 >;
 
+/**
+ * Derived account facts returned by the authenticated self-profile read.
+ * Tokens, the pending address, the Google subject, and session counters are
+ * intentionally absent.
+ */
+export interface AccountStatus {
+  createdAt: string | null;
+  emailVerified: boolean;
+  privacyAcceptedAt: string | null;
+  hasPendingEmailChange: boolean;
+  pendingEmailRequestedAt: string | null;
+  verificationRequestedAt: string | null;
+  hasPassword: boolean;
+  hasGoogleIdentity: boolean;
+}
+
 export interface UserProfile {
   _id: string;
   personalDetails: UserProfilePersonalDetails;
@@ -103,6 +119,7 @@ export interface UserProfile {
   themePreference?: "light" | "dark" | "system";
   createdAt?: string;
   updatedAt?: string;
+  accountStatus?: AccountStatus;
 }
 
 export interface AuthState {

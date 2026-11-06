@@ -219,6 +219,148 @@ describe("Users Routes", () => {
       expectNoServerOwnedFields(response.json());
     });
 
+    it("returns the account-status facts without server-owned values", async () => {
+      const app = await getTestApp();
+      const pendingEmail = "pending-address@test.com";
+      const verificationRequestedAt = new Date("2026-03-01T10:00:00.000Z");
+      const pendingEmailRequestedAt = new Date("2026-03-02T11:00:00.000Z");
+      const privacyAcceptedAt = new Date("2026-02-01T09:00:00.000Z");
+
+      const user = await createValidUser("accountstatus", {
+        emailVerified: true,
+        password: "hashedpassword",
+      });
+      await User.updateOne(
+        { _id: user._id },
+        {
+          $set: {
+            googleId: "google-account-status",
+            privacyAcceptedAt,
+            pendingEmail,
+            pendingEmailRequestedAt,
+            verificationRequestedAt,
+            verificationToken: "verification-token-value",
+            verificationTokenExpires: new Date("2030-01-01"),
+            resetPasswordToken: "reset-token-value",
+            resetPasswordExpires: new Date("2030-01-01"),
+            resetPasswordRequestedAt: new Date("2026-03-03T12:00:00.000Z"),
+            pendingEmailToken: "pending-email-token-value",
+            pendingEmailExpires: new Date("2030-01-01"),
+            refreshSessionVersion: 4,
+            marketingConsent: true,
+            marketingConsentUpdatedAt: new Date("2026-03-04T13:00:00.000Z"),
+          },
+        },
+      );
+      const stored = await User.findById(user._id).lean();
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/users/${user._id}`,
+        headers: { authorization: await tokenFor(user) },
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      const body = response.json();
+      expect(body.accountStatus).toEqual({
+        createdAt: stored?.createdAt?.toISOString(),
+        emailVerified: true,
+        privacyAcceptedAt: privacyAcceptedAt.toISOString(),
+        hasPendingEmailChange: true,
+        pendingEmailRequestedAt: pendingEmailRequestedAt.toISOString(),
+        verificationRequestedAt: verificationRequestedAt.toISOString(),
+        hasPassword: true,
+        hasGoogleIdentity: true,
+      });
+
+      expectNoServerOwnedFields(body);
+      expect(body).not.toHaveProperty("pendingEmail");
+      expect(body).not.toHaveProperty("pendingEmailToken");
+      expect(body).not.toHaveProperty("pendingEmailExpires");
+      expect(body).not.toHaveProperty("pendingEmailRequestedAt");
+      expect(body).not.toHaveProperty("verificationRequestedAt");
+      expect(body).not.toHaveProperty("verificationTokenExpires");
+      expect(body).not.toHaveProperty("resetPasswordExpires");
+      expect(body).not.toHaveProperty("resetPasswordRequestedAt");
+      expect(body).not.toHaveProperty("privacyAccepted");
+      expect(body).not.toHaveProperty("privacyAcceptedAt");
+      expect(body).not.toHaveProperty("marketingConsent");
+      expect(body).not.toHaveProperty("marketingConsentUpdatedAt");
+      expect(body.accountStatus).not.toHaveProperty("pendingEmail");
+      expect(body.accountStatus).not.toHaveProperty("googleId");
+      expect(body.accountStatus).not.toHaveProperty("password");
+      expect(body.accountStatus).not.toHaveProperty("resetPasswordRequestedAt");
+
+      const rawBody = response.body;
+      expect(rawBody).not.toContain(pendingEmail);
+      expect(rawBody).not.toContain("verification-token-value");
+      expect(rawBody).not.toContain("reset-token-value");
+      expect(rawBody).not.toContain("pending-email-token-value");
+      expect(rawBody).not.toContain("google-account-status");
+      expect(rawBody).not.toContain("hashedpassword");
+    });
+
+    it("reports absent credential and email-change facts as false or null", async () => {
+      const app = await getTestApp();
+      const user = await createValidUser("accountstatusempty", {
+        password: undefined,
+      });
+      await User.updateOne(
+        { _id: user._id },
+        { $unset: { privacyAcceptedAt: 1 } },
+      );
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/users/${user._id}`,
+        headers: { authorization: await tokenFor(user) },
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      expect(response.json().accountStatus).toEqual({
+        createdAt: expect.any(String),
+        emailVerified: false,
+        privacyAcceptedAt: null,
+        hasPendingEmailChange: false,
+        pendingEmailRequestedAt: null,
+        verificationRequestedAt: null,
+        hasPassword: false,
+        hasGoogleIdentity: false,
+      });
+    });
+
+    it("does not report an expired pending email change", async () => {
+      const app = await getTestApp();
+      const user = await createValidUser("accountstatusexpired", {
+        password: undefined,
+      });
+      await User.updateOne(
+        { _id: user._id },
+        {
+          $set: {
+            pendingEmail: "expired-pending@test.com",
+            pendingEmailToken: "expired-token",
+            pendingEmailExpires: new Date("2020-01-01T00:00:00.000Z"),
+            pendingEmailRequestedAt: new Date("2020-01-01T00:00:00.000Z"),
+          },
+        },
+      );
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/v1/users/${user._id}`,
+        headers: { authorization: await tokenFor(user) },
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      expect(response.json().accountStatus).toMatchObject({
+        hasPendingEmailChange: false,
+        pendingEmailRequestedAt: null,
+      });
+      expect(response.body).not.toContain("expired-pending@test.com");
+      expect(response.body).not.toContain("expired-token");
+    });
+
     it("returns 401 without authentication", async () => {
       const app = await getTestApp();
       const user = await createValidUser("noauthget");

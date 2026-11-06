@@ -137,6 +137,7 @@ The **User** owns the sign-in email, an optional password, an optional **Google 
 - **Changing the sign-in email** requires re-authentication with a current sign-in method (password or Google), is **token-verified** by a link sent to the **new address**, is **cooldown-limited**, **notifies the old address**, enforces **uniqueness among active accounts**, and **revokes other sessions**.
 - **Password reset** is available to every User. A Google-only User may use it to set a password and then sign in with either method; a password login on an account with no password fails with the same generic invalid-credentials outcome.
 - The same verification and change flow applies to **every user** — a business registrant is not a special case.
+- The account area's **Sign-in & security** destination is the credential and account-facts surface. It shows the read-only sign-in email with the verified email-change entry, an unverified-email banner with resend, read-only Google connected/not-connected status, and read-only account facts: account creation time, email-verified state, privacy notice acceptance time, whether an email change is pending and when it was requested, when the last verification message was requested, and whether a password and/or Google identity exists. It never shows tokens, token expiries, the pending email address, the Google subject, internal session counters, marketing consent state, or reset-request timestamps.
 
 ### 3.8 Business contact email and go-live
 

@@ -2,9 +2,10 @@
  * ## `CustomerAccountLayout` (`src/layouts`)
  * **Parent route:** pathless in `appRoutes.tsx`, wrapped by **`ProtectedRoute`** before this layout.
  * The account area is the single global User surface: it is session-derived
- * (`/account/profile`, `/account/address`, `/account/notifications`, `/account/preferences`,
- * `/account/orders`) and opens from either Customer or Business mode without changing the stored
- * mode. The person comes from the session and no User id appears in the URL (ADR-0018).
+ * (`/account/profile`, `/account/address`, `/account/security`, `/account/notifications`,
+ * `/account/preferences`, `/account/orders`) and opens from either Customer or Business mode
+ * without changing the stored mode. The person comes from the session and no User id appears in
+ * the URL (ADR-0018).
  *
  * ## Flow
  * **Sidebar** + **`SidebarInset`** ( **`SidebarProvider`** is in **`main.tsx`**). **`<Outlet />`**
@@ -19,13 +20,21 @@ import { Sidebar, SidebarRail } from "@/components/ui/sidebar";
 import { useAuth } from "@/auth/store/AuthContext";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
-import { Bell, MapPin, ReceiptText, SlidersHorizontal, User } from "lucide-react";
+import {
+  Bell,
+  MapPin,
+  ReceiptText,
+  ShieldCheck,
+  SlidersHorizontal,
+  User,
+} from "lucide-react";
 import {
   canonicalAccountAddressPath,
   canonicalAccountNotificationsPath,
   canonicalAccountOrdersPath,
   canonicalAccountPreferencesPath,
   canonicalAccountProfilePath,
+  canonicalAccountSecurityPath,
 } from "@/routes/canonicalPaths";
 
 export default function CustomerAccountLayout() {
@@ -38,6 +47,7 @@ export default function CustomerAccountLayout() {
 
   const profileTo = canonicalAccountProfilePath();
   const addressTo = canonicalAccountAddressPath();
+  const securityTo = canonicalAccountSecurityPath();
   const notificationsTo = canonicalAccountNotificationsPath();
   const preferencesTo = canonicalAccountPreferencesPath();
   const ordersTo = canonicalAccountOrdersPath();
@@ -56,6 +66,13 @@ export default function CustomerAccountLayout() {
       to: addressTo,
       icon: MapPin,
       isActive: pathname === addressTo,
+    },
+    {
+      key: "security",
+      label: t("account.security"),
+      to: securityTo,
+      icon: ShieldCheck,
+      isActive: pathname === securityTo,
     },
     {
       key: "notifications",

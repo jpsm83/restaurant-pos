@@ -85,6 +85,37 @@
     },
     "saveSuccess": "Your profile has been saved."
   },
+  "security": {
+    "title": "Sign-in & security",
+    "email": {
+      "title": "Sign-in email",
+      "label": "Sign-in email",
+      "verified": "This email is verified.",
+      "notVerified": "This email is not verified yet."
+    },
+    "google": {
+      "title": "Google sign-in",
+      "connected": "Google connected",
+      "notConnected": "Google not connected",
+      "description": "This shows whether a Google account is linked to your profile. It is read-only here."
+    },
+    "facts": {
+      "title": "Account facts",
+      "createdAt": "Account created",
+      "emailVerified": "Email verified",
+      "privacyAcceptedAt": "Privacy notice accepted",
+      "pendingEmailChange": "Email change pending",
+      "pendingEmailRequestedAt": "Email change requested",
+      "verificationRequestedAt": "Last verification email requested",
+      "hasPassword": "Password",
+      "hasGoogleIdentity": "Google identity"
+    },
+    "values": {
+      "yes": "Yes",
+      "no": "No",
+      "notRecorded": "Not recorded"
+    }
+  },
   "address": {
     "title": "Address",
     "fields": {
