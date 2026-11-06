@@ -883,7 +883,7 @@ describe("LoginPage", () => {
     });
 
     await waitFor(() => {
-      expect(widget).toHaveAttribute("aria-disabled", "false");
+      expect(widget).not.toHaveAttribute("aria-disabled");
     });
   });
 

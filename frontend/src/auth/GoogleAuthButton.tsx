@@ -7,9 +7,10 @@
  *
  * The sign-in surface sends `intent: "signin"`, which never creates an
  * account. The sign-up surface sends `intent: "signup"` plus the form's
- * acceptance proof. Until the acceptance checkbox is checked the control is
- * inert, and a stray credential attempt still refuses to call the API and
- * asks the form to surface its acceptance validation.
+ * acceptance proof. The control stays enabled while acceptance is missing: an
+ * overlay intercepts the click before Google opens and asks the form to
+ * surface its acceptance validation. A stray credential attempt still refuses
+ * to call the API for the same reason.
  */
 import { GoogleLogin } from "@react-oauth/google";
 import { useState } from "react";
@@ -18,7 +19,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { googleAuth, useAuthConfigQuery } from "@/auth/api";
 import { getGoogleClientId } from "@/auth/google";
-import { useGoogleControlWidth } from "@/auth/useGoogleControlWidth";
 import {
   getPostLoginDestination,
   getReturnToParam,
@@ -73,7 +73,6 @@ function EnabledGoogleAuthButton({
   const { dispatch } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const { data: authConfig } = useAuthConfigQuery();
-  const { containerRef, width } = useGoogleControlWidth();
   const canCreateAccount = intent === "signup";
   const requiresAcceptance = canCreateAccount && privacyAccepted !== true;
 
@@ -152,20 +151,19 @@ function EnabledGoogleAuthButton({
   };
 
   return (
-    <div ref={containerRef} className="relative w-full">
+    <div className="flex justify-center items-center relative w-full">
       <GoogleLogin
         onSuccess={(response) => void handleCredential(response.credential)}
         onError={handleError}
         useOneTap={false}
-        text="continue_with"
-        shape="rectangular"
+        type="icon"
         theme="outline"
         size="large"
-        {...(width ? { width } : {})}
+        shape="circle"
         {...(languagePreference ? { locale: languagePreference } : {})}
         containerProps={{
           "aria-busy": submitting,
-          "aria-disabled": submitting || requiresAcceptance,
+          "aria-disabled": submitting || undefined,
           inert: submitting || requiresAcceptance,
         }}
       />
@@ -174,7 +172,7 @@ function EnabledGoogleAuthButton({
           type="button"
           onClick={() => onAcceptanceRequired?.()}
           aria-label={t("signup.googleAcceptanceRequired")}
-          className="absolute inset-0 z-overlay cursor-not-allowed rounded-md focus-visible:ring-3 focus-visible:ring-ring"
+          className="absolute inset-0 z-overlay cursor-pointer rounded-md focus-visible:ring-3 focus-visible:ring-ring"
         />
       ) : null}
     </div>

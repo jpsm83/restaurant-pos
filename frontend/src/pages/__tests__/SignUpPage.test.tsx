@@ -523,7 +523,7 @@ describe("SignUpPage", () => {
     });
   });
 
-  it("refuses Google sign-up while the acceptance checkbox is unchecked", async () => {
+  it("refuses a stray Google credential while the acceptance checkbox is unchecked", async () => {
     const user = userEvent.setup();
 
     await renderWithI18n(
@@ -533,7 +533,7 @@ describe("SignUpPage", () => {
     );
 
     const widget = screen.getByTestId("google-widget");
-    expect(widget).toHaveAttribute("aria-disabled", "true");
+    expect(widget).not.toHaveAttribute("aria-disabled");
     expect(widget).toHaveAttribute("inert");
 
     await user.click(
@@ -548,7 +548,7 @@ describe("SignUpPage", () => {
     expect(mockGoogleAuth).not.toHaveBeenCalled();
   });
 
-  it("surfaces the acceptance validation from the blocked Google overlay", async () => {
+  it("keeps the Google overlay enabled and highlights acceptance on click", async () => {
     const user = userEvent.setup();
 
     await renderWithI18n(
@@ -557,18 +557,29 @@ describe("SignUpPage", () => {
       </MemoryRouter>,
     );
 
-    await user.click(
-      screen.getByRole("button", {
-        name: /accept the required terms to enable google sign-up/i,
-      }),
-    );
+    const overlay = screen.getByRole("button", {
+      name: /accept the required terms to enable google sign-up/i,
+    });
+    expect(overlay).toBeEnabled();
+
+    await user.click(overlay);
 
     expect(
       await screen.findByText(
         "Accept the privacy notice and account terms to create an account.",
       ),
     ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/privacy notice and account terms/i),
+    ).toHaveAttribute("aria-invalid", "true");
     expect(mockGoogleAuth).not.toHaveBeenCalled();
+
+    await user.click(
+      screen.getByLabelText(/privacy notice and account terms/i),
+    );
+    expect(
+      screen.getByLabelText(/privacy notice and account terms/i),
+    ).not.toHaveAttribute("aria-invalid");
   });
 
   it("enables the Google control once acceptance is checked", async () => {
@@ -585,8 +596,13 @@ describe("SignUpPage", () => {
       screen.getByLabelText(/privacy notice and account terms/i),
     );
 
-    expect(widget).not.toHaveAttribute("aria-disabled", "true");
+    expect(widget).not.toHaveAttribute("aria-disabled");
     expect(widget).not.toHaveAttribute("inert");
+    expect(
+      screen.queryByRole("button", {
+        name: /accept the required terms to enable google sign-up/i,
+      }),
+    ).not.toBeInTheDocument();
   });
 
   it("maps a Google email conflict to its dedicated copy", async () => {
@@ -741,7 +757,7 @@ describe("SignUpPage", () => {
     });
 
     await waitFor(() => {
-      expect(widget).toHaveAttribute("aria-disabled", "false");
+      expect(widget).not.toHaveAttribute("aria-disabled");
     });
   });
 

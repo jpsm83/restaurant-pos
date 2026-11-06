@@ -60,6 +60,20 @@ async function waitForReplicaSetPrimary(
 }
 
 /**
+ * Wait until every registered model has finished creating its indexes.
+ *
+ * Model compilation starts index builds in the background, and a write that
+ * races one fails with "Unable to write to collection ... due to catalog
+ * changes; please retry". Route models can be registered after the test file
+ * imports, so this is also called whenever the app graph is built.
+ */
+export async function waitForModelIndexes(): Promise<void> {
+  await Promise.all(
+    Object.values(mongoose.models).map((model) => model.init()),
+  );
+}
+
+/**
  * Get the test Fastify app instance (creates one if needed)
  */
 export async function getTestApp(): Promise<FastifyInstance> {
@@ -67,6 +81,7 @@ export async function getTestApp(): Promise<FastifyInstance> {
     // Dynamic import so `vi.mock` on communications modules runs before the server graph loads.
     const { buildApp } = await import("../src/server.ts");
     testApp = await buildApp({ logger: false, skipDb: true });
+    await waitForModelIndexes();
   }
   return testApp;
 }
@@ -142,6 +157,9 @@ beforeAll(async () => {
   } catch {
     // Non-fatal if repl set build forbids setParameter
   }
+  // Index builds from models imported by the test file must finish before any
+  // test writes, otherwise the write can fail on the in-flight catalog change.
+  await waitForModelIndexes();
 });
 
 /**

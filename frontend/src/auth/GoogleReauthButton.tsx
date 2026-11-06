@@ -48,10 +48,10 @@ export function GoogleReauthButton({
           if (!disabled) onFailure();
         }}
         useOneTap={false}
-        text="continue_with"
-        shape="rectangular"
+        type="icon"
         theme="outline"
         size="large"
+        shape="circle"
         {...(languagePreference ? { locale: languagePreference } : {})}
         containerProps={{
           "aria-busy": disabled,

@@ -1,3 +1,7 @@
+## Concurrent agents
+
+Multiple agents may share this working tree. Treat `git status`/`git diff` as the truth, not git history. Never revert, stash, reset, clean, or reformat changes you did not make. Stage only your own paths (`git add <path>`); never `git add -A`/`.`/`commit -a`. Leave unrelated changes alone. Do not push; the user pushes manually.
+
 - [`docs/coding-standards.md`](docs/coding-standards.md) — index of the coding conventions; load the file matching the activity (building, debugging, testing, finishing).
 - [`GLOSSARY.md`](GLOSSARY.md) — domain vocabulary.
 - [`docs/adr/`](docs/adr/) — architecture decisions.
