@@ -41,8 +41,8 @@ Self-service routes are **derived from the session**. The canonical paths are:
 
 ```
 /dashboard  /favorites  /mode
-/account/profile  /account/address  /account/notifications
-/account/preferences  /account/orders
+/account/profile  /account/address  /account/security
+/account/notifications  /account/preferences  /account/orders
 /employee/dashboard  /employee/profile
 /business/:businessId/...
 ```
