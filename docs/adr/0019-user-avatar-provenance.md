@@ -24,8 +24,10 @@ not.
 ### 1. Store where the current photo came from
 
 `personalDetails` carries `imageSource` (`google` | `upload` | `removed`) and
-`imageUpdatedAt` alongside `imageUrl`. The source is server-owned and never
-client-settable.
+`imageUpdatedAt` alongside `imageUrl`. `imageSource` is server-owned and never
+client-settable. The fields stay flat beside the existing `imageUrl` rather than
+becoming a subdocument, so legacy rows need no data migration and the stored
+display URL remains single-valued.
 
 - `google`: imported from the linked Google account.
 - `upload`: uploaded by the person; Project Imperium owns the asset.
@@ -33,22 +35,26 @@ client-settable.
 
 ### 2. Provider sync never overrides user intent
 
-Google sign-up records `source: "google"`. Linking or a later Google sign-in
-fills the picture only when it is empty and the source is neither `upload` nor
-`removed`. Names and language keep their existing "fill only when missing"
-behaviour; only the avatar becomes user-owned.
+Google sign-up records `imageSource: "google"`. Linking or a later Google
+sign-in fills the picture only when it is empty and `imageSource` is neither
+`upload` nor `removed`. Names and language keep their existing "fill only when
+missing" behaviour; only the avatar becomes user-owned.
 
 ### 3. Removal is explicit and source-aware
 
-Removing the photo unsets `imageUrl` and records `source: "removed"` with
+Removing the photo unsets `imageUrl` and records `imageSource: "removed"` with
 `imageUpdatedAt`. An uploaded asset is deleted from Cloudinary first; a
 Google-hosted picture is only cleared locally because Project Imperium does not
 own it. A failed remote deletion leaves the stored picture unchanged. Replacing
-or uploading a photo records `source: "upload"` and clears the removed state.
+or uploading a photo records `imageSource: "upload"` and clears the removed
+state. A DELETE for an account that has never had a photo records nothing, so
+the field stays eligible for a later provider seed.
 
 Legacy rows without a source keep their current URL and are treated as
-user-owned for future provider sync. A legacy Google URL that is later removed
-gets `source: "removed"` at that moment.
+user-owned for future provider sync. A legacy row with no stored URL remains
+eligible for a provider seed, because an empty legacy field cannot be
+distinguished from a removal made before provenance existed. A legacy Google
+URL that is later removed gets `imageSource: "removed"` at that moment.
 
 ## Consequences
 

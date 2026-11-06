@@ -141,11 +141,16 @@ export const languagePreferenceEnums = ["en", "es"] as string[];
 /** Appearance modes a User may store as a theme preference. */
 export const themePreferenceEnums = ["light", "dark", "system"] as string[];
 
+const profileImageSources = ["google", "upload", "removed"] as const;
+
 /**
  * Where a User's profile photo came from. `removed` records an explicit
  * removal so a provider picture is never re-imported over the person's choice.
  */
-export const profileImageSourceEnums = ["google", "upload", "removed"] as string[];
+export const profileImageSourceEnums: string[] = [...profileImageSources];
+
+/** The literal union of stored profile photo sources. */
+export type ProfileImageSource = (typeof profileImageSources)[number];
 
 /** Active workspace mode stored on a refresh session. */
 export const authModeEnums = ["customer", "business"] as string[];

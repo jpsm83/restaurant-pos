@@ -1,7 +1,6 @@
 import { v2 as cloudinary } from "cloudinary";
-import configureCloudinary, {
-  CLOUDINARY_ROOT_FOLDER,
-} from "./cloudinaryConfig.ts";
+import configureCloudinary from "./cloudinaryConfig.ts";
+import { ownedPublicIdFor } from "./cloudinaryAsset.ts";
 
 const deleteFilesCloudinary = async (
   imageUrl: string | undefined
@@ -11,17 +10,15 @@ const deleteFilesCloudinary = async (
 
   try {
     if (imageUrl) {
-      const cloudinaryPublicId = imageUrl.match(
-        new RegExp(`${CLOUDINARY_ROOT_FOLDER}/[^.]+`)
-      );
+      const cloudinaryPublicId = ownedPublicIdFor(imageUrl);
 
       // If the existing URL isn't one of our Cloudinary assets, there's nothing to delete.
-      if (!cloudinaryPublicId?.[0]) {
+      if (!cloudinaryPublicId) {
         return true;
       }
 
       const deletionResponse = await cloudinary.uploader.destroy(
-        cloudinaryPublicId[0],
+        cloudinaryPublicId,
         {
           resource_type: "image",
         }

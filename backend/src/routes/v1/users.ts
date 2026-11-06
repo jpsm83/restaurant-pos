@@ -25,6 +25,7 @@ import mongoose from "mongoose";
 import { createAuthHook } from "../../auth/middleware.ts";
 import uploadFilesCloudinary from "../../cloudinary/uploadFilesCloudinary.ts";
 import deleteFilesCloudinary from "../../cloudinary/deleteFilesCloudinary.ts";
+import { isCloudinaryAssetUrl } from "../../cloudinary/cloudinaryAsset.ts";
 import User from "../../models/user.ts";
 import { withSoftDeleteFilter } from "../../models/softDelete.ts";
 import {
@@ -68,9 +69,12 @@ async function uploadImage(
   return response[0];
 }
 
-/** Delete a stored image, refusing the request when the remote delete fails. */
-async function deleteImage(imageUrl: string | undefined): Promise<void> {
-  if (!imageUrl) return;
+/**
+ * Delete an image Project Imperium owns, refusing the request when the remote
+ * delete fails. A provider-hosted or foreign URL is never ours to delete.
+ */
+async function deleteOwnedImage(imageUrl: string | undefined): Promise<void> {
+  if (!imageUrl || !isCloudinaryAssetUrl(imageUrl)) return;
 
   const result = await deleteFilesCloudinary(imageUrl);
   if (result !== true) {
@@ -183,11 +187,26 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
         throw notFound("User not found!");
       }
 
-      // A provider-hosted picture is not ours to delete; clearing the stored
-      // URL is enough. An uploaded asset is removed from Cloudinary first.
-      if (userDoc.personalDetails?.imageSource !== "google") {
-        await deleteImage(userDoc.personalDetails?.imageUrl);
+      const imageUrl = userDoc.personalDetails?.imageUrl;
+      const hasAvatarState =
+        Boolean(imageUrl) ||
+        userDoc.personalDetails?.imageSource !== undefined;
+
+      // Never recorded an avatar: leave the field provider-fillable rather
+      // than marking a photo that never existed as removed.
+      if (!hasAvatarState) {
+        const currentUser = await User.findOne(
+          withSoftDeleteFilter({ _id: userId }),
+          CLIENT_PROFILE_PROJECTION,
+        ).lean();
+
+        if (!currentUser) {
+          throw notFound("User not found!");
+        }
+        return reply.code(200).send({ user: currentUser });
       }
+
+      await deleteOwnedImage(imageUrl);
 
       const updatedUser = await User.findOneAndUpdate(
         withSoftDeleteFilter({ _id: userId }),
@@ -312,9 +331,7 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
       if (imageFile && imageFile.buffer.length > 0) {
         const imageUrl = await uploadImage(`/users/${userId}`, imageFile);
 
-        if (personalDetails.imageSource !== "google") {
-          await deleteImage(personalDetails.imageUrl);
-        }
+        await deleteOwnedImage(personalDetails.imageUrl);
 
         update.set["personalDetails.imageUrl"] = imageUrl;
         update.set["personalDetails.imageSource"] = "upload";

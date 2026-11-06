@@ -757,7 +757,7 @@ describe("Users Routes", () => {
       uploadFilesCloudinaryMock.mockClear();
       deleteFilesCloudinaryMock.mockClear();
       const previousImageUrl =
-        "https://res.cloudinary.com/demo/image/upload/previous.jpg";
+        "https://res.cloudinary.com/demo/image/upload/pos/users/previous.jpg";
       const user = await createValidUser("replacephoto", {
         imageUrl: previousImageUrl,
       });
@@ -852,7 +852,7 @@ describe("Users Routes", () => {
       const app = await getTestApp();
       deleteFilesCloudinaryMock.mockClear();
       const imageUrl =
-        "https://res.cloudinary.com/demo/image/upload/remove-me.jpg";
+        "https://res.cloudinary.com/demo/image/upload/pos/users/remove-me.jpg";
       const user = await createValidUser("removephoto", { imageUrl });
 
       const response = await app.inject({
@@ -902,10 +902,26 @@ describe("Users Routes", () => {
       expect(stored?.personalDetails.imageSource).toBe("removed");
     });
 
+    it("leaves a never-set avatar provider-fillable", async () => {
+      const app = await getTestApp();
+      const user = await createValidUser("removenophoto");
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/users/${user._id}/image`,
+        headers: { authorization: await tokenFor(user) },
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      const stored = await User.findById(user._id).lean();
+      expect(stored?.personalDetails.imageUrl).toBeUndefined();
+      expect(stored?.personalDetails.imageSource).toBeUndefined();
+    });
+
     it("leaves the stored image unchanged when remote deletion fails", async () => {
       const app = await getTestApp();
       const imageUrl =
-        "https://res.cloudinary.com/demo/image/upload/still-here.jpg";
+        "https://res.cloudinary.com/demo/image/upload/pos/users/still-here.jpg";
       const user = await createValidUser("removephotofail", { imageUrl });
       deleteFilesCloudinaryMock.mockResolvedValueOnce(
         "DeleteCloudinaryImage failed!",

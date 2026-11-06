@@ -6,6 +6,7 @@
  * verified User, or hands a soft-deleted account back to email reactivation.
  */
 import type { Types } from "mongoose";
+import type { ProfileImageSource } from "restaurant-pos-packages/enums";
 import type { GoogleAuthIntent } from "restaurant-pos-packages/schemas/auth";
 
 import User from "../models/user.ts";
@@ -20,9 +21,6 @@ import {
   type GoogleIdentity,
   type GoogleVerifier,
 } from "./google.ts";
-
-/** Where a stored profile photo came from; `removed` is a user choice. */
-type ProfileImageSource = "google" | "upload" | "removed";
 
 /** Mapped Google profile details a User or a Google identity may carry. */
 interface GoogleProfileFields {
@@ -164,8 +162,8 @@ function profileBackfillFor(
 /** The `$set` paths for a backfill, empty when there is nothing to fill. */
 function profileBackfillUpdate(
   backfill: GoogleProfileBackfill,
-): Record<string, unknown> {
-  const update: Record<string, unknown> = {};
+): Record<string, string | Date> {
+  const update: Record<string, string | Date> = {};
 
   if (backfill.firstName) {
     update["personalDetails.firstName"] = backfill.firstName;
