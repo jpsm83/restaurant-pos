@@ -1,6 +1,6 @@
 # ADR-0010: Tailwind v4 token-based theming and shadcn customisation
 
-- **Status:** Accepted
+- **Status:** Accepted (amended 2026-11-06; theme persistence and the account-menu control are superseded by ADR-0017)
 - **Date:** 2026-10-27
 
 ## Context
@@ -35,8 +35,8 @@ The required token list is an explicit contract (`src/styles/theme-contract.ts`)
 
 - `data-theme` selects a brand palette; `.dark` selects the mode.
 - `default` is the base (`:root` for light, `.dark` for dark). Every additional theme defines a **complete** light set in `[data-theme="<id>"]:not(.dark)` and a **complete** dark set in `[data-theme="<id>"].dark`. Partial inheritance is not supported.
-- `color-scheme` is set per theme block. A tiny `useTheme` hook applies the attributes, persists `pos.theme` and `pos.mode` in `localStorage`, and follows `prefers-color-scheme` while the mode is `system`. An inline boot script in `index.html` prevents a first-paint flash.
-- The account menu exposes Light / Dark / System. A brand-theme selector appears only when more than one real theme exists.
+- `color-scheme` is set per theme block. A tiny `useTheme` hook applies the attributes, persists `pos.theme` and `pos.mode` in `localStorage`, and follows `prefers-color-scheme` while the mode is `system`. An inline boot script in `index.html` prevents a first-paint flash. Once a session exists, the User's server-persisted theme preference overrides the cached mode (ADR-0017).
+- The **Preferences** page owns Light / Dark / System; the account menu is navigation and shows only a read-only language indicator (ADR-0017). A brand-theme selector appears only when more than one real theme exists.
 - Because tokens are CSS variables, a future per-Business theme can be applied to a subtree without touching components. That is not built now.
 
 ### 4. shadcn components stay close to upstream and are customised through a ladder
@@ -66,7 +66,7 @@ Marketing uses the same tokens, themes, and accessibility rules. Marketing typog
 
 ### 7. Explicitly deferred
 
-Server-side theme preference sync, per-Business/per-Owner theming, Storybook, Playwright visual regression, a theme editor, shipped fixture themes, and user-selectable brand themes before a second real theme exists.
+Per-Business/per-Owner theming, Storybook, Playwright visual regression, a theme editor, shipped fixture themes, and user-selectable brand themes before a second real theme exists. Server-side theme preference sync is no longer deferred; see ADR-0017.
 
 ## Consequences
 
@@ -101,3 +101,7 @@ Server-side theme preference sync, per-Business/per-Owner theming, Storybook, Pl
 ## Supersedes
 
 None. This ADR changes frontend styling architecture only; ADR-0001 through ADR-0009 remain in force.
+
+## Superseded in part
+
+ADR-0017 supersedes the account-menu Light / Dark / System control and the deferral of server-side theme preference sync. The token, registry, contrast, marketing, and shadcn decisions here remain in force.

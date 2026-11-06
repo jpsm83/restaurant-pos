@@ -172,6 +172,8 @@ Registry IDs are stable, kebab-case, and carry no mode suffix. CSS filenames mat
 
 It applies `data-theme` and `.dark` to `document.documentElement`, persists `pos.theme` and `pos.mode` in `localStorage`, and listens to `matchMedia("(prefers-color-scheme: dark)")` while `mode === "system"`. It does not add `next-themes`; the hook is smaller than adapting a one-axis library to two axes.
 
+`pos.theme` is device-local: the brand theme is never a User preference. `pos.mode` is a device paint cache only. Once a session exists, the User's server-persisted `themePreference` is the source of truth and `AuthProvider` applies it after hydration, overriding the cached mode. An unset preference resolves to `system`, and signing out leaves the current theme applied instead of reverting it (ADR-0017).
+
 `frontend/index.html` runs a boot script before the app bundle so the first paint already has the right tokens:
 
 ```html
@@ -189,7 +191,7 @@ It applies `data-theme` and `.dark` to `document.documentElement`, persists `pos
 </script>
 ```
 
-The account menu exposes **Light / Dark / System**. The brand-theme selector stays hidden until more than one user-facing theme exists.
+The **Preferences** page (`/account/preferences`) owns the **Light / Dark / System** appearance control. The account menu is navigation: it shows the current language as a read-only flag plus name and links to Preferences, but exposes no language picker or appearance radios. The brand-theme selector stays hidden until more than one user-facing theme exists.
 
 ### Per-Business theming (future, not now)
 
@@ -323,7 +325,7 @@ All steps are complete.
    - Reset drifted primitives (`card.tsx`, `button-variants.ts` removal).
    - Split `src/index.css` into `src/styles/`.
    - Add the token contract, status/surface tokens, and the complete default light/dark sets.
-   - Wire `useTheme`, the boot script, and the account-menu toggle.
+   - Wire `useTheme`, the boot script, and the Preferences appearance controls.
    - Add the theme registry (default only), `/dev/themes`, third-party adapters, and the tests.
    - Move marketing typography out of base.
    - Add the CI script and allowlist with current violations.
@@ -339,7 +341,6 @@ Each slice removed its own allowlist globs and ran the contrast, completeness, a
 
 ## Out of scope
 
-- Server-side theme preference sync.
 - Per-Business or per-Owner theming.
 - Storybook.
 - Playwright visual regression.
@@ -350,6 +351,7 @@ Each slice removed its own allowlist globs and ran the contrast, completeness, a
 ## References
 
 - [ADR-0010](../adr/0010-tailwind-theme-architecture.md)
+- [ADR-0017 — Theme mode as a server-persisted User preference](../adr/0017-per-user-theme-preference.md)
 - [Tailwind CSS v4 theme variables](https://tailwindcss.com/docs/theme)
 - [shadcn/ui theming](https://ui.shadcn.com/docs/theming)
 - [shadcn/ui customization](https://ui.shadcn.com/docs/customization)

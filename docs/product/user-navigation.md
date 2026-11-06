@@ -48,8 +48,8 @@ This subject introduces **no new persistent tenant entity**. It owns navigation 
 - **Left menu** — the persistent vertical navigation rail in **Business** mode (and the separate rail in the **customer account area**).
 - **Service** — left-menu header for day-of operations destinations (POS, Host when entitled, and when entitled control screens and attendance).
 - **Manage** — left-menu header for administration destinations; visible only while the person's **effective base layer** at that venue is **manager or admin** (access-and-permissions subject: per shift when on a working shift, otherwise highest membership layer; supervisor never sees Manage).
-- **Me** — left-menu header in Business for **self-only** destinations (own schedule, notifications, personal details) that are not admin data.
-- **Customer account area** — the signed-in customer's settings surface opened from the avatar while in Customer mode: profile, address, saved payment methods, email, notifications, **marketing consent**, **Download my data**, and related account items, with its own left sidebar. Privacy rules for those controls belong to the privacy, consent, and DSAR subject.
+- **Me** — left-menu header in Business for **self-only** destinations (own schedule, notifications, personal details, Preferences) that are not admin data.
+- **Customer account area** — the signed-in customer's settings surface opened from the avatar while in Customer mode: profile, address, saved payment methods, email, notifications, **Preferences** (language and appearance), **marketing consent**, **Download my data**, and related account items, with its own left sidebar. Privacy rules for those controls belong to the privacy, consent, and DSAR subject.
 - **Icon rail** — the left menu's default desktop behaviour: it can collapse to a vertical strip of icons and expand on hover to show full labels. This is built-in behaviour, not a stored preference.
 - **Service fullscreen** — a Service destination shown without the normal desktop chrome, with a small control to restore the desktop layout.
 - **Canonical destination** — a named place in the product the chrome or a link may open (for example Manage home, POS, customer account area). Destinations are described in business language, never as implementation paths.
@@ -70,6 +70,7 @@ Terms reused rather than redefined here: **User**, **Business**, **Owner**, **Em
 ### 3.2 Public Customer surface
 
 - The **Customer** surface is the **default public landing**: anyone may browse discovery and public venue profiles **without signing in**.
+- Signed-out visitors keep the public navbar's interactive **language switcher**. It is not shown inside the signed-in account menu.
 - Sign-in and sign-up are offered from the **avatar** (or equivalent chrome control). After authenticating, the person **remains on the Customer surface** unless they switch mode.
 - The **sign-in page** always offers **email and password** entry, **Google** entry, a **forgotten-password** path to the password-reset request destination, and a **create-account** path to sign-up. The forgotten-password path is available without first knowing whether an account exists.
 - An unsigned visitor may **navigate customer ordering** and **build a basket**. Project Imperium requires **sign-in or sign-up** when **payment** is requested, and for other **account-bound** actions. The open basket is **preserved** across that identity step.
@@ -77,11 +78,12 @@ Terms reused rather than redefined here: **User**, **Business**, **Owner**, **Em
 
 ### 3.3 Avatar and the customer account area
 
-- **Unsigned:** the avatar offers **Sign in** and **Sign up**.
-- **Signed-in:** the avatar opens a short menu that includes at least **Account** (enters the customer account area), **Sign out**, and — when eligible — a path into the **mode toggle** / Business.
-- The **customer account area** stays in **Customer** mode. It has its **own left sidebar** with destinations such as **profile (Me)**, **address**, **saved payment methods**, **email**, **notifications**, **marketing consent**, **Download my data**, and related account settings.
+- **Unsigned:** the avatar offers **Sign in** and **Sign up**. The public navbar keeps its interactive **language switcher**.
+- **Signed-in:** the avatar opens a short navigation menu containing the current Customer | Business summary, the current **language as a read-only flag plus language name**, **Account** (enters the customer account area), **Preferences** (opens the Preferences page), and **Log out**. The menu exposes no language dropdown and no Light / Dark / System control; it is navigation, not settings. The **Customer | Business** mode toggle stays separate chrome (§3.4), not an avatar-menu item.
+- The **customer account area** stays in **Customer** mode, except for the user-scoped **Preferences** page, which is reachable from both modes without changing the stored mode. It has its **own left sidebar** with destinations such as **profile (Me)**, **address**, **saved payment methods**, **email**, **notifications**, **Preferences**, **marketing consent**, **Download my data**, and related account settings.
+- **Preferences** is the single editor for the person's **language** and **appearance** (Light / Dark / System). Changes apply immediately and persist on the User. It is user-scoped: opening it from either mode never changes the stored Customer | Business mode.
 - **Saved payment methods** are the person's instruments for **in-app customer checkout**. Venue POS payment recording stays with the payments-and-tax subject; this subject only places the account nav item.
-- The same **User** profile and **inbox** are reachable from Business **Me** (personal details / notifications) and from the customer account area — **one account model, two doors**.
+- The same **User** profile, **inbox**, and **Preferences** are reachable from Business **Me** (personal details / notifications / Preferences) and from the customer account area — **one account model, two doors**.
 
 ### 3.4 Mode toggle (Customer | Business)
 
@@ -139,7 +141,7 @@ Terms reused rather than redefined here: **User**, **Business**, **Owner**, **Em
 #### Me
 
 - Visible to **everyone** in Business mode.
-- Under Me: **My schedule** (the person's own calendar as the schedules subject allows), **Notifications** (the shared inbox), **Personal details** (User profile), and other **self-only** items that are not admin data.
+- Under Me: **My schedule** (the person's own calendar as the schedules subject allows), **Notifications** (the shared inbox), **Personal details** (User profile), **Preferences** (language and appearance), and other **self-only** items that are not admin data.
 - Full workforce schedule editing stays under Manage → People.
 
 ### 3.7 Customer chrome (no business rail)
@@ -164,6 +166,7 @@ This subject names destinations the chrome must be able to reach. Behaviour insi
 | Manage home (business main) | Manager- or admin-layer effective users entering Business |
 | Customer ordering basket / pay gate | Customer; identity at payment |
 | Customer account area (profile, address, payment methods, email, notifications, marketing consent, Download my data, …) | Avatar → Account |
+| Preferences (language and appearance) | Avatar → Preferences; customer account sidebar; Business Me |
 | Favorites, order history | Customer, signed-in |
 | Mode toggle | Signed-in chrome when eligible |
 | POS (floor map or list/grid) | Service → POS |
@@ -174,7 +177,7 @@ This subject names destinations the chrome must be able to reach. Behaviour insi
 | Cash-out | Service (supervisor layer+; approve another wallet / house movements) |
 | Floor plans (layout editor) | Manage → Floor plans |
 | Manage feature groups (Venue, People, Menu, Supply, Service setup, Money) | Manage header |
-| My schedule / Notifications / Personal details | Me (Business) or account area (Customer) |
+| My schedule / Notifications / Personal details / Preferences | Me (Business) or account area (Customer) |
 | Venue tabs | Multi-venue Business |
 | Owner chrome: Add venue, Plan, Company, Billing | Owner on an owned venue tab |
 
