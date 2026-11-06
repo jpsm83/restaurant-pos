@@ -6,6 +6,11 @@
   },
   "preferences": {
     "title": "Preferencias",
+    "language": {
+      "title": "Idioma",
+      "description": "Elige el idioma que Project Imperium usa en tu cuenta.",
+      "legend": "Idioma de la aplicación"
+    },
     "appearance": {
       "title": "Apariencia",
       "description": "Elige cómo se ve Project Imperium en tu cuenta.",
@@ -17,7 +22,8 @@
       }
     },
     "errors": {
-      "save": "No se pudo guardar tu preferencia de apariencia. Inténtalo de nuevo."
+      "save": "No se pudo guardar tu preferencia de apariencia. Inténtalo de nuevo.",
+      "saveLanguage": "No se pudo guardar tu preferencia de idioma. Inténtalo de nuevo."
     }
   },
   "profile": {
@@ -66,7 +72,6 @@
       "birthDate": "Fecha de nacimiento",
       "gender": "Género",
       "nationality": "Nacionalidad",
-      "language": "Idioma",
       "notSet": "Sin definir"
     },
     "genderOptions": {

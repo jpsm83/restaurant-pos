@@ -9,10 +9,16 @@ import {
 import { renderWithI18n } from "@/test/i18nTestUtils";
 import CustomerPreferencesPage from "../CustomerPreferencesPage";
 
-const { mockUseAuth, mockUpdateUserProfile, mockDispatch } = vi.hoisted(() => ({
+const {
+  mockUseAuth,
+  mockUpdateUserProfile,
+  mockDispatch,
+  mockChangeAppLanguage,
+} = vi.hoisted(() => ({
   mockUseAuth: vi.fn(),
   mockUpdateUserProfile: vi.fn(),
   mockDispatch: vi.fn(),
+  mockChangeAppLanguage: vi.fn(),
 }));
 
 vi.mock("@/auth/store/AuthContext", () => ({
@@ -21,6 +27,10 @@ vi.mock("@/auth/store/AuthContext", () => ({
 
 vi.mock("@/auth/api", () => ({
   updateUserProfile: (...args: unknown[]) => mockUpdateUserProfile(...args),
+}));
+
+vi.mock("@/i18n/i18n", () => ({
+  changeAppLanguage: (...args: unknown[]) => mockChangeAppLanguage(...args),
 }));
 
 const profile = {
@@ -58,6 +68,8 @@ describe("CustomerPreferencesPage", () => {
     mockUseAuth.mockReset();
     mockUpdateUserProfile.mockReset();
     mockDispatch.mockReset();
+    mockChangeAppLanguage.mockReset();
+    mockChangeAppLanguage.mockResolvedValue(undefined);
     mockUseAuth.mockReturnValue({
       state: {
         status: "authenticated",
@@ -87,6 +99,59 @@ describe("CustomerPreferencesPage", () => {
     expect(screen.getByRole("radio", { name: "Light" })).not.toBeChecked();
     expect(screen.getByRole("radio", { name: "Dark" })).toBeChecked();
     expect(screen.getByRole("radio", { name: "System" })).not.toBeChecked();
+  });
+
+  it("renders the Language section reflecting the current effective language", async () => {
+    await renderWithI18n(<CustomerPreferencesPage />, { language: "es" });
+
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Idioma" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Español" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "English" })).not.toBeChecked();
+  });
+
+  it("applies a language selection immediately and persists it through the profile API", async () => {
+    const user = userEvent.setup();
+    mockUpdateUserProfile.mockResolvedValue({
+      ok: true,
+      data: { user: { ...profile, languagePreference: "es" } },
+    });
+
+    await renderWithI18n(<CustomerPreferencesPage />);
+
+    await user.click(screen.getByRole("radio", { name: "Español" }));
+
+    expect(mockChangeAppLanguage).toHaveBeenCalledWith("es");
+    await waitFor(() =>
+      expect(mockUpdateUserProfile).toHaveBeenCalledTimes(1),
+    );
+    const [userId, data] = mockUpdateUserProfile.mock.calls[0] as [
+      string,
+      FormData,
+    ];
+    expect(userId).toBe("u1");
+    expect(data.get("languagePreference")).toBe("es");
+    expect(mockDispatch).toHaveBeenCalledWith({
+      type: "AUTH_SUCCESS",
+      payload: expect.objectContaining({ languagePreference: "es" }),
+    });
+  });
+
+  it("shows a localized error when the language save fails", async () => {
+    const user = userEvent.setup();
+    mockUpdateUserProfile.mockResolvedValue({
+      ok: false,
+      error: { code: "profileUpdate.internal", status: 500 },
+    });
+
+    await renderWithI18n(<CustomerPreferencesPage />);
+
+    await user.click(screen.getByRole("radio", { name: "Español" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "We couldn't save your language preference. Try again.",
+    );
   });
 
   it("applies a selection immediately and persists it through the profile API", async () => {

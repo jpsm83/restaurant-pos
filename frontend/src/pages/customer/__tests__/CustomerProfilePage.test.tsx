@@ -9,7 +9,6 @@ const mockGetUserProfile = vi.fn();
 const mockUpdateUserProfile = vi.fn();
 const mockRequestEmailChange = vi.fn();
 const mockUseAuthConfigQuery = vi.fn();
-const mockDispatch = vi.fn();
 const mockResend = vi.fn();
 const toastSuccess = vi.fn();
 const toastError = vi.fn();
@@ -39,7 +38,6 @@ vi.mock("@react-oauth/google", () => ({
 vi.mock("@/auth/store/AuthContext", () => ({
   useAuth: () => ({
     state: { status: "authenticated", user: mockUser(), error: null },
-    dispatch: mockDispatch,
   }),
 }));
 
@@ -120,7 +118,6 @@ describe("CustomerProfilePage", () => {
     mockUpdateUserProfile.mockReset();
     mockRequestEmailChange.mockReset();
     mockUseAuthConfigQuery.mockReset();
-    mockDispatch.mockReset();
     mockResend.mockReset();
     toastSuccess.mockReset();
     toastError.mockReset();
@@ -152,6 +149,13 @@ describe("CustomerProfilePage", () => {
     expect(mockGetUserProfile).toHaveBeenCalledWith("u1");
   });
 
+  it("does not render a language control", async () => {
+    await renderPage();
+
+    await screen.findByLabelText("First name");
+    expect(screen.queryByLabelText("Language")).not.toBeInTheDocument();
+  });
+
   it("renders the stored profile photo", async () => {
     mockGetUserProfile.mockResolvedValue({
       ok: true,
@@ -174,7 +178,7 @@ describe("CustomerProfilePage", () => {
     );
   });
 
-  it("saves edited profile fields and language as multipart", async () => {
+  it("saves edited profile fields as multipart without a language field", async () => {
     const user = userEvent.setup();
     mockUpdateUserProfile.mockResolvedValue({
       ok: true,
@@ -183,7 +187,6 @@ describe("CustomerProfilePage", () => {
         user: {
           ...profile,
           personalDetails: { ...profile.personalDetails, firstName: "Updated" },
-          languagePreference: "es",
         },
       },
     });
@@ -193,38 +196,21 @@ describe("CustomerProfilePage", () => {
     await user.clear(firstName);
     await user.type(firstName, "Updated");
 
-    await user.click(screen.getByLabelText("Language"));
-    await user.click(await screen.findByRole("option", { name: "Español" }));
+    await user.click(screen.getByRole("button", { name: "Save profile" }));
 
     await waitFor(() => {
       expect(mockUpdateUserProfile).toHaveBeenCalledTimes(1);
     });
-    const [, languageData] = mockUpdateUserProfile.mock.calls[0] as [
-      string,
-      FormData,
-    ];
-    expect(languageData.get("languagePreference")).toBe("es");
-    expect(languageData.get("firstName")).toBeNull();
-
-    await user.click(screen.getByRole("button", { name: "Save profile" }));
-
-    await waitFor(() => {
-      expect(mockUpdateUserProfile).toHaveBeenCalledTimes(2);
-    });
-    const [userId, formData] = mockUpdateUserProfile.mock.calls[1] as [
+    const [userId, formData] = mockUpdateUserProfile.mock.calls[0] as [
       string,
       FormData,
     ];
     expect(userId).toBe("u1");
     expect(formData.get("firstName")).toBe("Updated");
-    expect(formData.get("languagePreference")).toBe("es");
+    expect(formData.get("languagePreference")).toBeNull();
     expect(formData.get("address")).toBeNull();
     await waitFor(() => {
       expect(toastSuccess).toHaveBeenCalledWith("Your profile has been saved.");
-    });
-    expect(mockDispatch).toHaveBeenCalledWith({
-      type: "AUTH_SUCCESS",
-      payload: expect.objectContaining({ languagePreference: "es" }),
     });
   });
 

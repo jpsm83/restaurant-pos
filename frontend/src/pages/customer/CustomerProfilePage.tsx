@@ -20,8 +20,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useResendEmailConfirmation } from "@/hooks/useResendEmailConfirmation";
-import { useLanguageOptions } from "@/hooks/useLanguageOptions";
-import { changeAppLanguage } from "@/i18n/i18n";
 import { formatCalendarDate, isValidCalendarDate } from "@/lib/calendarDate";
 
 const NO_VALUE = "__none__";
@@ -34,7 +32,6 @@ type ProfileForm = {
   birthDate: string;
   gender: string;
   nationality: string;
-  languagePreference: string;
 };
 
 const EMPTY_FORM: ProfileForm = {
@@ -45,7 +42,6 @@ const EMPTY_FORM: ProfileForm = {
   birthDate: "",
   gender: "",
   nationality: "",
-  languagePreference: "",
 };
 
 function dateInputValue(value: string | Date | undefined): string {
@@ -67,15 +63,14 @@ function formFromProfile(profile: UserProfile): ProfileForm {
     birthDate: dateInputValue(personal.birthDate),
     gender: personal.gender ?? "",
     nationality: personal.nationality ?? "",
-    languagePreference: profile.languagePreference ?? "",
   };
 }
 
-/** `/account/profile` — self-service customer profile and language. */
+/** `/account/profile` — self-service customer profile. */
 export default function CustomerProfilePage() {
   const { t } = useTranslation("customer");
   const resolveError = useErrorMessage();
-  const { state, dispatch } = useAuth();
+  const { state } = useAuth();
   const { resend, pending: resendPending } = useResendEmailConfirmation({
     successMessage: t("profile.emailVerify.resendSuccess"),
   });
@@ -103,7 +98,6 @@ export default function CustomerProfilePage() {
   const [changeEmailMessage, setChangeEmailMessage] = useState<string | null>(
     null,
   );
-  const languageOptions = useLanguageOptions();
 
   useEffect(() => {
     if (!userId) return;
@@ -145,34 +139,6 @@ export default function CustomerProfilePage() {
     setImagePreviewUrl(file ? URL.createObjectURL(file) : null);
   }
 
-  async function onLanguageChange(value: string) {
-    const next = value === NO_VALUE ? "" : value;
-    setField("languagePreference", next);
-    await changeAppLanguage(next || "en");
-
-    if (!userId) return;
-
-    const data = new FormData();
-    data.append("languagePreference", next);
-    const result = await updateUserProfile(userId, data);
-    if (!result.ok) {
-      setSaveFailure(result.error);
-      return;
-    }
-
-    const updated = result.data?.user ?? null;
-    if (updated) setProfile(updated);
-    if (sessionUser && updated) {
-      dispatch({
-        type: "AUTH_SUCCESS",
-        payload: {
-          ...sessionUser,
-          languagePreference: updated.languagePreference,
-        },
-      });
-    }
-  }
-
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!userId) return;
@@ -188,7 +154,6 @@ export default function CustomerProfilePage() {
     data.append("birthDate", form.birthDate);
     data.append("gender", form.gender);
     data.append("nationality", form.nationality);
-    data.append("languagePreference", form.languagePreference);
 
     if (imageFile) data.append("imageUrl", imageFile);
 
@@ -207,16 +172,6 @@ export default function CustomerProfilePage() {
     setImagePreviewUrl(null);
     setSaveMessage(t("profile.saveSuccess"));
     toast.success(t("profile.saveSuccess"));
-
-    if (sessionUser && updated) {
-      dispatch({
-        type: "AUTH_SUCCESS",
-        payload: {
-          ...sessionUser,
-          languagePreference: updated.languagePreference,
-        },
-      });
-    }
   }
 
   const needsVerification =
@@ -424,29 +379,6 @@ export default function CustomerProfilePage() {
                   value={form.nationality}
                   onChange={(e) => setField("nationality", e.target.value)}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="profile-language">
-                  {t("profile.fields.language")}
-                </Label>
-                <Select
-                  value={form.languagePreference || NO_VALUE}
-                  onValueChange={(value) => void onLanguageChange(value)}
-                >
-                  <SelectTrigger id="profile-language" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NO_VALUE}>
-                      {t("profile.fields.notSet")}
-                    </SelectItem>
-                    {languageOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
             </div>
           </section>
