@@ -5,6 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import type { AuthSession } from "../../types";
 import {
+  createThemeStore,
+  installThemeStore,
+  MODE_STORAGE_KEY,
+  useTheme,
+} from "@/hooks/useTheme";
+import {
   AuthProvider,
   useAuth,
 } from "../AuthContext";
@@ -57,6 +63,7 @@ const sampleCustomer: AuthSession = {
   type: "user",
   role: "Customer",
   languagePreference: "es",
+  themePreference: "light",
 };
 
 function StatusProbe() {
@@ -74,6 +81,11 @@ function StatusProbe() {
       </button>
     </div>
   );
+}
+
+function ThemeProbe() {
+  const { mode } = useTheme();
+  return <span data-testid="theme-mode">{mode}</span>;
 }
 
 let queryClient: QueryClient;
@@ -96,6 +108,19 @@ describe("AuthContext", () => {
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
+    document.documentElement.removeAttribute("data-theme");
+    document.documentElement.classList.remove("dark");
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      configurable: true,
+      value: () => ({
+        matches: false,
+        media: "(prefers-color-scheme: dark)",
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      }),
+    });
+    installThemeStore(createThemeStore());
     loadPersistedAccessToken.mockReset();
     getCurrentUser.mockReset();
     refreshSession.mockReset();
@@ -196,6 +221,76 @@ describe("AuthContext", () => {
     await waitFor(() => {
       expect(changeAppLanguage).toHaveBeenCalledWith("es");
     });
+  });
+
+  it("applies the stored theme preference over the device cache", async () => {
+    localStorage.setItem(MODE_STORAGE_KEY, "dark");
+    installThemeStore(createThemeStore());
+    loadPersistedAccessToken.mockReturnValue("stored-jwt");
+    getCurrentUser.mockResolvedValue({ ok: true, data: sampleCustomer });
+
+    renderWithProvider(
+      <>
+        <StatusProbe />
+        <ThemeProbe />
+      </>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("status")).toHaveTextContent("authenticated"),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("theme-mode")).toHaveTextContent("light"),
+    );
+    expect(localStorage.getItem(MODE_STORAGE_KEY)).toBe("light");
+    expect(document.documentElement).not.toHaveClass("dark");
+  });
+
+  it("keeps the current appearance after sign-out", async () => {
+    const user = userEvent.setup();
+    localStorage.setItem(MODE_STORAGE_KEY, "dark");
+    installThemeStore(createThemeStore());
+    loadPersistedAccessToken.mockReturnValue("stored-jwt");
+    getCurrentUser.mockResolvedValue({ ok: true, data: sampleCustomer });
+
+    renderWithProvider(
+      <>
+        <StatusProbe />
+        <ThemeProbe />
+      </>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("theme-mode")).toHaveTextContent("light"),
+    );
+
+    await user.click(screen.getByRole("button", { name: /sign-out/i }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("status")).toHaveTextContent("unauthenticated"),
+    );
+    expect(screen.getByTestId("theme-mode")).toHaveTextContent("light");
+    expect(localStorage.getItem(MODE_STORAGE_KEY)).toBe("light");
+  });
+
+  it("uses system when the account has not chosen an appearance", async () => {
+    localStorage.setItem(MODE_STORAGE_KEY, "dark");
+    installThemeStore(createThemeStore());
+    loadPersistedAccessToken.mockReturnValue("stored-jwt");
+    getCurrentUser.mockResolvedValue({ ok: true, data: sampleUser });
+
+    renderWithProvider(
+      <>
+        <StatusProbe />
+        <ThemeProbe />
+      </>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("status")).toHaveTextContent("authenticated"),
+    );
+    expect(screen.getByTestId("theme-mode")).toHaveTextContent("system");
+    expect(localStorage.getItem(MODE_STORAGE_KEY)).toBe("system");
   });
 
   it("bootstrap: unauthorized refresh clears the hint and shows the expired notice", async () => {

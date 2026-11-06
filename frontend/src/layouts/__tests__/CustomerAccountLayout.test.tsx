@@ -98,6 +98,16 @@ describe("CustomerAccountLayout", () => {
     expect(
       screen.getByRole("link", { name: "Notifications" }),
     ).toHaveAttribute("data-active", "false");
+    expect(screen.getByRole("link", { name: "Preferences" })).toHaveAttribute(
+      "href",
+      "/account/preferences",
+    );
+    expect(
+      screen.getByRole("link", { name: "Preferences" }),
+    ).toHaveAttribute("data-active", "false");
+    expect(
+      screen.getAllByRole("link").map((link) => link.textContent),
+    ).toEqual(["Profile", "Address", "Notifications", "Preferences"]);
     expect(screen.queryByRole("link", { name: "Dashboard" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Favorites" })).not.toBeInTheDocument();
   });
@@ -131,6 +141,38 @@ describe("CustomerAccountLayout", () => {
     ).toHaveAttribute("href", "/account/notifications");
     expect(
       screen.getByRole("link", { name: "Notificaciones" }),
+    ).toHaveAttribute("data-active", "true");
+  });
+
+  it("marks Preferences active and localizes its label", async () => {
+    mockUseAuth.mockReturnValue({
+      state: {
+        status: "authenticated",
+        user: { id: "u1", email: "u@test.local", type: "user", role: "Customer" },
+        error: null,
+      },
+    });
+
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/account/preferences"]}>
+        <Routes>
+          <Route element={<CustomerAccountLayout />}>
+            <Route
+              path="account/preferences"
+              element={<div>Preferences Outlet</div>}
+            />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+      { language: "es" },
+    );
+
+    expect(screen.getByText("Preferences Outlet")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Preferencias" }),
+    ).toHaveAttribute("href", "/account/preferences");
+    expect(
+      screen.getByRole("link", { name: "Preferencias" }),
     ).toHaveAttribute("data-active", "true");
   });
 });

@@ -3,6 +3,7 @@ import {
   canonicalAccountAddressPath,
   canonicalAccountNotificationsPath,
   canonicalAccountPath,
+  canonicalAccountPreferencesPath,
   canonicalAccountProfilePath,
   canonicalBusinessCompanyPath,
   canonicalBusinessDashboardPath,
@@ -66,6 +67,9 @@ describe("canonicalPaths", () => {
     expect(canonicalAccountAddressPath()).toBe("/account/address");
     expect(canonicalAccountNotificationsPath()).toBe(
       "/account/notifications",
+    );
+    expect(canonicalAccountPreferencesPath()).toBe(
+      "/account/preferences",
     );
     expect(canonicalCustomerFavoritesPath()).toBe("/favorites");
     expect(canonicalModePath()).toBe("/mode");

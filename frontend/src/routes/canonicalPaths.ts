@@ -114,6 +114,11 @@ export function canonicalAccountNotificationsPath(): string {
   return `${canonicalAccountPath()}/notifications`;
 }
 
+/** Account-scoped settings; the customer sidebar owns the first entry. */
+export function canonicalAccountPreferencesPath(): string {
+  return `${canonicalAccountPath()}/preferences`;
+}
+
 export function canonicalCustomerFavoritesPath(): string {
   return "/favorites";
 }

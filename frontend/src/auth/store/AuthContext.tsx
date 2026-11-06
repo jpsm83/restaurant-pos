@@ -47,6 +47,7 @@ import { subscribeToAuthSessionChanges } from "../sessionSync";
 import type { ServiceErrorCode } from "@/services/serviceErrors";
 import { isSupportedLanguage } from "@/i18n/config";
 import { changeAppLanguage } from "@/i18n/i18n";
+import { setMode as setThemeMode } from "@/hooks/useTheme";
 
 type AuthAction =
   | { type: "AUTH_LOADING" }
@@ -111,6 +112,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       void changeAppLanguage(hydratedLanguage);
     }
   }, [hydratedLanguage]);
+
+  const hydratedTheme =
+    state.status === "authenticated"
+      ? (state.user?.themePreference ?? "system")
+      : undefined;
+
+  useEffect(() => {
+    if (hydratedTheme) setThemeMode(hydratedTheme);
+  }, [hydratedTheme]);
 
   useEffect(() => {
     const bootstrapAuth = async () => {

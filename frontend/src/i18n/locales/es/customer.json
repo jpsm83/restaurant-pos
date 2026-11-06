@@ -4,6 +4,22 @@
     "signedInLine": "Sesión iniciada como {{email}}.",
     "emailFallback": "usuario"
   },
+  "preferences": {
+    "title": "Preferencias",
+    "appearance": {
+      "title": "Apariencia",
+      "description": "Elige cómo se ve Project Imperium en tu cuenta.",
+      "legend": "Modo de apariencia",
+      "options": {
+        "light": "Claro",
+        "dark": "Oscuro",
+        "system": "Sistema"
+      }
+    },
+    "errors": {
+      "save": "No se pudo guardar tu preferencia de apariencia. Inténtalo de nuevo."
+    }
+  },
   "profile": {
     "title": "Perfil",
     "emailVerify": {

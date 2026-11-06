@@ -78,6 +78,9 @@ const BusinessProfileSettingsPage = lazy(
 );
 const CustomerProfilePage = lazy(() => import("@/pages/customer/CustomerProfilePage"));
 const CustomerAddressPage = lazy(() => import("@/pages/customer/CustomerAddressPage"));
+const CustomerPreferencesPage = lazy(
+  () => import("@/pages/customer/CustomerPreferencesPage"),
+);
 const CustomerFavoritesPage = lazy(() => import("@/pages/customer/CustomerFavoritesPage"));
 const CustomerDashboardPage = lazy(() => import("@/pages/customer/CustomerDashboardPage"));
 const NotificationsInboxPage = lazy(
@@ -334,6 +337,10 @@ export function AppRoutes() {
             <Route
               path="account/notifications"
               element={<NotificationsInboxPage />}
+            />
+            <Route
+              path="account/preferences"
+              element={<CustomerPreferencesPage />}
             />
           </Route>
 

@@ -17,10 +17,11 @@ import { Sidebar, SidebarRail } from "@/components/ui/sidebar";
 import { useAuth } from "@/auth/store/AuthContext";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
-import { Bell, MapPin, User } from "lucide-react";
+import { Bell, MapPin, SlidersHorizontal, User } from "lucide-react";
 import {
   canonicalAccountAddressPath,
   canonicalAccountNotificationsPath,
+  canonicalAccountPreferencesPath,
   canonicalAccountProfilePath,
 } from "@/routes/canonicalPaths";
 
@@ -35,6 +36,7 @@ export default function CustomerAccountLayout() {
   const profileTo = canonicalAccountProfilePath();
   const addressTo = canonicalAccountAddressPath();
   const notificationsTo = canonicalAccountNotificationsPath();
+  const preferencesTo = canonicalAccountPreferencesPath();
 
   const pages = [
     {
@@ -57,6 +59,13 @@ export default function CustomerAccountLayout() {
       to: notificationsTo,
       icon: Bell,
       isActive: pathname === notificationsTo,
+    },
+    {
+      key: "preferences",
+      label: t("account.preferences"),
+      to: preferencesTo,
+      icon: SlidersHorizontal,
+      isActive: pathname === preferencesTo,
     },
   ];
 
