@@ -74,6 +74,17 @@ export type GoogleAuthResult =
   | { kind: "invalid_credential" }
   | { kind: "server_error_500"; message: string };
 
+/**
+ * The supported UI language a Google locale seeds, or `undefined` when the
+ * locale is missing or not one of the supported languages.
+ */
+function languageFromGoogleLocale(
+  locale: string | undefined,
+): "en" | "es" | undefined {
+  const language = locale?.trim().toLowerCase().split(/[-_]/)[0];
+  return language === "en" || language === "es" ? language : undefined;
+}
+
 function greetingNameFor(
   user: GoogleLinkedUserLookup,
 ): string | undefined {
@@ -175,10 +186,11 @@ export async function handleGoogleAuth(
     return { kind: "account_not_found" };
   }
 
+  const languagePreference =
+    input.languagePreference ?? languageFromGoogleLocale(identity.locale);
+
   const createdUser = await User.create({
-    ...(input.languagePreference
-      ? { languagePreference: input.languagePreference }
-      : {}),
+    ...(languagePreference ? { languagePreference } : {}),
     privacyAccepted: true,
     privacyAcceptedAt: new Date(),
     marketingConsent: false,
@@ -188,6 +200,7 @@ export async function handleGoogleAuth(
       emailVerified: true,
       ...(identity.firstName ? { firstName: identity.firstName } : {}),
       ...(identity.lastName ? { lastName: identity.lastName } : {}),
+      ...(identity.imageUrl ? { imageUrl: identity.imageUrl } : {}),
     },
   });
 

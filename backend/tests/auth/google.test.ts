@@ -87,13 +87,33 @@ describe("toGoogleIdentity", () => {
     });
   });
 
-  it("omits blank optional names", () => {
+  it("maps the Google picture and locale into the verified identity", () => {
+    expect(
+      toGoogleIdentity({
+        sub: "google-subject",
+        email: "person@example.com",
+        email_verified: true,
+        picture: " https://lh3.googleusercontent.com/a/avatar.png ",
+        locale: " es-419 ",
+      }),
+    ).toEqual({
+      subject: "google-subject",
+      email: "person@example.com",
+      imageUrl: "https://lh3.googleusercontent.com/a/avatar.png",
+      locale: "es-419",
+    });
+  });
+
+  it("omits blank optional claims", () => {
     expect(
       toGoogleIdentity({
         sub: "google-subject",
         email: "person@example.com",
         email_verified: true,
         given_name: "  ",
+        family_name: "  ",
+        picture: "  ",
+        locale: "  ",
       }),
     ).toEqual({
       subject: "google-subject",

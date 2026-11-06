@@ -152,6 +152,28 @@ describe("CustomerProfilePage", () => {
     expect(mockGetUserProfile).toHaveBeenCalledWith("u1");
   });
 
+  it("renders the stored profile photo", async () => {
+    mockGetUserProfile.mockResolvedValue({
+      ok: true,
+      data: {
+        ...profile,
+        personalDetails: {
+          ...profile.personalDetails,
+          imageUrl: "https://lh3.googleusercontent.com/a/avatar.png",
+        },
+      },
+    });
+
+    await renderPage();
+
+    expect(
+      await screen.findByRole("img", { name: "Your profile photo" }),
+    ).toHaveAttribute(
+      "src",
+      "https://lh3.googleusercontent.com/a/avatar.png",
+    );
+  });
+
   it("saves edited profile fields and language as multipart", async () => {
     const user = userEvent.setup();
     mockUpdateUserProfile.mockResolvedValue({

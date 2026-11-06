@@ -209,6 +209,93 @@ describe("POST /api/v1/auth/google", () => {
     expect(refreshed.json().user.email).toBe(defaultIdentity.email);
   });
 
+  it("stores the Google picture and seeds the language from a supported locale", async () => {
+    verifyGoogle.mockResolvedValue({
+      ...defaultIdentity,
+      imageUrl: "https://lh3.googleusercontent.com/a/avatar.png",
+      locale: "es-419",
+    });
+
+    const response = await postGoogle(app, {
+      credential: "google-id-token",
+      intent: "signup",
+      privacyAccepted: true,
+    });
+
+    expect(response.statusCode, response.body).toBe(201);
+    expect(response.json().user.languagePreference).toBe("es");
+
+    const stored = await User.findOne({
+      "personalDetails.email": defaultIdentity.email,
+    }).lean();
+    expect(stored?.personalDetails?.imageUrl).toBe(
+      "https://lh3.googleusercontent.com/a/avatar.png",
+    );
+    expect(stored?.languagePreference).toBe("es");
+
+    const profile = await app.inject({
+      method: "GET",
+      url: `/api/v1/users/${response.json().user.id as string}`,
+      headers: {
+        authorization: `Bearer ${response.json().accessToken as string}`,
+      },
+    });
+    expect(profile.statusCode, profile.body).toBe(200);
+    expect(profile.json().personalDetails.imageUrl).toBe(
+      "https://lh3.googleusercontent.com/a/avatar.png",
+    );
+  });
+
+  it("prefers the sign-up form language over the Google locale", async () => {
+    verifyGoogle.mockResolvedValue({
+      ...defaultIdentity,
+      locale: "es-ES",
+    });
+
+    const response = await postGoogle(app, {
+      credential: "google-id-token",
+      intent: "signup",
+      languagePreference: "en",
+      privacyAccepted: true,
+    });
+
+    expect(response.statusCode, response.body).toBe(201);
+    expect(response.json().user.languagePreference).toBe("en");
+
+    const stored = await User.findOne({
+      "personalDetails.email": defaultIdentity.email,
+    }).lean();
+    expect(stored?.languagePreference).toBe("en");
+  });
+
+  it.each([
+    ["unsupported", "fr-FR"],
+    ["missing", undefined],
+  ])(
+    "leaves the language unset for a %s Google locale",
+    async (_label, locale) => {
+      verifyGoogle.mockResolvedValue({
+        ...defaultIdentity,
+        ...(locale ? { locale } : {}),
+      });
+
+      const response = await postGoogle(app, {
+        credential: "google-id-token",
+        intent: "signup",
+        privacyAccepted: true,
+      });
+
+      expect(response.statusCode, response.body).toBe(201);
+      expect(response.json().user.languagePreference).toBeUndefined();
+
+      const stored = await User.findOne({
+        "personalDetails.email": defaultIdentity.email,
+      }).lean();
+      expect(stored?.languagePreference).toBeUndefined();
+      expect(stored?.personalDetails?.imageUrl).toBeUndefined();
+    },
+  );
+
   it("rejects Google sign-up without acceptance as validation and creates no User", async () => {
     for (const payload of [
       { credential: "google-id-token", intent: "signup" },

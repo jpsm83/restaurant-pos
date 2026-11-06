@@ -15,6 +15,10 @@ export interface GoogleIdentity {
   email: string;
   firstName?: string;
   lastName?: string;
+  /** Google profile picture URL. */
+  imageUrl?: string;
+  /** Google account locale, for example `en-GB` or `es-419`. */
+  locale?: string;
 }
 
 export type GoogleVerifier = (credential: string) => Promise<GoogleIdentity>;
@@ -26,7 +30,7 @@ export class GoogleCredentialError extends Error {
   }
 }
 
-function optionalName(value: string | undefined): string | undefined {
+function optionalText(value: string | undefined): string | undefined {
   const trimmed = value?.trim();
   return trimmed ? trimmed : undefined;
 }
@@ -46,14 +50,18 @@ export function toGoogleIdentity(
     throw new GoogleCredentialError();
   }
 
-  const firstName = optionalName(claims.given_name);
-  const lastName = optionalName(claims.family_name);
+  const firstName = optionalText(claims.given_name);
+  const lastName = optionalText(claims.family_name);
+  const imageUrl = optionalText(claims.picture);
+  const locale = optionalText(claims.locale);
 
   return {
     subject: claims.sub.trim(),
     email: claims.email.toLowerCase().trim(),
     ...(firstName ? { firstName } : {}),
     ...(lastName ? { lastName } : {}),
+    ...(imageUrl ? { imageUrl } : {}),
+    ...(locale ? { locale } : {}),
   };
 }
 
