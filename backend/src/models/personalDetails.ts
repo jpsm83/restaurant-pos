@@ -2,7 +2,7 @@ import { Schema } from "mongoose";
 import { addressSchema } from "./address.ts";
 import * as enums from "restaurant-pos-packages/enums";
 
-const { genderEnums } = enums;
+const { genderEnums, profileImageSourceEnums } = enums;
 
 export const personalDetailsSchema = new Schema(
   {
@@ -32,6 +32,14 @@ export const personalDetailsSchema = new Schema(
     birthDate: { type: Date }, // date of birth
     phoneNumber: { type: String }, // phone number
     imageUrl: { type: String }, // photo of the customer
+    /**
+     * Provenance of `imageUrl`. A provider picture is imported only while this
+     * is unset; `upload` and `removed` are user choices the provider must not
+     * overwrite. `removed` deliberately has no URL so the avatar stays initials.
+     */
+    imageSource: { type: String, enum: profileImageSourceEnums },
+    /** When the profile photo was last set, replaced, or removed. */
+    imageUpdatedAt: { type: Date },
   },
   {
     timestamps: true,

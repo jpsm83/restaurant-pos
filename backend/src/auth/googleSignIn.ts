@@ -21,6 +21,9 @@ import {
   type GoogleVerifier,
 } from "./google.ts";
 
+/** Where a stored profile photo came from; `removed` is a user choice. */
+type ProfileImageSource = "google" | "upload" | "removed";
+
 /** Mapped Google profile details a User or a Google identity may carry. */
 interface GoogleProfileFields {
   firstName?: string;
@@ -32,7 +35,11 @@ interface GoogleProfileFields {
 interface GoogleProfileLookup {
   languagePreference?: "en" | "es" | null;
   personalDetails?:
-    | (GoogleProfileFields & { email?: string; username?: string })
+    | (GoogleProfileFields & {
+        email?: string;
+        username?: string;
+        imageSource?: ProfileImageSource;
+      })
     | null;
 }
 
@@ -60,7 +67,7 @@ interface GoogleDeletedUserLookup {
 }
 
 const GOOGLE_USER_LOOKUP_SELECT =
-  "_id googleId refreshSessionVersion languagePreference personalDetails.email personalDetails.username personalDetails.firstName personalDetails.lastName personalDetails.imageUrl";
+  "_id googleId refreshSessionVersion languagePreference personalDetails.email personalDetails.username personalDetails.firstName personalDetails.lastName personalDetails.imageUrl personalDetails.imageSource";
 
 export type GoogleAuthInput = {
   credential: string;
@@ -133,7 +140,16 @@ function profileBackfillFor(
   if (isBlank(user.personalDetails?.lastName) && identity.lastName) {
     backfill.lastName = identity.lastName;
   }
-  if (isBlank(user.personalDetails?.imageUrl) && identity.imageUrl) {
+  // A provider picture seeds only an untouched avatar. An upload or an
+  // explicit removal is the person's choice and must survive future sign-ins.
+  const imageIsUserOwned =
+    user.personalDetails?.imageSource === "upload" ||
+    user.personalDetails?.imageSource === "removed";
+  if (
+    isBlank(user.personalDetails?.imageUrl) &&
+    identity.imageUrl &&
+    !imageIsUserOwned
+  ) {
     backfill.imageUrl = identity.imageUrl;
   }
 
@@ -148,8 +164,8 @@ function profileBackfillFor(
 /** The `$set` paths for a backfill, empty when there is nothing to fill. */
 function profileBackfillUpdate(
   backfill: GoogleProfileBackfill,
-): Record<string, string> {
-  const update: Record<string, string> = {};
+): Record<string, unknown> {
+  const update: Record<string, unknown> = {};
 
   if (backfill.firstName) {
     update["personalDetails.firstName"] = backfill.firstName;
@@ -159,6 +175,8 @@ function profileBackfillUpdate(
   }
   if (backfill.imageUrl) {
     update["personalDetails.imageUrl"] = backfill.imageUrl;
+    update["personalDetails.imageSource"] = "google";
+    update["personalDetails.imageUpdatedAt"] = new Date();
   }
   if (backfill.languagePreference) {
     update.languagePreference = backfill.languagePreference;
@@ -280,7 +298,13 @@ export async function handleGoogleAuth(
       emailVerified: true,
       ...(identity.firstName ? { firstName: identity.firstName } : {}),
       ...(identity.lastName ? { lastName: identity.lastName } : {}),
-      ...(identity.imageUrl ? { imageUrl: identity.imageUrl } : {}),
+      ...(identity.imageUrl
+        ? {
+            imageUrl: identity.imageUrl,
+            imageSource: "google" as const,
+            imageUpdatedAt: new Date(),
+          }
+        : {}),
     },
   });
 

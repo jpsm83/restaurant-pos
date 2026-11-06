@@ -797,6 +797,7 @@ describe("Users Routes", () => {
       expect(stored?.personalDetails.imageUrl).toBe(
         "https://res.cloudinary.com/demo/image/upload/new.jpg",
       );
+      expect(stored?.personalDetails.imageSource).toBe("upload");
 
       const me = await app.inject({
         method: "GET",
@@ -808,6 +809,42 @@ describe("Users Routes", () => {
         "https://res.cloudinary.com/demo/image/upload/new.jpg",
       );
     });
+  });
+
+  it("replaces a Google-hosted picture without deleting the provider asset", async () => {
+    const app = await getTestApp();
+    deleteFilesCloudinaryMock.mockClear();
+    const user = await createValidUser("replacegooglephoto", {
+      imageUrl: "https://lh3.googleusercontent.com/a/avatar.png",
+      imageSource: "google",
+    });
+
+    const form = new FormData();
+    form.append("firstName", "Photo");
+    form.append(
+      "imageUrl",
+      new Blob(["image-bytes"], { type: "image/png" }),
+      "avatar.png",
+    );
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/users/${user._id}`,
+      payload: form,
+      headers: {
+        "content-type": "multipart/form-data",
+        authorization: await tokenFor(user),
+      },
+    });
+
+    expect(response.statusCode, response.body).toBe(200);
+    expect(deleteFilesCloudinaryMock).not.toHaveBeenCalled();
+
+    const stored = await User.findById(user._id).lean();
+    expect(stored?.personalDetails.imageUrl).toBe(
+      "https://res.cloudinary.com/demo/image/upload/new.jpg",
+    );
+    expect(stored?.personalDetails.imageSource).toBe("upload");
   });
 
   describe("DELETE /api/v1/users/:userId/image", () => {
@@ -830,6 +867,7 @@ describe("Users Routes", () => {
 
       const stored = await User.findById(user._id).lean();
       expect(stored?.personalDetails.imageUrl).toBeUndefined();
+      expect(stored?.personalDetails.imageSource).toBe("removed");
 
       const me = await app.inject({
         method: "GET",
@@ -838,6 +876,30 @@ describe("Users Routes", () => {
       });
       expect(me.statusCode, me.body).toBe(200);
       expect(me.json().user.imageUrl).toBeUndefined();
+    });
+
+    it("clears a Google-hosted picture without deleting the provider asset", async () => {
+      const app = await getTestApp();
+      deleteFilesCloudinaryMock.mockClear();
+      const imageUrl = "https://lh3.googleusercontent.com/a/avatar.png";
+      const user = await createValidUser("removegooglephoto", {
+        imageUrl,
+        imageSource: "google",
+      });
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/users/${user._id}/image`,
+        headers: { authorization: await tokenFor(user) },
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      expect(deleteFilesCloudinaryMock).not.toHaveBeenCalled();
+      expect(response.json().user.personalDetails.imageUrl).toBeUndefined();
+
+      const stored = await User.findById(user._id).lean();
+      expect(stored?.personalDetails.imageUrl).toBeUndefined();
+      expect(stored?.personalDetails.imageSource).toBe("removed");
     });
 
     it("leaves the stored image unchanged when remote deletion fails", async () => {

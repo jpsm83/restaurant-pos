@@ -236,6 +236,8 @@ describe("POST /api/v1/auth/google", () => {
     expect(stored?.personalDetails?.imageUrl).toBe(
       "https://lh3.googleusercontent.com/a/avatar.png",
     );
+    expect(stored?.personalDetails?.imageSource).toBe("google");
+    expect(stored?.personalDetails?.imageUpdatedAt).toBeInstanceOf(Date);
     expect(stored?.languagePreference).toBe("es");
 
     const profile = await app.inject({
@@ -464,6 +466,7 @@ describe("POST /api/v1/auth/google", () => {
       expect(stored?.personalDetails?.firstName).toBe("Existing");
       expect(stored?.personalDetails?.lastName).toBe("User");
       expect(stored?.personalDetails?.imageUrl).toBe(googleProfile.imageUrl);
+      expect(stored?.personalDetails?.imageSource).toBe("google");
       expect(stored?.languagePreference).toBe("es");
       expect(await User.countDocuments()).toBe(1);
     });
@@ -526,7 +529,35 @@ describe("POST /api/v1/auth/google", () => {
       expect(stored?.personalDetails?.firstName).toBe("Ada");
       expect(stored?.personalDetails?.lastName).toBe("User");
       expect(stored?.personalDetails?.imageUrl).toBe(googleProfile.imageUrl);
+      expect(stored?.personalDetails?.imageSource).toBe("google");
       expect(stored?.languagePreference).toBe("en");
+    });
+
+    it("does not restore a profile picture the person removed", async () => {
+      verifyGoogle.mockResolvedValue(googleProfile);
+      const existing = await User.create({
+        googleId: defaultIdentity.subject,
+        languagePreference: "en",
+        personalDetails: {
+          email: defaultIdentity.email,
+          password: await bcrypt.hash(password, 10),
+          emailVerified: true,
+          firstName: "Ada",
+          lastName: "Lovelace",
+          imageSource: "removed",
+        },
+      });
+
+      const response = await postGoogle(app, {
+        credential: "google-id-token",
+        intent: "signin",
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      expect(response.json().user.imageUrl).toBeUndefined();
+      const stored = await User.findById(existing._id).lean();
+      expect(stored?.personalDetails?.imageUrl).toBeUndefined();
+      expect(stored?.personalDetails?.imageSource).toBe("removed");
     });
 
     it("fills the language preference from the Google locale on a returning sign-in", async () => {

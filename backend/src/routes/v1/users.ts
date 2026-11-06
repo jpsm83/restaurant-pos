@@ -90,6 +90,8 @@ const CLIENT_PROFILE_PROJECTION = {
   googleId: 0,
   "personalDetails.password": 0,
   "personalDetails.emailVerified": 0,
+  "personalDetails.imageSource": 0,
+  "personalDetails.imageUpdatedAt": 0,
   verificationToken: 0,
   verificationTokenExpires: 0,
   verificationRequestedAt: 0,
@@ -181,11 +183,21 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
         throw notFound("User not found!");
       }
 
-      await deleteImage(userDoc.personalDetails?.imageUrl);
+      // A provider-hosted picture is not ours to delete; clearing the stored
+      // URL is enough. An uploaded asset is removed from Cloudinary first.
+      if (userDoc.personalDetails?.imageSource !== "google") {
+        await deleteImage(userDoc.personalDetails?.imageUrl);
+      }
 
       const updatedUser = await User.findOneAndUpdate(
         withSoftDeleteFilter({ _id: userId }),
-        { $unset: { "personalDetails.imageUrl": "" } },
+        {
+          $unset: { "personalDetails.imageUrl": "" },
+          $set: {
+            "personalDetails.imageSource": "removed",
+            "personalDetails.imageUpdatedAt": new Date(),
+          },
+        },
         {
           returnDocument: "after",
           lean: true,
@@ -300,9 +312,13 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
       if (imageFile && imageFile.buffer.length > 0) {
         const imageUrl = await uploadImage(`/users/${userId}`, imageFile);
 
-        await deleteImage(personalDetails.imageUrl);
+        if (personalDetails.imageSource !== "google") {
+          await deleteImage(personalDetails.imageUrl);
+        }
 
         update.set["personalDetails.imageUrl"] = imageUrl;
+        update.set["personalDetails.imageSource"] = "upload";
+        update.set["personalDetails.imageUpdatedAt"] = new Date();
       }
 
       const updateQuery: mongoose.UpdateQuery<Record<string, unknown>> = {};

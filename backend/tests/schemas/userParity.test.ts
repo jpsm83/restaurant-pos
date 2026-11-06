@@ -52,6 +52,8 @@ describe("user DTO ↔ model parity", () => {
   it("server-owned fields are on the model but in no DTO", () => {
     for (const field of [
       "imageUrl",
+      "imageSource",
+      "imageUpdatedAt",
       "emailVerified",
       "verificationToken",
       "verificationTokenExpires",
