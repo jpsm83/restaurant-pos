@@ -254,7 +254,7 @@ Third-party surfaces are themed through the same variables, in one place:
 - **Sonner:** `<Toaster theme={resolvedMode} />` in `main.tsx`; toast colours come from the theme tokens.
 - **Leaflet:** map, controls, and popups consume variables in `styles/third-party.css`; no raw colours in the map wrapper.
 - **react-day-picker:** styled through the shadcn `Calendar` wrapper and its tokens; do not give it a separate palette.
-- **Google sign-in:** keeps its mandated brand colours. This is the documented exception; do not use it as precedent for other widgets.
+- **Google sign-in:** keeps its mandated brand colours and the official GIS control. Render it full-width from a measured pixel width capped at Google's 400px maximum (`continue_with`, rectangular), never as an icon-only or custom proxy button. This is the documented exception; do not use it as precedent for other widgets.
 
 If a vendor widget cannot be themed with variables, use a wrapper in `ui-kit/`; do not fork the vendor CSS into feature code. A `vendor-overrides.css` layer keyed by `data-slot` is allowed only for a concrete, reviewed case that a wrapper cannot solve.
 

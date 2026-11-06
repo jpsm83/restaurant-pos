@@ -82,7 +82,7 @@ export default function LoginPage() {
   const handleGoogleFailure = (failure: ErrorFailure) => {
     if (failure.code === "googleAuth.accountNotFound") {
       setSubmitFailure(null);
-      toast.warning(resolveError(failure), {
+      toast.info(resolveError(failure), {
         action: {
           label: t("login.accountNotFoundAction"),
           onClick: () => navigate(signupHref),

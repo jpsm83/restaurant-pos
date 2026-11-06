@@ -11,6 +11,10 @@
  * overlay intercepts the click before Google opens and asks the form to
  * surface its acceptance validation. A stray credential attempt still refuses
  * to call the API for the same reason.
+ *
+ * The official GIS control is kept full-width inside the auth card by passing
+ * a measured pixel width (capped at Google's 400px maximum); it is never an
+ * icon-only or custom proxy button.
  */
 import { GoogleLogin } from "@react-oauth/google";
 import { useState } from "react";
@@ -19,6 +23,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { googleAuth, useAuthConfigQuery } from "@/auth/api";
 import { getGoogleClientId } from "@/auth/google";
+import { useGoogleControlWidth } from "@/auth/useGoogleControlWidth";
 import {
   getPostLoginDestination,
   getReturnToParam,
@@ -73,6 +78,7 @@ function EnabledGoogleAuthButton({
   const { dispatch } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const { data: authConfig } = useAuthConfigQuery();
+  const { containerRef, width } = useGoogleControlWidth();
   const canCreateAccount = intent === "signup";
   const requiresAcceptance = canCreateAccount && privacyAccepted !== true;
 
@@ -151,15 +157,16 @@ function EnabledGoogleAuthButton({
   };
 
   return (
-    <div className="flex justify-center items-center relative w-full">
+    <div ref={containerRef} className="relative w-full">
       <GoogleLogin
         onSuccess={(response) => void handleCredential(response.credential)}
         onError={handleError}
         useOneTap={false}
-        type="icon"
+        text="continue_with"
         theme="outline"
         size="large"
-        shape="circle"
+        shape="rectangular"
+        {...(width ? { width } : {})}
         {...(languagePreference ? { locale: languagePreference } : {})}
         containerProps={{
           "aria-busy": submitting,
