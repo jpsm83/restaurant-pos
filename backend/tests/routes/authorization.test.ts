@@ -114,6 +114,7 @@ const AUTHENTICATED_ROUTES: readonly string[] = [
   "PATCH /api/v1/reservations/:reservationId",
   "PATCH /api/v1/salesInstances/:salesInstanceId/transferSalesPoint",
   "PATCH /api/v1/users/:userId",
+  "POST /api/v1/auth/change-password",
   "POST /api/v1/auth/live-ticket",
   "POST /api/v1/auth/request-email-change",
   "POST /api/v1/auth/resend-email-confirmation",

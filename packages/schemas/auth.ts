@@ -97,6 +97,36 @@ export const requestPasswordResetBodySchema = z.strictObject({
   email: emailSchema,
 });
 
+/** The two re-authentication proofs an authenticated credential change accepts. */
+const reauthProofFields = {
+  currentPassword: z
+    .string({ error: "Current password is required." })
+    .min(1, "Current password is required.")
+    .optional(),
+  googleCredential: z
+    .string({ error: "Google credential is required." })
+    .trim()
+    .min(1, "Google credential is required.")
+    .optional(),
+};
+
+/** Exactly one of the current password or a Google credential must be sent. */
+function hasExactlyOneReauthProof(value: {
+  currentPassword?: string;
+  googleCredential?: string;
+}): boolean {
+  return (
+    Number(value.currentPassword !== undefined) +
+      Number(value.googleCredential !== undefined) ===
+    1
+  );
+}
+
+const EXACTLY_ONE_PROOF_ERROR = {
+  path: ["currentPassword"],
+  message: "Provide either the current password or a Google credential.",
+};
+
 /**
  * Authenticated sign-in email change request. A current password or a verified
  * Google ID token is the re-authentication proof; the new address is normalized
@@ -105,26 +135,29 @@ export const requestPasswordResetBodySchema = z.strictObject({
 export const requestEmailChangeBodySchema = z
   .strictObject({
     newEmail: emailSchema,
-    currentPassword: z
-      .string({ error: "Current password is required." })
-      .min(1, "Current password is required.")
-      .optional(),
-    googleCredential: z
-      .string({ error: "Google credential is required." })
-      .trim()
-      .min(1, "Google credential is required.")
-      .optional(),
+    ...reauthProofFields,
   })
-  .refine(
-    (value) =>
-      Number(value.currentPassword !== undefined) +
-        Number(value.googleCredential !== undefined) ===
-      1,
-    {
-      path: ["currentPassword"],
-      message: "Provide either the current password or a Google credential.",
-    },
-  );
+  .refine(hasExactlyOneReauthProof, EXACTLY_ONE_PROOF_ERROR);
+
+/**
+ * Authenticated password set/change. The new password is entered twice and must
+ * satisfy the shared policy; the confirmation match is checked here as well as
+ * in the form. A current password or a verified Google ID token is the single
+ * re-authentication proof.
+ */
+export const changePasswordBodySchema = z
+  .strictObject({
+    newPassword: passwordSchema,
+    confirmPassword: z
+      .string({ error: "Please confirm the new password." })
+      .min(1, "Please confirm the new password."),
+    ...reauthProofFields,
+  })
+  .refine((value) => value.newPassword === value.confirmPassword, {
+    path: ["confirmPassword"],
+    message: "Password and confirm password must match.",
+  })
+  .refine(hasExactlyOneReauthProof, EXACTLY_ONE_PROOF_ERROR);
 
 export const confirmEmailBodySchema = z.strictObject({
   token: z
@@ -169,6 +202,7 @@ export type RequestPasswordResetBody = z.infer<
 export type RequestEmailChangeBody = z.infer<
   typeof requestEmailChangeBodySchema
 >;
+export type ChangePasswordBody = z.infer<typeof changePasswordBodySchema>;
 export type ConfirmEmailBody = z.infer<typeof confirmEmailBodySchema>;
 export type ConfirmEmailChangeBody = z.infer<
   typeof confirmEmailChangeBodySchema

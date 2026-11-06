@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,10 +9,12 @@ import CustomerSecurityPage from "../CustomerSecurityPage";
 const mockGetUserProfile = vi.fn();
 const mockResend = vi.fn();
 const mockRequestEmailChange = vi.fn();
+const mockDispatch = vi.fn();
 const toastSuccess = vi.fn();
 
-const { mockResendPending } = vi.hoisted(() => ({
+const { mockResendPending, googleEnabled } = vi.hoisted(() => ({
   mockResendPending: { value: false },
+  googleEnabled: { value: true },
 }));
 
 vi.mock("@/auth/store/AuthContext", () => ({
@@ -24,10 +26,17 @@ vi.mock("@/auth/store/AuthContext", () => ({
         email: "u@test.local",
         type: "user",
         role: "Customer",
+        hasPassword: true,
+        hasGoogleIdentity: true,
       },
       error: null,
     },
+    dispatch: mockDispatch,
   }),
+}));
+
+vi.mock("@/auth/useGoogleSignInEnabled", () => ({
+  useGoogleSignInEnabled: () => googleEnabled.value,
 }));
 
 vi.mock("@/auth/api", () => ({
@@ -59,6 +68,45 @@ vi.mock("@/components/ChangeEmailDialog", () => ({
         <p>{currentEmail}</p>
         <p>Google {String(hasGoogleIdentity)}</p>
         <p>Password {String(hasPassword)}</p>
+      </div>
+    ) : null,
+}));
+
+vi.mock("@/components/ChangePasswordDialog", () => ({
+  ChangePasswordDialog: ({
+    open,
+    hasGoogleIdentity,
+    hasPassword,
+    onOpenChange,
+    onChanged,
+  }: {
+    open: boolean;
+    hasGoogleIdentity?: boolean;
+    hasPassword?: boolean;
+    onOpenChange: (open: boolean) => void;
+    onChanged: (user: unknown) => void;
+  }) =>
+    open ? (
+      <div role="dialog" aria-label="Change password">
+        <p>Password {String(hasPassword)}</p>
+        <p>Google {String(hasGoogleIdentity)}</p>
+        <button
+          type="button"
+          onClick={() =>
+            onChanged({
+              id: "u1",
+              email: "u@test.local",
+              type: "user",
+              role: "Customer",
+              hasPassword: true,
+            })
+          }
+        >
+          Complete password change
+        </button>
+        <button type="button" onClick={() => onOpenChange(false)}>
+          Dismiss
+        </button>
       </div>
     ) : null,
 }));
@@ -104,9 +152,11 @@ function renderPage(language?: "en" | "es") {
 describe("CustomerSecurityPage", () => {
   beforeEach(() => {
     mockResendPending.value = false;
+    googleEnabled.value = true;
     mockGetUserProfile.mockReset();
     mockResend.mockReset();
     mockRequestEmailChange.mockReset();
+    mockDispatch.mockReset();
     toastSuccess.mockReset();
     mockGetUserProfile.mockResolvedValue({ ok: true, data: profile });
   });
@@ -139,8 +189,13 @@ describe("CustomerSecurityPage", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("Email verified")).toBeInTheDocument();
-    expect(screen.getByText("Password")).toBeInTheDocument();
-    expect(screen.getByText("Google identity")).toBeInTheDocument();
+    const factsSection = screen
+      .getByText("Account facts")
+      .closest("section") as HTMLElement;
+    expect(within(factsSection).getByText("Password")).toBeInTheDocument();
+    expect(
+      within(factsSection).getByText("Google identity"),
+    ).toBeInTheDocument();
     expect(
       screen.getByText("Email change pending").parentElement,
     ).toHaveTextContent("No");
@@ -242,6 +297,123 @@ describe("CustomerSecurityPage", () => {
     ).toBeInTheDocument();
     expect(document.body.textContent).not.toContain(
       "pending-address@test.com",
+    );
+  });
+
+  it("opens the password flow for a password User", async () => {
+    const user = userEvent.setup();
+    await renderPage();
+
+    await screen.findByLabelText("Sign-in email");
+    await user.click(screen.getByRole("button", { name: "Change password" }));
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Change password",
+    });
+    expect(dialog).toHaveTextContent("Password true");
+    expect(dialog).toHaveTextContent("Google true");
+  });
+
+  it("offers a set-password flow to a Google-only User when Google is available", async () => {
+    mockGetUserProfile.mockResolvedValue({
+      ok: true,
+      data: {
+        ...profile,
+        accountStatus: {
+          ...accountStatus,
+          hasPassword: false,
+          hasGoogleIdentity: true,
+        },
+      },
+    });
+
+    await renderPage();
+
+    expect(
+      await screen.findByRole("button", { name: "Set password" }),
+    ).toBeInTheDocument();
+  });
+
+  it("points to the password-reset flow when no proof is available", async () => {
+    mockGetUserProfile.mockResolvedValue({
+      ok: true,
+      data: {
+        ...profile,
+        accountStatus: {
+          ...accountStatus,
+          hasPassword: false,
+          hasGoogleIdentity: false,
+        },
+      },
+    });
+
+    await renderPage();
+
+    const resetLink = await screen.findByRole("link", {
+      name: "Set a password with the password-reset flow",
+    });
+    expect(resetLink).toHaveAttribute("href", "/forgot-password");
+    expect(
+      screen.queryByRole("button", { name: "Set password" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("points to the password-reset flow for a Google-only User when Google sign-in is unavailable", async () => {
+    googleEnabled.value = false;
+    mockGetUserProfile.mockResolvedValue({
+      ok: true,
+      data: {
+        ...profile,
+        accountStatus: {
+          ...accountStatus,
+          hasPassword: false,
+          hasGoogleIdentity: true,
+        },
+      },
+    });
+
+    await renderPage();
+
+    expect(
+      await screen.findByRole("link", {
+        name: "Set a password with the password-reset flow",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Set password" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("updates the session password state after a successful change", async () => {
+    const user = userEvent.setup();
+    mockGetUserProfile.mockResolvedValue({
+      ok: true,
+      data: {
+        ...profile,
+        accountStatus: { ...accountStatus, hasPassword: false },
+      },
+    });
+
+    await renderPage();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Set password" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Complete password change" }),
+    );
+
+    expect(mockDispatch).toHaveBeenCalledWith({
+      type: "AUTH_SUCCESS",
+      payload: expect.objectContaining({ hasPassword: true }),
+    });
+    expect(toastSuccess).toHaveBeenCalledWith("Your password has been updated.");
+
+    const factsSection = screen
+      .getByText("Account facts")
+      .closest("section") as HTMLElement;
+    expect(within(factsSection).getByText("Password").parentElement).toHaveTextContent(
+      "Yes",
     );
   });
 

@@ -146,6 +146,18 @@ const OVERRIDES: Partial<Record<ServiceErrorCode, ErrorCopyTemplate>> = {
     namespace: "auth",
     key: "api.emailInUse",
   },
+  "passwordChange.unauthorized": {
+    namespace: "auth",
+    key: "api.signInRequired",
+  },
+  "passwordChange.internal": {
+    namespace: "auth",
+    key: "api.passwordChangeFailed",
+  },
+  "passwordChange.transport": {
+    namespace: "auth",
+    key: "api.passwordChangeFailed",
+  },
   "passwordReset.validation": {
     namespace: "auth",
     key: "api.invalidResetLink",

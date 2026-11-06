@@ -99,6 +99,35 @@
       "notConnected": "Google no conectado",
       "description": "Esto indica si hay una cuenta de Google vinculada a tu perfil. Aquí solo se puede consultar."
     },
+    "password": {
+      "title": "Contraseña",
+      "description": "Usa una contraseña segura que no uses en ningún otro sitio.",
+      "setDescription": "Define una contraseña para poder iniciar sesión también con tu correo.",
+      "actionChange": "Cambiar contraseña",
+      "actionSet": "Definir contraseña",
+      "dialogTitle": "Cambiar contraseña",
+      "dialogTitleSet": "Definir contraseña",
+      "dialogDescription": "Introduce la contraseña nueva dos veces. Confirma que eres tú con tu contraseña actual o tu cuenta de Google vinculada.",
+      "newPasswordLabel": "Contraseña nueva",
+      "confirmPasswordLabel": "Confirmar contraseña nueva",
+      "currentPasswordLabel": "Contraseña actual",
+      "passwordAlternative": "O confirma con tu contraseña actual",
+      "submitChange": "Actualizar contraseña",
+      "submitSet": "Definir contraseña",
+      "submitting": "Guardando…",
+      "cancel": "Cancelar",
+      "success": "Tu contraseña se ha actualizado.",
+      "resetPrompt": "El acceso con Google no está disponible y esta cuenta no tiene contraseña.",
+      "resetAction": "Define una contraseña con el flujo de restablecimiento",
+      "errors": {
+        "required": "Introduce y confirma la contraseña nueva.",
+        "passwordRequired": "Introduce tu contraseña actual.",
+        "passwordPolicy": "La contraseña debe tener al menos 8 caracteres e incluir una letra minúscula, una mayúscula, un número y un símbolo.",
+        "passwordMismatch": "La contraseña y su confirmación deben coincidir.",
+        "currentPasswordIncorrect": "Tu contraseña actual no es correcta.",
+        "googleReauthFailed": "No pudimos verificar esa cuenta de Google. Usa la cuenta de Google vinculada a este perfil e inténtalo de nuevo."
+      }
+    },
     "facts": {
       "title": "Datos de la cuenta",
       "createdAt": "Cuenta creada",

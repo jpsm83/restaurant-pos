@@ -398,6 +398,35 @@ export async function requestEmailChange(
   );
 }
 
+export type PasswordChangeReauth =
+  | { currentPassword: string }
+  | { googleCredential: string };
+
+/**
+ * Authenticated: set or change the password. The current password or a verified
+ * Google credential re-authenticates the User; every other refresh session is
+ * revoked while the presented session stays signed in and gains a password.
+ */
+export async function changePassword(
+  newPassword: string,
+  confirmPassword: string,
+  reauth: PasswordChangeReauth,
+) {
+  const result = await authRequest<{
+    message?: string;
+    user?: AuthSession;
+  }>("passwordChange", "/api/v1/auth/change-password", {
+    method: "POST",
+    body: JSON.stringify({ newPassword, confirmPassword, ...reauth }),
+  });
+
+  if (result.ok) {
+    return { ok: true as const, data: result.data?.user ?? null };
+  }
+
+  return result;
+}
+
 /**
  * Unauthenticated: consume the pending sign-in email-change **token** from the
  * emailed link (one-time). On success the server revokes existing sessions, so

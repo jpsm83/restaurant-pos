@@ -8,11 +8,14 @@
  */
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { getUserProfile } from "@/auth/api";
 import { useAuth } from "@/auth/store/AuthContext";
-import type { UserProfile } from "@/auth/types";
+import type { AuthSession, UserProfile } from "@/auth/types";
+import { useGoogleSignInEnabled } from "@/auth/useGoogleSignInEnabled";
 import { ChangeEmailDialog } from "@/components/ChangeEmailDialog";
+import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,7 +42,8 @@ export default function CustomerSecurityPage() {
   const { t } = useTranslation("customer");
   const resolveError = useErrorMessage();
   const formatting = useFormatting();
-  const { state } = useAuth();
+  const { state, dispatch } = useAuth();
+  const googleSignInEnabled = useGoogleSignInEnabled();
   const { resend, pending: resendPending } = useResendEmailConfirmation({
     successMessage: t("profile.emailVerify.resendSuccess"),
   });
@@ -59,6 +63,7 @@ export default function CustomerSecurityPage() {
   const [changeEmailMessage, setChangeEmailMessage] = useState<string | null>(
     null,
   );
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -84,6 +89,10 @@ export default function CustomerSecurityPage() {
   const notRecorded = t("security.values.notRecorded");
   const yes = t("security.values.yes");
   const no = t("security.values.no");
+  const hasPassword = status?.hasPassword === true;
+  const hasGoogleIdentity = status?.hasGoogleIdentity === true;
+  const canReauthenticate =
+    hasPassword || (hasGoogleIdentity && googleSignInEnabled);
 
   const facts = status
     ? [
@@ -145,6 +154,21 @@ export default function CustomerSecurityPage() {
         },
       ]
     : [];
+
+  function handlePasswordChanged(user: AuthSession | null) {
+    const nextUser =
+      user ?? (sessionUser ? { ...sessionUser, hasPassword: true } : null);
+    if (nextUser) dispatch({ type: "AUTH_SUCCESS", payload: nextUser });
+    setProfile((current) =>
+      current?.accountStatus
+        ? {
+            ...current,
+            accountStatus: { ...current.accountStatus, hasPassword: true },
+          }
+        : current,
+    );
+    toast.success(t("security.password.success"));
+  }
 
   return (
     <main className="flex min-h-0 flex-1 flex-col p-6">
@@ -251,6 +275,38 @@ export default function CustomerSecurityPage() {
             </p>
           </section>
 
+          <section className="space-y-2">
+            <h2 className="text-base font-semibold text-foreground">
+              {t("security.password.title")}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {hasPassword
+                ? t("security.password.description")
+                : t("security.password.setDescription")}
+            </p>
+            {canReauthenticate ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setChangePasswordOpen(true)}
+              >
+                {hasPassword
+                  ? t("security.password.actionChange")
+                  : t("security.password.actionSet")}
+              </Button>
+            ) : (
+              <p className="text-sm text-muted-foreground" role="status">
+                {t("security.password.resetPrompt")}{" "}
+                <Link
+                  to="/forgot-password"
+                  className="font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  {t("security.password.resetAction")}
+                </Link>
+              </p>
+            )}
+          </section>
+
           <section className="space-y-3">
             <h2 className="text-base font-semibold text-foreground">
               {t("security.facts.title")}
@@ -282,6 +338,14 @@ export default function CustomerSecurityPage() {
           setChangeEmailMessage(message);
           if (outcome === "sent") toast.success(message);
         }}
+      />
+
+      <ChangePasswordDialog
+        open={changePasswordOpen}
+        hasGoogleIdentity={hasGoogleIdentity}
+        hasPassword={hasPassword}
+        onOpenChange={setChangePasswordOpen}
+        onChanged={handlePasswordChanged}
       />
     </main>
   );

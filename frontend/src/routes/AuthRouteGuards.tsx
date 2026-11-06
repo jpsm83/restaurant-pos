@@ -19,10 +19,11 @@
  * - Retired `/employee/*` URLs are compatibility redirects (`routes/EmployeeRedirects.tsx`).
  *
  * ## Wiring (`appRoutes.tsx`)
- * - Public routes: `PublicOnlyRoute` on `/login`, `/signup`, `/forgot-password`
- *   — if already authenticated, redirect via `getPostLoginDestination` and any safe `returnTo`
- *   query parameter (auth/postLoginRedirect.ts). `/reset-password` and `/confirm-email` stay
- *   reachable with an existing session (email links).
+ * - Public routes: `PublicOnlyRoute` on `/login` and `/signup` — if already
+ *   authenticated, redirect via `getPostLoginDestination` and any safe `returnTo`
+ *   query parameter (auth/postLoginRedirect.ts). `/forgot-password`,
+ *   `/reset-password`, and `/confirm-email` stay reachable with an existing
+ *   session so recovery links and the Security page's reset fallback work.
  * - `ProtectedRoute` sends anonymous visitors to `/login?returnTo=…` so the shared auth entry
  *   can restore the page that required identity.
  * - `/business/:businessId/*` → `BusinessRouteShell` + `BusinessLayout`.

@@ -232,6 +232,28 @@ export async function revokeAllRefreshSessionsForUser(
   );
 }
 
+/**
+ * Revoke every stored refresh session for one User except the presented one.
+ * Used by a password change so other devices sign out while the device that
+ * made the change stays signed in.
+ */
+export async function revokeOtherRefreshSessionsForUser(
+  userId: string,
+  keepSessionId: string,
+): Promise<void> {
+  if (!Types.ObjectId.isValid(userId) || !Types.ObjectId.isValid(keepSessionId)) {
+    return;
+  }
+  await RefreshSession.updateMany(
+    {
+      accountId: userId,
+      accountType: "user",
+      _id: { $ne: keepSessionId },
+    },
+    { $set: { revoked: true } },
+  );
+}
+
 export async function buildAuthUserSessionFromUserId(
   userId: string,
   mode: AuthMode = "customer",

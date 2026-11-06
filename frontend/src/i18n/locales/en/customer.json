@@ -99,6 +99,35 @@
       "notConnected": "Google not connected",
       "description": "This shows whether a Google account is linked to your profile. It is read-only here."
     },
+    "password": {
+      "title": "Password",
+      "description": "Use a strong password you do not use anywhere else.",
+      "setDescription": "Set a password so you can also sign in with your email address.",
+      "actionChange": "Change password",
+      "actionSet": "Set password",
+      "dialogTitle": "Change password",
+      "dialogTitleSet": "Set password",
+      "dialogDescription": "Enter the new password twice. Confirm it's you with your current password or linked Google account.",
+      "newPasswordLabel": "New password",
+      "confirmPasswordLabel": "Confirm new password",
+      "currentPasswordLabel": "Current password",
+      "passwordAlternative": "Or confirm with your current password",
+      "submitChange": "Update password",
+      "submitSet": "Set password",
+      "submitting": "Saving…",
+      "cancel": "Cancel",
+      "success": "Your password has been updated.",
+      "resetPrompt": "Google sign-in is unavailable and this account has no password.",
+      "resetAction": "Set a password with the password-reset flow",
+      "errors": {
+        "required": "Enter and confirm the new password.",
+        "passwordRequired": "Enter your current password.",
+        "passwordPolicy": "Password must be at least 8 characters and include a lowercase letter, an uppercase letter, a number, and a symbol.",
+        "passwordMismatch": "Password and confirm password must match.",
+        "currentPasswordIncorrect": "Your current password is incorrect.",
+        "googleReauthFailed": "We couldn't verify that Google account. Use the Google account linked to this profile and try again."
+      }
+    },
     "facts": {
       "title": "Account facts",
       "createdAt": "Account created",

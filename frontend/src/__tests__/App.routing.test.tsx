@@ -377,6 +377,32 @@ describe("App public routing (Phase 1.5.1)", () => {
     ).toBeInTheDocument();
   });
 
+  it("keeps the forgot-password flow reachable for a signed-in User", async () => {
+    mockUseAuth.mockReturnValue({
+      state: {
+        user: {
+          id: "u1",
+          email: "u@test.local",
+          type: "user",
+          role: "Customer",
+        },
+        status: "authenticated",
+        error: null,
+      },
+      dispatch: vi.fn(),
+    });
+
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/forgot-password"]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: /^forgot password$/i }),
+    ).toBeInTheDocument();
+  });
+
   it("renders ResetPasswordPage for `/reset-password`", async () => {
     await renderWithI18n(
       <MemoryRouter initialEntries={["/reset-password"]}>

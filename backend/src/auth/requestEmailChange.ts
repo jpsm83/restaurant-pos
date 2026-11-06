@@ -15,7 +15,8 @@ import {
   recordEmailChangeAudit,
   type EmailChangeAuditOutcome,
 } from "./emailChangeAuditLog.ts";
-import { GoogleCredentialError, type GoogleVerifier } from "./google.ts";
+import { matchesLinkedGoogleIdentity } from "./googleReauth.ts";
+import type { GoogleVerifier } from "./google.ts";
 import { normalizeRequestEmail } from "./requestEmailConfirmation.ts";
 import {
   claimRequestCooldown,
@@ -240,32 +241,6 @@ export async function handleRequestEmailChange(
   });
 
   return { kind: "success_200", message: EMAIL_CHANGE_REQUESTED_MESSAGE };
-}
-
-/**
- * A verified Google credential re-authenticates only when it resolves to the
- * exact Google subject already linked to this User.
- */
-async function matchesLinkedGoogleIdentity(
-  linkedSubject: unknown,
-  credential: string,
-  verifier: GoogleVerifier | null | undefined,
-): Promise<boolean> {
-  if (
-    typeof linkedSubject !== "string" ||
-    !linkedSubject ||
-    !verifier
-  ) {
-    return false;
-  }
-
-  try {
-    const identity = await verifier(credential);
-    return identity.subject === linkedSubject;
-  } catch (error) {
-    if (error instanceof GoogleCredentialError) return false;
-    throw error;
-  }
 }
 
 /** Restores the pending fields captured before a request, clearing those unset then. */

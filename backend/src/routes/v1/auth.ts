@@ -47,6 +47,10 @@ import type { GoogleVerifier } from "../../auth/google.ts";
 import { handleGoogleAuth } from "../../auth/googleSignIn.ts";
 import { sendAccountExistsEmail } from "../../auth/accountExistsEmail.ts";
 import { handleRequestEmailChange } from "../../auth/requestEmailChange.ts";
+import {
+  CHANGE_PASSWORD_SUCCESS_MESSAGE,
+  handleChangePassword,
+} from "../../auth/changePassword.ts";
 import { handleRequestPasswordReset } from "../../auth/requestPasswordReset.ts";
 import { handleResendEmailConfirmationForAuthenticatedAccount } from "../../auth/resendEmailConfirmation.ts";
 import { sendSignInConfirmationEmail } from "../../auth/signInConfirmationEmail.ts";
@@ -67,6 +71,7 @@ import type {
 } from "restaurant-pos-packages/interfaces/IAuth";
 import { readAccessibleVenues } from "../../access/accessibleVenues.ts";
 import {
+  changePasswordBodySchema,
   confirmEmailBodySchema,
   confirmEmailChangeBodySchema,
   googleAuthBodySchema,
@@ -77,6 +82,7 @@ import {
   resetPasswordBodySchema,
   setModeBodySchema,
   signupBodySchema,
+  type ChangePasswordBody,
   type ConfirmEmailBody,
   type ConfirmEmailChangeBody,
   type GoogleAuthBody,
@@ -442,6 +448,70 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
       }
 
       return reply.code(200).send({ message: result.message });
+    },
+  );
+
+  /**
+   * POST /auth/change-password
+   * Authenticated User: set or change the password after re-authenticating with
+   * the current password or a linked Google identity. The presented session
+   * stays usable; every other refresh session is revoked.
+   */
+  app.post<{ Body: ChangePasswordBody }>(
+    "/change-password",
+    { schema: { body: changePasswordBodySchema } },
+    async (req, reply) => {
+      const authHeader = req.headers.authorization;
+
+      if (!authHeader?.startsWith("Bearer ")) {
+        throw unauthorized("No access token provided");
+      }
+
+      const live = await requireLiveAccessSessionWithRefreshId(
+        app,
+        authHeader.slice(7),
+      );
+      const result = await handleChangePassword(
+        live.session,
+        live.sessionId,
+        {
+          newPassword: req.body.newPassword,
+          currentPassword: req.body.currentPassword,
+          googleCredential: req.body.googleCredential,
+        },
+        { googleVerifier },
+      );
+
+      if (result.kind === "account_not_found") {
+        throw unauthorized("Account not found.");
+      }
+      if (result.kind === "invalid_password") {
+        throw badRequest("Current password is incorrect.", [
+          {
+            path: "currentPassword",
+            message: "Current password is incorrect.",
+          },
+        ]);
+      }
+      if (result.kind === "invalid_google_credential") {
+        throw badRequest("Google re-authentication failed.", [
+          {
+            path: "googleCredential",
+            message: "Google re-authentication failed.",
+          },
+        ]);
+      }
+
+      const mode = await readRefreshSessionMode(live.sessionId);
+      const freshUser = await buildAuthUserSessionFromUserId(
+        live.session.id,
+        mode,
+      );
+
+      return reply.code(200).send({
+        message: CHANGE_PASSWORD_SUCCESS_MESSAGE,
+        user: freshUser,
+      });
     },
   );
 

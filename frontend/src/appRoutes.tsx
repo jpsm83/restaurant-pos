@@ -243,17 +243,11 @@ export function AppRoutes() {
 
           {/**
            * Email / recovery flows: no `PublicLayout` footer; global navbar omitted via `AppRootShell`.
-           * Reset + confirm must work even when a session cookie exists.
+           * Forgot, reset, and confirm must work even when a session cookie exists,
+           * so the Security page's no-proof fallback can reach the reset flow.
            */}
           <Route element={<RecoveryLayout />}>
-            <Route
-              path="forgot-password"
-              element={
-                <PublicOnlyRoute>
-                  <ForgotPasswordPage />
-                </PublicOnlyRoute>
-              }
-            />
+            <Route path="forgot-password" element={<ForgotPasswordPage />} />
             <Route path="reset-password" element={<ResetPasswordPage />} />
             <Route path="confirm-email" element={<ConfirmEmailPage />} />
             <Route
