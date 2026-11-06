@@ -196,7 +196,6 @@ function renderBusinessLayout(
         <Route path="/business/:businessId" element={<BusinessLayout />}>
           <Route path="dashboard" element={<div>Business Outlet</div>} />
           <Route path="company" element={<div>Company page</div>} />
-          <Route path="notifications" element={<div>Notifications page</div>} />
         </Route>
         <Route path="/dashboard" element={<div>Customer dashboard</div>} />
       </Routes>

@@ -8,8 +8,8 @@
  *
  * ## Flow
  * **Sidebar** + **`SidebarInset`** ( **`SidebarProvider`** is in **`main.tsx`**). **`<Outlet />`**
- * renders the account destinations built in this slice. Later slices add their own entries;
- * no inert placeholders belong here.
+ * renders the account destinations. **Orders** is the approved placeholder until the
+ * order-history surface ships; any other entry must be a built destination.
  *
  * Folder overview: see `PublicLayout.tsx` module doc for how layouts relate.
  */

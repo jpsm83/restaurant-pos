@@ -18,9 +18,8 @@
  * - `appRoutes.tsx` — route declarations and legacy `/:userId/...` redirect targets.
  * - `context/AuthModeContext.tsx` — `isModeScopedPath` enables the stored-mode query.
  * - `components/AccountMenuPopover.tsx` — the Account entry point.
- * - `layouts/CustomerAccountLayout.tsx` — the global account sidebar.
- * - `layouts/CustomerLayout.tsx`, `layouts/CustomerAccountLayout.tsx`,
- *   `layouts/BusinessLayout.tsx`.
+ * - `layouts/CustomerLayout.tsx`, `layouts/CustomerAccountLayout.tsx` (the global account
+ *   sidebar), `layouts/BusinessLayout.tsx`.
  * - `pages/SelectUserModePage.tsx` — Customer dashboard or the first enterable venue after selection.
  * - `routes/EmployeeRedirects.tsx` — retired employee URLs.
  *
