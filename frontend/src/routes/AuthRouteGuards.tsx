@@ -11,10 +11,11 @@
  *   requires the venue in the accessible-venue list with `canEnterBusiness`, switches an eligible
  *   Customer-mode deep link to Business, and redirects ineligible visits to the Customer dashboard
  *   with a localized explanation.
- * - Customer and account areas = `CustomerRouteShell` = `ProtectedRoute` → `CustomerModeGuard`.
+ * - Customer area = `CustomerRouteShell` = `ProtectedRoute` → `CustomerModeGuard`.
  *   These destinations always render; a stored Business mode is reconciled to Customer, with a
- *   localized notice when reconciliation fails. `/account/preferences` is the exception: it is
- *   user-scoped and wrapped only by `ProtectedRoute`, so it never touches the stored mode.
+ *   localized notice when reconciliation fails.
+ * - The account area is the single global User surface (ADR-0018): it is wrapped only by
+ *   `ProtectedRoute`, so every destination opens from either mode without touching the stored mode.
  * - Retired `/employee/*` URLs are compatibility redirects (`routes/EmployeeRedirects.tsx`).
  *
  * ## Wiring (`appRoutes.tsx`)
@@ -27,10 +28,10 @@
  * - `/business/:businessId/*` → `BusinessRouteShell` + `BusinessLayout`.
  * - `/mode` → `ProtectedRoute` + mode page.
  * - `/dashboard`, `/favorites` → `CustomerRouteShell` + `CustomerLayout`.
- * - `/account/*` → `CustomerRouteShell` + `CustomerAccountLayout`; `/profile` redirects to
- *   `/account/profile`. `/account/preferences` is the exception: it is protected but uses
- *   `CustomerAccountLayout` without the Customer-mode guard, because Business **Me** opens
- *   it and entering it must leave the stored mode unchanged.
+ * - `/account/*` → `ProtectedRoute` + `CustomerAccountLayout`; `/profile` redirects to
+ *   `/account/profile`. Every account destination is mode-agnostic and leaves the stored mode
+ *   unchanged (ADR-0018).
+ * - `/business/:businessId/notifications` → `ProtectedRoute` redirect to `/account/notifications`.
  * - `/employee/*` → `ProtectedRoute` + compatibility redirects (no employee shell).
  * - Legacy `/:userId/...` URLs redirect in `appRoutes.tsx` (ADR-0013).
  *

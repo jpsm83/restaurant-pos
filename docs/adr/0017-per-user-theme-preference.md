@@ -57,3 +57,7 @@ A grill settled a single account-scoped Preferences page for both language and a
 - The ADR-0010 deferral of "server-side theme preference sync".
 
 It does not change ADR-0010's token, registry, contrast, marketing, or shadcn architecture. Per-Business and per-Owner theming, a brand-theme picker, and user-selectable brand themes remain deferred.
+
+## Amendment (2026-11-06)
+
+ADR-0018 removes the Business **Me** group. Preferences therefore stays reachable from the avatar menu and the global account sidebar, and no longer from Business Me; the rest of this ADR is unchanged.

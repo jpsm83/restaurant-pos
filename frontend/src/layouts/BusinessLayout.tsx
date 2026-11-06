@@ -6,11 +6,9 @@
  * ## Flow
  * **`SidebarProvider`** wraps routed content in **`main.tsx`**. This layout adds **Sidebar** +
  * **main column** (same flex role as shadcn `SidebarInset`, but a **`div`** so child pages may use `<main>`); **`<Outlet />`** (in **`Suspense`**) renders tenant pages in the main
- * column (`dashboard`, `people`, `company`, `notifications`,
- * `settings/profile`, `settings/address`, `settings/open-hours`,
- * `settings/delivery`, `settings/metrics`). The Me group holds self-only destinations:
- * Notifications and Preferences. Both link to user-scoped pages; Preferences uses the
- * shared account URL so it never changes the stored mode.
+ * column (`dashboard`, `people`, `company`, `settings/profile`, `settings/address`,
+ * `settings/open-hours`, `settings/delivery`, `settings/metrics`). Business has no
+ * Me group: self-only destinations live on the global account surface (ADR-0018).
  * When the accessible-venue list has more than one enterable venue the layout renders
  * horizontal **venue tabs** above the routed content; owned venues also carry **Owner chrome**
  * (**Add venue** and **Company**). The sidebar footer carries the minimal
@@ -39,13 +37,10 @@ import { useLocation } from "react-router-dom";
 import {
   ArrowLeft,
   BarChart3,
-  Bell,
   Clock,
   LayoutDashboard,
   Settings,
-  SlidersHorizontal,
   Truck,
-  User as UserIcon,
   Users,
 } from "lucide-react";
 import { useAuthModeNavigation } from "@/hooks/useAuthModeNavigation";
@@ -61,9 +56,7 @@ import {
   useBusinessAccessSnapshotQuery,
 } from "@/services/employees/employeesService";
 import {
-  canonicalAccountPreferencesPath,
   canonicalBusinessDashboardRoutePath,
-  canonicalBusinessNotificationsPath,
   canonicalBusinessPeoplePath,
   canonicalBusinessSettingsDeliveryPath,
   canonicalBusinessSettingsMetricsPath,
@@ -108,8 +101,6 @@ export default function BusinessLayout() {
   const openHoursTo = canonicalBusinessSettingsOpenHoursPath(businessId);
   const deliveryTo = canonicalBusinessSettingsDeliveryPath(businessId);
   const metricsTo = canonicalBusinessSettingsMetricsPath(businessId);
-  const notificationsTo = canonicalBusinessNotificationsPath(businessId);
-  const preferencesTo = canonicalAccountPreferencesPath();
   // Owner access is admin-equivalent even when the snapshot omits a layer.
   const canManage =
     canManageVenue(accessQuery.data) || canAdministerVenue(accessQuery.data);
@@ -167,24 +158,6 @@ export default function BusinessLayout() {
           },
         ]
       : []),
-    {
-      key: "me-notifications",
-      label: t("business.notifications"),
-      to: notificationsTo,
-      icon: Bell,
-      isActive: pathname === notificationsTo,
-      groupName: t("business.me"),
-      groupIcon: UserIcon,
-    },
-    {
-      key: "me-preferences",
-      label: t("account.preferences"),
-      to: preferencesTo,
-      icon: SlidersHorizontal,
-      isActive: pathname === preferencesTo,
-      groupName: t("business.me"),
-      groupIcon: UserIcon,
-    },
   ];
 
   return (

@@ -21,7 +21,7 @@ It deliberately does **not** cover:
 - the global **User**, credentials, sessions, ownership transfer, favorites, or account lifecycle — the users subject owns those. This subject supplies the layer and capability rules mode eligibility and chrome consume.
 - **staff multi-session**, personal or venue-provided staff devices with **one User per browser session**, and the exclusion of shared login, PIN, quick-switch, and in-app lock identity — the staff-sessions subject. Layers and capabilities always apply to the **signed-in User** on that person's own session; there is no shared actor on one session.
 - the **Employee** membership record itself — hire, HR, pay, vacation, termination, rehire, and storing job roles on the membership — the employees subject owns that. This subject reads those roles and owns how they map to layers and capabilities.
-- **navigation chrome** — Customer | Business toggle, Service / Manage / Me, guards, and destinations — the user-navigation subject owns those surfaces; this subject states which effective layer and capabilities make them available.
+- **navigation chrome** — Customer | Business toggle, Service / Manage, the global account area, guards, and destinations — the user-navigation subject owns those surfaces; this subject states which effective layer and capabilities make them available.
 - the **daily schedule** and which job role a working shift carries — the schedules subject owns that; this subject consumes the shift role for effective layer and active capabilities.
 - **attendance** (on duty, late sign-in and early sign-out approval, QR) — the time-control subject owns those.
 - **feature behaviour** inside each gated power (voiding an order, closing a report, editing stock) — each feature subject owns behaviour and restates who may act; this subject owns the shared layer/capability vocabulary and the authoritative capability catalogue index.
@@ -49,7 +49,7 @@ This subject introduces **no new persistent tenant entity**. Access facts live o
 - **Platform capability catalogue** — the closed list of named capabilities this subject indexes. Feature subjects own how each power behaves; new capabilities are added to this catalogue when a feature subject introduces them.
 - **Plan entitlement gate** — whether the Owner's subscription plan unlocks a feature for the venue at all. Evaluated **after** the feature-flag gate (feature-flags subject) and **before** layer defaults and capabilities.
 
-Terms reused rather than redefined here: **User**, **Owner**, **Business**, **Employee** (membership), **job role**, **working shift**, **entry window**, **mode** (Customer | Business), **Service**, **Manage**, **Me**, **Suspended**, **Terminated**, soft delete, and **feature-flag gate**.
+Terms reused rather than redefined here: **User**, **Owner**, **Business**, **Employee** (membership), **job role**, **working shift**, **entry window**, **mode** (Customer | Business), **Service**, **Manage**, **account area**, **Suspended**, **Terminated**, soft delete, and **feature-flag gate**.
 
 ---
 
@@ -72,7 +72,7 @@ Ordered for business memberships **admin > manager > supervisor > employee**. **
 | Layer | Meaning |
 | --- | --- |
 | **Customer** | Every User. Public Customer surface; never a membership layer. |
-| **Employee** | Floor and self-service staff. **Schedule-gated** Business entry. Default Service is **POS**, **Attendance** for **own** scan-in and sign-out (plus **Me**); other Service destinations and elevated ops need catalogue grants (or a job-role entitlement such as Host). A late scan-in still waits for manager acceptance (time-control). **No Manage.** |
+| **Employee** | Floor and self-service staff. **Schedule-gated** Business entry. Default Service is **POS** and **Attendance** for **own** scan-in and sign-out; other Service destinations and elevated ops need catalogue grants (or a job-role entitlement such as Host). A late scan-in still waits for manager acceptance (time-control). **No Manage.** |
 | **Supervisor** | Floor lead. **Schedule-gated** Business entry (same entry window as employee). **No Manage.** **Full Service** by default (POS, Host, prep screens, expo screen, handoff screen, customer pickup board, recall before `Delivered`, Attendance for **own** scan-in and sign-out, **Counts** for physical count / count re-edit, **Cash-out** for approving another wallet and house paid-in/out) and **print permission**. Does **not** present the venue daily attendance QR (manager+ only — time-control subject). Further powers only via catalogue grant/revoke. |
 | **Manager** | Day-to-day administration and operations. **Always** may enter Business (not schedule-gated) when effective manager. **Manage** header and full Service by default. Assigns access for layers below manager. |
 | **Admin** | Full venue control, including ownership-adjacent acts the feature subjects reserve for admin/owner. **Always** may enter Business when effective admin. **Manage** and full Service. The owning user has **Owner access** (admin-equivalent within plan entitlements) at every venue they own **with or without** an Employee membership (users subject). |
@@ -205,7 +205,7 @@ An ordinary employee or supervisor may see their own job roles and that they hol
 | Layer | Powers on this subject |
 | --- | --- |
 | **Customer** | No venue access configuration. |
-| **Employee** | Uses Business under schedule gate; POS, Attendance (own scan-in and sign-out), and Me by default; catalogue grants only when bound and active. |
+| **Employee** | Uses Business under schedule gate; POS and Attendance (own scan-in and sign-out) by default; catalogue grants only when bound and active. |
 | **Supervisor** | Schedule-gated; full Service defaults; no Manage; selected elevated defaults; catalogue grant/revoke on top; does not assign access. |
 | **Manager** | Always Business; Manage + full Service; assigns job roles, overrides, and capabilities for layers below manager. |
 | **Admin** | Everything a manager can do on access, plus configure managers; full venue control. Only the **owning user** creates or demotes admin. |

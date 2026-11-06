@@ -40,7 +40,9 @@ addresses a real resource (a venue the person may switch between), so it stays.
 Self-service routes are **derived from the session**. The canonical paths are:
 
 ```
-/dashboard  /profile  /favorites  /mode
+/dashboard  /favorites  /mode
+/account/profile  /account/address  /account/notifications
+/account/preferences  /account/orders
 /employee/dashboard  /employee/profile
 /business/:businessId/...
 ```
@@ -56,6 +58,10 @@ Self-service routes are **derived from the session**. The canonical paths are:
   legacy shapes render the 404 page instead of redirecting.
 - The Customer surface is the default mode, so it needs no `customer` segment.
   The mode picker remains `/mode`; employee routes remain `/employee/*`.
+- The retired `/profile` URL redirects to `/account/profile`.
+- The account area is the single global User surface (ADR-0018). Its destinations
+  open from either mode and are not mode-scoped, so opening one never changes the
+  stored Customer | Business mode.
 
 Public marketing and auth URLs are unchanged. This decision is about the
 private, session-authenticated app shell.

@@ -46,6 +46,10 @@ vi.mock("@/pages/customer/CustomerPreferencesPage", () => ({
   ),
 }));
 
+vi.mock("@/pages/customer/CustomerOrdersPage", () => ({
+  default: () => <div data-testid="orders-page-stub">Orders page</div>,
+}));
+
 vi.mock("@/pages/notifications/NotificationsInboxPage", () => ({
   default: () => (
     <div data-testid="notifications-page-stub">Notifications page</div>
@@ -128,17 +132,30 @@ describe("customer account routing", () => {
     );
   });
 
-  it("does not change the stored Business mode when Preferences opens", async () => {
-    mockAuthMode.mode = "business";
+  it("renders the Orders destination under /account", async () => {
+    await renderRoutes("/account/orders");
 
-    await renderRoutes("/account/preferences");
-
-    expect(
-      await screen.findByTestId("preferences-page-stub"),
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId("orders-page-stub")).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent(
-      /^\/account\/preferences$/,
+      /^\/account\/orders$/,
     );
-    expect(mockAuthMode.setModeAndRefresh).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ["/account/profile", "profile-page-stub"],
+    ["/account/address", "address-page-stub"],
+    ["/account/notifications", "notifications-page-stub"],
+    ["/account/preferences", "preferences-page-stub"],
+    ["/account/orders", "orders-page-stub"],
+  ])(
+    "does not change the stored Business mode when %s opens",
+    async (entry, stub) => {
+      mockAuthMode.mode = "business";
+
+      await renderRoutes(entry);
+
+      expect(await screen.findByTestId(stub)).toBeInTheDocument();
+      expect(mockAuthMode.setModeAndRefresh).not.toHaveBeenCalled();
+    },
+  );
 });

@@ -1,8 +1,10 @@
 /**
  * ## `CustomerAccountLayout` (`src/layouts`)
  * **Parent route:** pathless in `appRoutes.tsx`, wrapped by **`ProtectedRoute`** before this layout.
- * The account area is session-derived (`/account/profile`, `/account/address`,
- * `/account/notifications`); the person comes from the session and no User id appears in the URL.
+ * The account area is the single global User surface: it is session-derived
+ * (`/account/profile`, `/account/address`, `/account/notifications`, `/account/preferences`,
+ * `/account/orders`) and opens from either Customer or Business mode without changing the stored
+ * mode. The person comes from the session and no User id appears in the URL (ADR-0018).
  *
  * ## Flow
  * **Sidebar** + **`SidebarInset`** ( **`SidebarProvider`** is in **`main.tsx`**). **`<Outlet />`**
@@ -17,10 +19,11 @@ import { Sidebar, SidebarRail } from "@/components/ui/sidebar";
 import { useAuth } from "@/auth/store/AuthContext";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
-import { Bell, MapPin, SlidersHorizontal, User } from "lucide-react";
+import { Bell, MapPin, ReceiptText, SlidersHorizontal, User } from "lucide-react";
 import {
   canonicalAccountAddressPath,
   canonicalAccountNotificationsPath,
+  canonicalAccountOrdersPath,
   canonicalAccountPreferencesPath,
   canonicalAccountProfilePath,
 } from "@/routes/canonicalPaths";
@@ -37,6 +40,7 @@ export default function CustomerAccountLayout() {
   const addressTo = canonicalAccountAddressPath();
   const notificationsTo = canonicalAccountNotificationsPath();
   const preferencesTo = canonicalAccountPreferencesPath();
+  const ordersTo = canonicalAccountOrdersPath();
 
   const pages = [
     {
@@ -66,6 +70,13 @@ export default function CustomerAccountLayout() {
       to: preferencesTo,
       icon: SlidersHorizontal,
       isActive: pathname === preferencesTo,
+    },
+    {
+      key: "orders",
+      label: t("account.orders"),
+      to: ordersTo,
+      icon: ReceiptText,
+      isActive: pathname === ordersTo,
     },
   ];
 

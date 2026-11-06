@@ -29,6 +29,7 @@
     "address": "Address",
     "notifications": "Notifications",
     "preferences": "Preferences",
+    "orders": "Orders",
     "customerHome": "Customer home",
     "language": "Language",
     "currentLanguage": "Current language: {{language}}",
@@ -37,9 +38,7 @@
   },
   "business": {
     "manage": "Manage",
-    "people": "People",
-    "me": "Me",
-    "notifications": "Notifications"
+    "people": "People"
   },
   "venueTabs": {
     "ariaLabel": "Venues"

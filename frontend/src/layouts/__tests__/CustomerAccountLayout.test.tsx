@@ -105,9 +105,23 @@ describe("CustomerAccountLayout", () => {
     expect(
       screen.getByRole("link", { name: "Preferences" }),
     ).toHaveAttribute("data-active", "false");
+    expect(screen.getByRole("link", { name: "Orders" })).toHaveAttribute(
+      "href",
+      "/account/orders",
+    );
+    expect(screen.getByRole("link", { name: "Orders" })).toHaveAttribute(
+      "data-active",
+      "false",
+    );
     expect(
       screen.getAllByRole("link").map((link) => link.textContent),
-    ).toEqual(["Profile", "Address", "Notifications", "Preferences"]);
+    ).toEqual([
+      "Profile",
+      "Address",
+      "Notifications",
+      "Preferences",
+      "Orders",
+    ]);
     expect(screen.queryByRole("link", { name: "Dashboard" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Favorites" })).not.toBeInTheDocument();
   });

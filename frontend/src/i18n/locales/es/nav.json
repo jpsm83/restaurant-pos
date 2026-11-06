@@ -29,6 +29,7 @@
     "address": "Dirección",
     "notifications": "Notificaciones",
     "preferences": "Preferencias",
+    "orders": "Pedidos",
     "customerHome": "Inicio cliente",
     "language": "Idioma",
     "currentLanguage": "Idioma actual: {{language}}",
@@ -37,9 +38,7 @@
   },
   "business": {
     "manage": "Gestión",
-    "people": "Personal",
-    "me": "Yo",
-    "notifications": "Notificaciones"
+    "people": "Personal"
   },
   "venueTabs": {
     "ariaLabel": "Locales"

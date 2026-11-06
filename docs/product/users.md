@@ -20,7 +20,7 @@ It deliberately does **not** cover:
 
 - **base access layers**, **effective layer**, **layer override**, the **job-role → layer map**, the **per-user capability** mechanism and catalogue, and the **assignment UI** — the access-and-permissions subject owns those. This subject only consumes effective layer for mode eligibility.
 - the **Employee** membership — job roles, employment status, tenure, contract, pay, vacation, tax and national identifiers, documents, hire, terminate, and rehire. The **User** holds only client/global identity; **all employee data lives on the membership**. The employees subject owns that record. This subject names the membership only as the path into a tenant and as input to mode eligibility.
-- the **navigation surfaces** — the public customer chrome, the **Customer | Business** mode toggle, the **Service** / **Manage** / **Me** left menu inside business mode, guards, and canonical destinations. This subject states the eligibility *rule*; the user-navigation subject owns the surfaces that enforce it. Favorites appear on customer surfaces those subjects own; this subject owns the preference itself.
+- the **navigation surfaces** — the public customer chrome, the **Customer | Business** mode toggle, the **Service** / **Manage** left menu inside business mode, the global account area, guards, and canonical destinations. This subject states the eligibility *rule*; the user-navigation subject owns the surfaces that enforce it. Favorites appear on customer surfaces those subjects own; this subject owns the preference itself.
 - **attendance mechanics** — daily attendance QR scan-in, staff sign-out, breaks, and lateness. This subject states the business-mode eligibility *consequence*; the schedules subject owns the planned schedule, and the time-control subject owns attendance.
 - **transactional email delivery** — templates, retry, cooldown. This subject states which messages are sent; the emails subject owns how they are delivered.
 - **ratings and comments** — venue reviews after a closed sales instance belong to the ratings-and-comments subject. Favorites are bookmarks, not feedback.
@@ -51,7 +51,7 @@ User ──1 Owner ──< Company ──< Business  (ownership: exactly one own
 
 ### Terms this subject introduces
 
-- **Mode** — whether a signed-in user is in the **customer** or **business** app. Exactly two modes; there is no separate employee mode. The person may switch during the session via the mode toggle when eligible. Floor work and administration are **left-menu headers inside business mode** (Service, Manage, and Me), owned by the user-navigation subject — not additional modes.
+- **Mode** — whether a signed-in user is in the **customer** or **business** app. Exactly two modes; there is no separate employee mode. The person may switch during the session via the mode toggle when eligible. Floor work and administration are **left-menu headers inside business mode** (Service and Manage), owned by the user-navigation subject — not additional modes. The account area is global and mode-agnostic.
 - **Sign-in email** — the email credential on the **User**. Distinct from a business's contact email.
 - **Google sign-in** — signing in or signing up with a Google account. Project Imperium verifies the Google account before trusting it.
 - **Google identity** — the verified Google account linked to exactly one active **User**, used as an alternate sign-in credential. It never represents a second User.
@@ -102,7 +102,7 @@ Venue **base access layers**, **effective layer** (including per-shift resolutio
 
 ### 3.6 Mode eligibility (Customer | Business)
 
-There is **one login** and **exactly two modes**: **customer** and **business**. There is no third “employee” mode — Service (floor/POS), Manage (administration), and Me (self) are left-menu headers **inside** business mode, owned by the user-navigation subject.
+There is **one login** and **exactly two modes**: **customer** and **business**. There is no third “employee” mode — Service (floor/POS) and Manage (administration) are left-menu headers **inside** business mode, owned by the user-navigation subject. Self-only destinations live on the global account area, not in the business left menu.
 
 - The **Customer** app is the default public surface. Sign-in is not required to browse or to build an order basket. After sign-in, the person **stays in customer mode** unless they switch.
 - When the signed-in user has **eligible business access**, a **Customer | Business** toggle is available in the chrome. They may switch mode during the session; each switch re-checks eligibility. The active mode is recorded so guards can enforce it.
@@ -177,7 +177,7 @@ The **User** holds the person's **client personal detail** — name, sign-in ema
 
 ### 3.13 Inbox and order history
 
-The **notification inbox** and **order history** belong to the **User** and are **shared across customer and business modes** — a person's history does not fork by mode.
+The **notification inbox** and **order history** belong to the **User** and are **shared across customer and business modes** — a person's history does not fork by mode. Both live on the global **account area**, which opens from either mode without changing the stored mode. **Orders** is the account destination for order history; until that surface ships it shows a localized not-built-yet state and reads no orders.
 
 ### 3.14 Account deletion
 

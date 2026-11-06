@@ -13,10 +13,10 @@ It owns:
 - the **three product surfaces** as navigation realms — **Customer**, **Business**, and **Superadmin** (named only as a boundary);
 - **desktop chrome** for Customer and Business — top bar, avatar, mode toggle, venue tabs, and the business left menu;
 - **mode** as a navigation fact — exactly **Customer** and **Business**, and the surfaces that enforce the users subject's eligibility rule;
-- the **customer account area** reached from the avatar;
+- the **account area** reached from the avatar — the single global User surface;
 - **guest** browse and basket behaviour at the navigation layer (identity gates);
 - **venue context** — horizontal tabs when the person belongs to more than one business;
-- the business **left menu** headers **Service**, **Manage**, and **Me**, and which links sit under each;
+- the business **left menu** headers **Service** and **Manage**, and which links sit under each;
 - **fullscreen** for Service destinations;
 - **guards** — mode, eligibility loss, and deep-link / one-time-link landing behaviour;
 - the catalogue of **canonical destinations** this chrome opens (named in business language, not as implementation paths).
@@ -45,14 +45,13 @@ This subject introduces **no new persistent tenant entity**. It owns navigation 
 - **Mode toggle** — the desktop chrome control **Customer | Business** that switches mode when the person is eligible for Business.
 - **Venue tab** — a horizontal tab in business chrome that selects which **Business** (venue) is the active context when the person has more than one.
 - **Owner chrome** — the fixed set of portfolio destinations only an **Owner** sees on owned venue tabs: **Add venue**, **Plan**, **Company**, and **Billing**. Distinct from an employee tab at a venue they only work at.
-- **Left menu** — the persistent vertical navigation rail in **Business** mode (and the separate rail in the **customer account area**).
+- **Left menu** — the persistent vertical navigation rail in **Business** mode (and the separate rail in the **account area**).
 - **Service** — left-menu header for day-of operations destinations (POS, Host when entitled, and when entitled control screens and attendance).
 - **Manage** — left-menu header for administration destinations; visible only while the person's **effective base layer** at that venue is **manager or admin** (access-and-permissions subject: per shift when on a working shift, otherwise highest membership layer; supervisor never sees Manage).
-- **Me** — left-menu header in Business for **self-only** destinations (own schedule, notifications, personal details, Preferences) that are not admin data.
-- **Customer account area** — the signed-in customer's settings surface opened from the avatar while in Customer mode: profile, address, saved payment methods, email, notifications, **Preferences** (language and appearance), **marketing consent**, **Download my data**, and related account items, with its own left sidebar. Privacy rules for those controls belong to the privacy, consent, and DSAR subject.
+- **Account area** — the single global User surface opened from the avatar: profile, address, saved payment methods, email, notifications, **Preferences** (language and appearance), **Orders** (order history), **marketing consent**, **Download my data**, and related account items, with its own left sidebar. It opens from either Customer or Business mode without changing the stored mode. Privacy rules for those controls belong to the privacy, consent, and DSAR subject.
 - **Icon rail** — the left menu's default desktop behaviour: it can collapse to a vertical strip of icons and expand on hover to show full labels. This is built-in behaviour, not a stored preference.
 - **Service fullscreen** — a Service destination shown without the normal desktop chrome, with a small control to restore the desktop layout.
-- **Canonical destination** — a named place in the product the chrome or a link may open (for example Manage home, POS, customer account area). Destinations are described in business language, never as implementation paths.
+- **Canonical destination** — a named place in the product the chrome or a link may open (for example Manage home, POS, account area). Destinations are described in business language, never as implementation paths.
 - **Guard** — a navigation rule that allows, blocks, or redirects a move (mode switch, deep link, eligibility loss).
 
 Terms reused rather than redefined here: **User**, **Business**, **Owner**, **Employee** (membership), **base access layer**, **per-user capability**, **entry window**, **Customer app**, **Business app**, **owner shell**, **live** venue, and soft delete.
@@ -74,16 +73,18 @@ Terms reused rather than redefined here: **User**, **Business**, **Owner**, **Em
 - Sign-in and sign-up are offered from the **avatar** (or equivalent chrome control). After authenticating, the person **remains on the Customer surface** unless they switch mode.
 - The **sign-in page** always offers **email and password** entry, **Google** entry, a **forgotten-password** path to the password-reset request destination, and a **create-account** path to sign-up. The forgotten-password path is available without first knowing whether an account exists.
 - An unsigned visitor may **navigate customer ordering** and **build a basket**. Project Imperium requires **sign-in or sign-up** when **payment** is requested, and for other **account-bound** actions. The open basket is **preserved** across that identity step.
-- Account-bound actions include at least: **favorites**, **inbox / notifications**, **order history**, **customer account area** settings, and **payment** on self-service channels. Reservations and other subjects may require a signed-in User as those subjects already state.
+- Account-bound actions include at least: **favorites**, **inbox / notifications**, **order history**, **account area** settings, and **payment** on self-service channels. Reservations and other subjects may require a signed-in User as those subjects already state.
 
-### 3.3 Avatar and the customer account area
+### 3.3 Avatar and the account area
 
 - **Unsigned:** the avatar offers **Sign in** and **Sign up**. The public navbar keeps its interactive **language switcher**.
-- **Signed-in:** the avatar opens a short navigation menu containing the current Customer | Business summary, the current **language as a read-only flag plus language name**, **Account** (enters the customer account area), **Preferences** (opens the Preferences page), and **Log out**. The menu exposes no language dropdown and no Light / Dark / System control; it is navigation, not settings. The **Customer | Business** mode toggle stays separate chrome (§3.4), not an avatar-menu item.
-- The **customer account area** stays in **Customer** mode, except for the user-scoped **Preferences** page, which is reachable from both modes without changing the stored mode. It has its **own left sidebar** with destinations such as **profile (Me)**, **address**, **saved payment methods**, **email**, **notifications**, **Preferences**, **marketing consent**, **Download my data**, and related account settings.
+- **Signed-in:** the avatar shows the User's stored **profile picture** when one exists, including a picture supplied by Google sign-up or linking; without one it shows initials. A profile-photo change updates the chrome avatar without re-authentication while the person stays signed in.
+- The **signed-in avatar** opens a short navigation menu containing the current Customer | Business summary, the current **language as a read-only flag plus language name**, **Account** (enters the account area), **Preferences** (opens the Preferences page), and **Log out**. The menu exposes no language dropdown and no Light / Dark / System control; it is navigation, not settings. The **Customer | Business** mode toggle stays separate chrome (§3.4), not an avatar-menu item.
+- The **account area is the single global User surface**. Every destination opens from either Customer or Business mode without changing the stored mode. It has its **own left sidebar** listing **Profile**, **Address**, **Notifications**, **Preferences**, and **Orders**, plus related account settings such as **saved payment methods**, **email**, **marketing consent**, and **Download my data**.
+- **Orders** is the stable account destination for the person's order history. Until the order-history surface ships, it renders a localized **not built yet** state and reads no orders.
 - **Preferences** is the single editor for the person's **language** and **appearance** (Light / Dark / System). Changes apply immediately and persist on the User. It is user-scoped: opening it from either mode never changes the stored Customer | Business mode.
 - **Saved payment methods** are the person's instruments for **in-app customer checkout**. Venue POS payment recording stays with the payments-and-tax subject; this subject only places the account nav item.
-- The same **User** profile, **inbox**, and **Preferences** are reachable from Business **Me** (personal details / notifications / Preferences) and from the customer account area — **one account model, two doors**.
+- The same **User** profile, **inbox**, **Orders**, and **Preferences** live on the account area and are shared across modes — **one account model, one door**. Business has no **Me** group.
 
 ### 3.4 Mode toggle (Customer | Business)
 
@@ -102,15 +103,15 @@ Terms reused rather than redefined here: **User**, **Business**, **Owner**, **Em
   - **Company** — the tax entity for the active venue's Company: **legal name**, **tax number**, and the list of venues in that Company (users subject).
   - **Billing** — the platform payment method, **billing history**, and **in-product pay** for payable invoices (platform-billing subject).
 - These hang on Owner chrome next to venue tabs (portfolio-scoped). Venue **Manage → Money** stays venue operations (payments/tax config, gift cards, reports) and does not replace Plan, Company, or Billing.
-- An employee tab at a venue they only work at is **operational** — Service, Manage if manager+ there, and Me — without owner portfolio controls.
+- An employee tab at a venue they only work at is **operational** — Service and Manage if manager+ there — without owner portfolio controls.
 - **Landing** (uses **effective base layer** at enter — access-and-permissions subject):
   - **Employee- or supervisor-layer** effective users enter toward **Service** (POS primary for employees; supervisors land in Service with the full Service set) — including a manager-membership person currently on an employee- or supervisor-layer shift.
-  - **Manager- or admin-layer** effective users enter the venue's **Manage home** (business main page) with the left menu showing **Service** and **Manage** headers (and **Me**).
+  - **Manager- or admin-layer** effective users enter the venue's **Manage home** (business main page) with the left menu showing **Service** and **Manage** headers.
 
 ### 3.6 Business left menu
 
 - In Business mode the **left menu is always available** on desktop. Its default behaviour is the **icon rail**: it may sit as a vertical icon strip and **expand on hover** to full labels. That behaviour is built into the menu; it is not a per-user preference to remember.
-- The left menu uses up to three **headers**:
+- The left menu uses two **headers**:
 
 #### Service
 
@@ -137,24 +138,19 @@ Terms reused rather than redefined here: **User**, **Business**, **Owner**, **Em
   - **Money** — payments and tax configuration, gift cards, reports and metrics.
 
 - Fine-grained screens and rules inside each group belong to the feature subjects.
-
-#### Me
-
-- Visible to **everyone** in Business mode.
-- Under Me: **My schedule** (the person's own calendar as the schedules subject allows), **Notifications** (the shared inbox), **Personal details** (User profile), **Preferences** (language and appearance), and other **self-only** items that are not admin data.
-- Full workforce schedule editing stays under Manage → People.
+- Business has **no Me group**: self-only destinations (notifications, personal details, Preferences, order history) live on the global account area (§3.3). Full workforce schedule editing stays under Manage → People.
 
 ### 3.7 Customer chrome (no business rail)
 
-- In **Customer** mode the business left menu (**Service / Manage / Me**) is **hidden**.
+- In **Customer** mode the business left menu (**Service / Manage**) is **hidden**.
 - Customer chrome is discovery and customer navigation, the avatar, and the **Customer | Business** toggle when eligible.
-- Account settings use the **customer account area** sidebar (§3.3), not the business rail.
+- Account settings use the **account area** sidebar (§3.3), not the business rail. The account area itself is mode-agnostic and never changes the stored mode.
 
 ### 3.8 Guards
 
 - **Mode guard.** Business destinations require business mode and eligibility. Customer destinations remain available in customer mode; account-bound ones require a signed-in User.
 - **Eligibility loss (schedule-gated layers).** If an employee- or supervisor-layer person loses eligibility (entry window ended, membership suspended or terminated) while in Business and has **no** open shift session, guards **move them to Customer mode** with a clear message. An **open** shift session still allows re-entry to Business as time-control and users already state.
-- **Deep links and one-time links.** When a notification, email, or bookmark targets a Business destination (or the reverse) while the person is in the wrong mode: if they are **eligible**, switch mode and open the destination; if not, stay in Customer and explain why Business is unavailable. Emails own link issuance; this subject owns the landing surface behaviour.
+- **Deep links and one-time links.** When a notification, email, or bookmark targets a Business destination (or the reverse) while the person is in the wrong mode: if they are **eligible**, switch mode and open the destination; if not, stay in Customer and explain why Business is unavailable. Account destinations are mode-agnostic: they open from either mode without a mode switch. The retired venue notifications URL lands on the account notifications destination. Emails own link issuance; this subject owns the landing surface behaviour.
 
 ### 3.9 Canonical destinations (catalogue)
 
@@ -165,9 +161,10 @@ This subject names destinations the chrome must be able to reach. Behaviour insi
 | Public discovery (search and filter, or map of closest venues) / venue profile | Customer, signed out or in |
 | Manage home (business main) | Manager- or admin-layer effective users entering Business |
 | Customer ordering basket / pay gate | Customer; identity at payment |
-| Customer account area (profile, address, payment methods, email, notifications, marketing consent, Download my data, …) | Avatar → Account |
-| Preferences (language and appearance) | Avatar → Preferences; customer account sidebar; Business Me |
-| Favorites, order history | Customer, signed-in |
+| Account area (profile, address, payment methods, email, notifications, Preferences, Orders, marketing consent, Download my data, …) | Avatar → Account |
+| Preferences (language and appearance) | Avatar → Preferences; account sidebar |
+| Orders (order history) | Account sidebar |
+| Favorites | Customer, signed-in |
 | Mode toggle | Signed-in chrome when eligible |
 | POS (floor map or list/grid) | Service → POS |
 | Host (floor map or list/grid) | Service → Host (Host job role; supervisor; managers+) |
@@ -177,7 +174,7 @@ This subject names destinations the chrome must be able to reach. Behaviour insi
 | Cash-out | Service (supervisor layer+; approve another wallet / house movements) |
 | Floor plans (layout editor) | Manage → Floor plans |
 | Manage feature groups (Venue, People, Menu, Supply, Service setup, Money) | Manage header |
-| My schedule / Notifications / Personal details / Preferences | Me (Business) or account area (Customer) |
+| Notifications / Personal details / Preferences / Orders | Account area (either mode) |
 | Venue tabs | Multi-venue Business |
 | Owner chrome: Add venue, Plan, Company, Billing | Owner on an owned venue tab |
 
@@ -190,8 +187,8 @@ This subject names destinations the chrome must be able to reach. Behaviour insi
 | Layer | Navigation powers |
 | --- | --- |
 | **Customer** (including unsigned visitors) | Public Customer surface; guest basket until identity gates; after sign-in, customer chrome, account area, and Customer side of the mode toggle. |
-| **Employee** (effective) | Everything a customer can do, plus Business when schedule-eligible; left menu **Service** (POS and Attendance by default; other Service links only if entitled) and **Me**; no Manage. |
-| **Supervisor** (effective) | Business when schedule-eligible; full Service set (including Counts and Cash-out) and **Me**; no Manage; Service landing. |
+| **Employee** (effective) | Everything a customer can do, plus Business when schedule-eligible; left menu **Service** (POS and Attendance by default; other Service links only if entitled); no Manage. |
+| **Supervisor** (effective) | Business when schedule-eligible; full Service set (including Counts and Cash-out); no Manage; Service landing. |
 | **Manager** (effective) | Always Business-eligible when membership allows; Manage header and groups; full Service link set; Manage home on enter. |
 | **Admin / Owner** (effective or Owner access) | Everything a manager can do within plan entitlements, plus owner chrome on owned venue tabs and ownership actions those subjects define. Owner access does not require an Employee membership. |
 
@@ -206,7 +203,7 @@ Ordinary employees may gain individual **Service** destinations (control screens
 | Browse Customer without signing in | Anyone |
 | Sign in / sign up from avatar | Anyone |
 | Recover a forgotten password from the sign-in page | Anyone |
-| Open customer account area | Signed-in user |
+| Open account area | Signed-in user |
 | Switch to Business via mode toggle | Signed-in user with eligible business access |
 | Use venue tabs | Person with more than one eligible venue in Business |
 | See owner chrome on a tab | Owner of that venue |
@@ -217,6 +214,5 @@ Ordinary employees may gain individual **Service** destinations (control screens
 | Use Service control screens | Effective manager, admin, or supervisor (full Service defaults); or employees with the granting entitlement |
 | Use Service → Attendance (own scan-in and sign-out) | Employee layer and above by default. Show attendance QR: manager+ only |
 | Use Service → Counts / Cash-out | Supervisor layer and above |
-| Use Me destinations | Everyone in Business |
 | Enter Service fullscreen | Anyone on a Service destination that offers it |
 | Be returned to Customer on eligibility loss | Employee- or supervisor-layer staff per §3.8 |

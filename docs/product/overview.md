@@ -79,7 +79,7 @@ These terms are used with exactly these meanings throughout Project Imperium. Do
 | **Base access layer** | Exactly one of **admin**, **manager**, **supervisor**, **employee**, or **customer**. Highest-level control of what a person may do; the access-and-permissions subject owns resolution and the capability catalogue. |
 | **Service** (nav) | Business left-menu header for day-of destinations — POS, Host when entitled, and when entitled prep/expo/handoff/pickup control screens and attendance. |
 | **Manage** (nav) | Business left-menu header for administration groups and top-level items (including Floor plans). Effective **manager or admin** only; supervisors do not see Manage. |
-| **Me** (nav) | Business left-menu header for self-only destinations (own schedule, notifications, personal details, Preferences). |
+| **Account area** | The single global User surface opened from the avatar: profile, address, notifications, Preferences, Orders, and related account items. It opens from either mode without changing the stored mode; Business has no Me group. |
 | **Daily / Weekly / Monthly report** | The aggregated sales and performance reports at each roll-up level. |
 | **Notification** | A message Project Imperium delivers to a person's inbox. An **operational** notification carries a **severity** — **Info**, **Warning**, or **Emergency** — while a venue **engagement** broadcast carries a **kind** — **Promotion**, **Birthday**, or **Event**. |
 | **Conversation** | A staff messaging thread among **Active** Employees of one **Business** (one-to-one or group). Customers have no conversations; customer↔venue dialogue is reviews. The conversations subject owns the rules. |
@@ -160,7 +160,7 @@ Access control is a **fixed platform model** (not venue-authored RBAC). The acce
 - **Per-user capabilities.** Named grant or revoke overrides from a fixed catalogue, each bound to a job role on the membership; active set follows the shift's job role. Never invent custom powers or open Manage for supervisor/employee.
 - **Permission assignment UI.** On the membership under Manage → People: job roles, optional layer override, and capability checklist. Each layer may set only layers **below** it; only the owning user creates or demotes admin.
 
-**Two modes only — Customer and Business.** There is **no** third “employee” mode. Floor work and administration both live inside **business mode**, as **Service**, **Manage**, and **Me** left-menu headers (see [§7](#7-the-business-platform)).
+**Two modes only — Customer and Business.** There is **no** third “employee” mode. Floor work and administration both live inside **business mode**, as **Service** and **Manage** left-menu headers (see [§7](#7-the-business-platform)). Self-only destinations live on the global **account area**, not in the business menu.
 
 **Public customer surface and mode toggle.** The **Customer** app is the default public surface: anyone may browse discovery and venue profiles **without signing in**. Sign-in is offered from the chrome (avatar or sign-in control). After sign-in the person stays on the Customer surface; when they have **eligible business access**, a **Customer | Business** toggle appears in the chrome so they can switch mode without signing out. Pure customers never see the Business side of the toggle. The users subject states mode eligibility together with the access-and-permissions subject's layer rules; the user-navigation subject owns the chrome, left menu, and guards.
 
@@ -196,9 +196,8 @@ The Business app is the operational heart of Project Imperium. It comprises the 
 
 - **Service** — day-of destinations: **POS** and, when entitled, **Host**, prep/expo/handoff/pickup control screens, and attendance. Ordinary employees see **POS** under Service unless a capability or Host role grants more. **Supervisors** get the full Service set by default. POS and Host use floor-plan maps on a wide viewport and list/grid when narrow.
 - **Manage** — administration groups (venue, people, menu, supply, service setup, money) plus **Floor plans** as its own top-level item. **Effective manager or admin only**. Supervisors and ordinary employees do not see Manage.
-- **Me** — self-only destinations (own schedule, notifications, personal details, Preferences) for everyone in business mode.
 
-There is no separate product mode for administration; Manage and Service are menu headers inside business mode. The user-navigation subject owns the desktop chrome in full.
+There is no separate product mode for administration; Manage and Service are menu headers inside business mode. Business has no **Me** group: self-only destinations live on the global account area. The user-navigation subject owns the desktop chrome in full.
 
 ### Onboarding and configuration
 

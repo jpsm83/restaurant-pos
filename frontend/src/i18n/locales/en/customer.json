@@ -118,6 +118,9 @@
   "dashboard": {
     "title": "Dashboard"
   },
+  "orders": {
+    "title": "Orders"
+  },
   "notBuiltYet": "This page is not built yet.",
   "venues": {
     "companyFallback": "Company {{index}}",

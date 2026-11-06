@@ -28,6 +28,7 @@ import {
 } from "@/routes/AuthRouteGuards";
 import { EmployeeDashboardRedirect } from "@/routes/EmployeeRedirects";
 import {
+  canonicalAccountNotificationsPath,
   canonicalAccountProfilePath,
   canonicalCustomerDashboardPath,
   canonicalCustomerFavoritesPath,
@@ -80,6 +81,9 @@ const CustomerProfilePage = lazy(() => import("@/pages/customer/CustomerProfileP
 const CustomerAddressPage = lazy(() => import("@/pages/customer/CustomerAddressPage"));
 const CustomerPreferencesPage = lazy(
   () => import("@/pages/customer/CustomerPreferencesPage"),
+);
+const CustomerOrdersPage = lazy(
+  () => import("@/pages/customer/CustomerOrdersPage"),
 );
 const CustomerFavoritesPage = lazy(() => import("@/pages/customer/CustomerFavoritesPage"));
 const CustomerDashboardPage = lazy(() => import("@/pages/customer/CustomerDashboardPage"));
@@ -269,6 +273,19 @@ export function AppRoutes() {
             <Route path="/dev/themes" element={<DevThemeGalleryPage />} />
           ) : null}
 
+          {/*
+           * Retired venue inbox URL: notifications are User-scoped, so old links
+           * land in the global account inbox without entering the venue shell.
+           */}
+          <Route
+            path="/business/:businessId/notifications"
+            element={
+              <ProtectedRoute>
+                <Navigate to={canonicalAccountNotificationsPath()} replace />
+              </ProtectedRoute>
+            }
+          />
+
           <Route
             path="/business/:businessId"
             element={
@@ -281,7 +298,6 @@ export function AppRoutes() {
             <Route path="dashboard" element={<BusinessDashboardPage />} />
             <Route path="people" element={<BusinessPeoplePage />} />
             <Route path="company" element={<BusinessCompanyPage />} />
-            <Route path="notifications" element={<NotificationsInboxPage />} />
             <Route
               path="settings/profile"
               element={<BusinessProfileSettingsPage />}
@@ -321,11 +337,16 @@ export function AppRoutes() {
             <Route path="favorites" element={<CustomerFavoritesPage />} />
           </Route>
 
+          {/*
+           * The account area is the single global User surface. It is not guarded
+           * by Customer mode: every destination opens from either mode without
+           * changing the stored mode (ADR-0018).
+           */}
           <Route
             element={
-              <CustomerRouteShell>
+              <ProtectedRoute>
                 <CustomerAccountLayout />
-              </CustomerRouteShell>
+              </ProtectedRoute>
             }
           >
             <Route
@@ -338,23 +359,11 @@ export function AppRoutes() {
               path="account/notifications"
               element={<NotificationsInboxPage />}
             />
-          </Route>
-
-          {/*
-           * Preferences is user-scoped and not guarded by Customer mode: opening
-           * it must leave the stored mode alone.
-           */}
-          <Route
-            element={
-              <ProtectedRoute>
-                <CustomerAccountLayout />
-              </ProtectedRoute>
-            }
-          >
             <Route
               path="account/preferences"
               element={<CustomerPreferencesPage />}
             />
+            <Route path="account/orders" element={<CustomerOrdersPage />} />
           </Route>
 
           {/* Retired customer profile URL — old bookmarks land in the account area. */}

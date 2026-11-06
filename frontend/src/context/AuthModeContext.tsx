@@ -11,7 +11,7 @@
  * 2. **`useAuthModeQuery`** is **enabled** only when:
  *    - session is authenticated **`type === "user"`**, and
  *    - pathname is mode-scoped (`isModeScopedPath` in `routes/canonicalPaths.ts`) — a Customer,
- *      account, mode, or venue route.
+ *      mode, or venue route. The global account area is mode-agnostic and excluded.
  *    Else the query is off and `mode` is `undefined` (no spurious `/auth/mode` calls on marketing/tenant).
  * 3. **`useSetAuthModeMutation`** runs **`POST /auth/set-mode`**; the cross-tab signal and the
  *    awaited invalidation/refetch of **`auth.mode`** are handled in **`authMode.ts`**. Callers that

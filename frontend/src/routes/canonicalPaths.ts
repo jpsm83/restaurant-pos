@@ -10,13 +10,15 @@
  * the retired `/employee/*` compatibility URLs carry no user id. An id appears in a URL only when
  * the URL addresses that resource: `/business/:businessId` is a venue the person may switch
  * between. See ADR-0013. The retired `/profile` URL redirects to `/account/profile` rather than
- * carrying identity.
+ * carrying identity. The account area is the single global User surface: its destinations open
+ * from either Customer or Business mode without changing the stored mode (ADR-0018).
  *
  * ## Who imports this
  * - `auth/postLoginRedirect.ts` — first URL after login / signup (`getPostLoginDestination`).
  * - `appRoutes.tsx` — route declarations and legacy `/:userId/...` redirect targets.
  * - `context/AuthModeContext.tsx` — `isModeScopedPath` enables the stored-mode query.
  * - `components/AccountMenuPopover.tsx` — the Account entry point.
+ * - `layouts/CustomerAccountLayout.tsx` — the global account sidebar.
  * - `layouts/CustomerLayout.tsx`, `layouts/CustomerAccountLayout.tsx`,
  *   `layouts/BusinessLayout.tsx`.
  * - `pages/SelectUserModePage.tsx` — Customer dashboard or the first enterable venue after selection.
@@ -87,11 +89,6 @@ export function canonicalBusinessSettingsOpenHoursPath(businessId: string): stri
   return `${canonicalBusinessDashboardPath(businessId)}/settings/open-hours`;
 }
 
-/** The shared User-scoped inbox reached from the Business Me group. */
-export function canonicalBusinessNotificationsPath(businessId: string): string {
-  return `${canonicalBusinessDashboardPath(businessId)}/notifications`;
-}
-
 /** Customer dashboard — the signed-in User's landing page. */
 export function canonicalCustomerDashboardPath(): string {
   return "/dashboard";
@@ -114,9 +111,14 @@ export function canonicalAccountNotificationsPath(): string {
   return `${canonicalAccountPath()}/notifications`;
 }
 
-/** Account-scoped settings; the customer sidebar owns the first entry. */
+/** Account-scoped settings; the account sidebar owns the first entry. */
 export function canonicalAccountPreferencesPath(): string {
   return `${canonicalAccountPath()}/preferences`;
+}
+
+/** Account order history; a placeholder until the orders surface ships. */
+export function canonicalAccountOrdersPath(): string {
+  return `${canonicalAccountPath()}/orders`;
 }
 
 export function canonicalCustomerFavoritesPath(): string {
@@ -163,14 +165,13 @@ function matchesPath(pathname: string, path: string): boolean {
 
 /**
  * True on routes where the stored Customer | Business mode applies. Covers the
- * session-derived Customer and account shells plus venue routes, which address a
- * real `businessId` but read the same server-stored mode so guards can reconcile
- * a deep link.
+ * session-derived Customer shell, the mode picker, and venue routes, which address
+ * a real `businessId` but read the same server-stored mode so guards can reconcile
+ * a deep link. The global account area is mode-agnostic and deliberately excluded.
  */
 export function isModeScopedPath(pathname: string): boolean {
   return (
     matchesPath(pathname, canonicalCustomerDashboardPath()) ||
-    matchesPath(pathname, canonicalAccountPath()) ||
     matchesPath(pathname, canonicalCustomerFavoritesPath()) ||
     matchesPath(pathname, canonicalModePath()) ||
     businessIdFromPathname(pathname) !== undefined

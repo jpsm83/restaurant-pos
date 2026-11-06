@@ -477,6 +477,28 @@ describe("Customer chrome and Business shell acceptance", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("renders the Orders placeholder from the account sidebar without an order read", async () => {
+    const user = userEvent.setup();
+    await renderShell("/account/profile");
+
+    expect(
+      await screen.findByRole("heading", { name: "Profile" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("link", { name: "Orders" }));
+
+    await expectLocation("/account/orders");
+    expect(
+      await screen.findByRole("heading", { name: "Orders" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("This page is not built yet."),
+    ).toBeInTheDocument();
+    expect(mockGet).not.toHaveBeenCalledWith(
+      expect.stringContaining("orders"),
+      expect.anything(),
+    );
+  });
+
   it("keeps Customer-only chrome when no venue is enterable", async () => {
     server = createServer({
       venues: [
@@ -765,7 +787,7 @@ describe("Customer chrome and Business shell acceptance", () => {
     );
   });
 
-  it("opens the shared inbox from Business Me without venue filtering", async () => {
+  it("redirects the retired venue inbox URL to the shared account inbox without venue filtering", async () => {
     server = createServer({
       mode: "business",
       venues: [
@@ -791,26 +813,31 @@ describe("Customer chrome and Business shell acceptance", () => {
         }),
       ],
     });
-    const user = userEvent.setup();
 
-    await renderShell("/business/b1/dashboard");
+    await renderShell("/business/b1/notifications");
 
-    expect(await findBusinessDashboard()).toBeInTheDocument();
-    await user.click(screen.getByRole("link", { name: "Notifications" }));
-
-    await expectLocation("/business/b1/notifications");
+    await expectLocation("/account/notifications");
     expect(
       await screen.findByRole("heading", { name: "Notifications" }),
     ).toBeInTheDocument();
     expect(await screen.findByText("Alpha venue update.")).toBeInTheDocument();
     expect(screen.getByText("Beta venue update.")).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Orders" })).toHaveAttribute(
+      "href",
+      "/account/orders",
+    );
     expect(mockGet).toHaveBeenCalledWith(
       "/api/v1/notifications/inbox?page=1",
       expect.anything(),
     );
+    expect(server.mode).toBe("business");
+    expect(mockPost).not.toHaveBeenCalledWith(
+      "/api/v1/auth/set-mode",
+      expect.anything(),
+    );
   });
 
-  it("opens the shared account Preferences from Business Me without changing mode", async () => {
+  it("opens the shared account Preferences from the avatar menu without changing mode", async () => {
     server = createServer({
       mode: "business",
       venues: [venue({ businessId: "b1", tradeName: "Alpha Bar" })],
@@ -821,7 +848,8 @@ describe("Customer chrome and Business shell acceptance", () => {
     await renderShell("/business/b1/dashboard");
 
     expect(await findBusinessDashboard()).toBeInTheDocument();
-    await user.click(screen.getByRole("link", { name: "Preferences" }));
+    await user.click(screen.getByRole("button", { name: /account menu/i }));
+    await user.click(screen.getByRole("menuitem", { name: "Preferences" }));
 
     await expectLocation("/account/preferences");
     expect(
@@ -834,7 +862,7 @@ describe("Customer chrome and Business shell acceptance", () => {
     );
   });
 
-  it("renders the Business Me inbox and navigation in Spanish", async () => {
+  it("renders the retired venue inbox redirect and account navigation in Spanish", async () => {
     server = createServer({
       mode: "business",
       venues: [venue({ businessId: "b1", tradeName: "Alpha Bar" })],
@@ -848,13 +876,14 @@ describe("Customer chrome and Business shell acceptance", () => {
 
     await renderShell("/business/b1/notifications", "es");
 
+    await expectLocation("/account/notifications");
     expect(
       await screen.findByRole("heading", { name: "Notificaciones" }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Notificaciones" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Yo")).toBeInTheDocument();
+    expect(screen.queryByText("Yo")).not.toBeInTheDocument();
     expect(
       await screen.findByText("Actualización del local."),
     ).toBeInTheDocument();
@@ -1013,7 +1042,7 @@ describe("Customer chrome and Business shell acceptance", () => {
     expect(server.mode).toBe("customer");
   });
 
-  it("reconciles an Account deep link in Business mode back to Customer", async () => {
+  it("keeps Business mode when an account deep link opens", async () => {
     server = createServer({ mode: "business" });
 
     await renderShell("/account/profile");
@@ -1021,9 +1050,11 @@ describe("Customer chrome and Business shell acceptance", () => {
     expect(
       await screen.findByRole("heading", { name: "Profile" }),
     ).toBeInTheDocument();
-    await waitFor(() => {
-      expect(server.mode).toBe("customer");
-    });
+    expect(server.mode).toBe("business");
+    expect(mockPost).not.toHaveBeenCalledWith(
+      "/api/v1/auth/set-mode",
+      expect.anything(),
+    );
   });
 
   it("sends the User to Customer with an explanation when eligibility is lost", async () => {

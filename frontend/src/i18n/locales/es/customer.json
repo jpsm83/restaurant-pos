@@ -118,6 +118,9 @@
   "dashboard": {
     "title": "Panel"
   },
+  "orders": {
+    "title": "Pedidos"
+  },
   "notBuiltYet": "Esta página aún no está disponible.",
   "venues": {
     "companyFallback": "Empresa {{index}}",

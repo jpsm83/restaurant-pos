@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   canonicalAccountAddressPath,
   canonicalAccountNotificationsPath,
+  canonicalAccountOrdersPath,
   canonicalAccountPath,
   canonicalAccountPreferencesPath,
   canonicalAccountProfilePath,
   canonicalBusinessCompanyPath,
   canonicalBusinessDashboardPath,
   canonicalBusinessDashboardRoutePath,
-  canonicalBusinessNotificationsPath,
   canonicalBusinessPeoplePath,
   canonicalBusinessProfilePath,
   canonicalBusinessSettingsAddressPath,
@@ -40,9 +40,6 @@ describe("canonicalPaths", () => {
     );
     expect(canonicalBusinessCompanyPath("b1")).toBe("/business/b1/company");
     expect(canonicalBusinessPeoplePath("b1")).toBe("/business/b1/people");
-    expect(canonicalBusinessNotificationsPath("b1")).toBe(
-      "/business/b1/notifications",
-    );
     expect(canonicalBusinessProfilePath("b1")).toBe(
       "/business/b1/settings/profile",
     );
@@ -71,6 +68,7 @@ describe("canonicalPaths", () => {
     expect(canonicalAccountPreferencesPath()).toBe(
       "/account/preferences",
     );
+    expect(canonicalAccountOrdersPath()).toBe("/account/orders");
     expect(canonicalCustomerFavoritesPath()).toBe("/favorites");
     expect(canonicalModePath()).toBe("/mode");
     expect(canonicalEmployeePath()).toBe("/employee");
@@ -82,13 +80,14 @@ describe("canonicalPaths", () => {
     expect(canonicalDefaultDashboardPath()).toBe("/dashboard");
   });
 
-  it("scopes the stored mode to Customer, account, mode, and venue paths", () => {
+  it("scopes the stored mode to Customer, mode, and venue paths", () => {
     expect(isModeScopedPath("/dashboard")).toBe(true);
     expect(isModeScopedPath("/favorites")).toBe(true);
-    expect(isModeScopedPath("/account/profile")).toBe(true);
     expect(isModeScopedPath("/mode")).toBe(true);
     expect(isModeScopedPath("/business/b1/dashboard")).toBe(true);
 
+    expect(isModeScopedPath("/account/profile")).toBe(false);
+    expect(isModeScopedPath("/account/orders")).toBe(false);
     expect(isModeScopedPath("/")).toBe(false);
     expect(isModeScopedPath("/business")).toBe(false);
     expect(isModeScopedPath("/login")).toBe(false);

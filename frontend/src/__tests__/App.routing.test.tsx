@@ -48,6 +48,11 @@ vi.mock("@/layouts/BusinessLayout", async () => {
   return { default: () => <Outlet /> };
 });
 
+vi.mock("@/layouts/CustomerAccountLayout", async () => {
+  const { Outlet } = await import("react-router-dom");
+  return { default: () => <Outlet /> };
+});
+
 vi.mock("@/pages/business/BusinessPeoplePage", () => ({
   default: () => <div data-testid="people-page-stub">People page</div>,
 }));
@@ -263,7 +268,7 @@ describe("App public routing (Phase 1.5.1)", () => {
     ).toBeInTheDocument();
   });
 
-  it("routes `/business/:businessId/notifications` for an authenticated User", async () => {
+  it("redirects the retired venue notifications URL to the account inbox", async () => {
     mockUseAuth.mockReturnValue({
       state: {
         user: { id: "u1", email: "manager@example.com", type: "user" },
@@ -297,9 +302,12 @@ describe("App public routing (Phase 1.5.1)", () => {
     expect(
       await screen.findByTestId("notifications-page-stub"),
     ).toBeInTheDocument();
-    expect(screen.getByTestId("location")).toHaveTextContent(
-      /^\/business\/507f1f77bcf86cd799439011\/notifications$/,
-    );
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent(
+        /^\/account\/notifications$/,
+      );
+    });
+    expect(mockAuthMode.setModeAndRefresh).not.toHaveBeenCalled();
   });
 
   const legalPages = [

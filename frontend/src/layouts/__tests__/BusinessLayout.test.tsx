@@ -264,48 +264,17 @@ describe("BusinessLayout", () => {
     expect(screen.getByText("Business Outlet")).toBeInTheDocument();
   });
 
-  it("shows a Me group with Notifications then Preferences", async () => {
+  it("does not render a Business Me group", async () => {
     await renderBusinessLayout();
 
     const nav = screen.getByTestId("actor-sidebar");
-    const meLinks = within(nav)
-      .getAllByRole("link")
-      .filter((link) => link.getAttribute("data-group") === "Me");
+    const selfOnlyLinks = within(nav)
+      .queryAllByRole("link")
+      .filter((link) => ["Me", "Yo"].includes(link.getAttribute("data-group") ?? ""));
 
-    expect(meLinks).toHaveLength(2);
-    expect(meLinks[0]).toHaveTextContent("Notifications");
-    expect(meLinks[0]).toHaveAttribute(
-      "href",
-      "/business/b1/notifications",
-    );
-    expect(meLinks[0]).toHaveAttribute("data-active", "false");
-    expect(meLinks[1]).toHaveTextContent("Preferences");
-    expect(meLinks[1]).toHaveAttribute(
-      "href",
-      "/account/preferences",
-    );
-    expect(meLinks[1]).toHaveAttribute("data-active", "false");
-  });
-
-  it("localizes the Me group and Notifications destination", async () => {
-    await renderBusinessLayout("/business/b1/notifications", "es");
-
-    const nav = screen.getByTestId("actor-sidebar");
-    const meLinks = within(nav)
-      .getAllByRole("link")
-      .filter((link) => link.getAttribute("data-group") === "Yo");
-
-    expect(meLinks).toHaveLength(2);
-    expect(meLinks[0]).toHaveTextContent("Notificaciones");
-    expect(meLinks[0]).toHaveAttribute(
-      "href",
-      "/business/b1/notifications",
-    );
-    expect(meLinks[1]).toHaveTextContent("Preferencias");
-    expect(meLinks[1]).toHaveAttribute(
-      "href",
-      "/account/preferences",
-    );
+    expect(selfOnlyLinks).toHaveLength(0);
+    expect(nav).not.toHaveTextContent("Notifications");
+    expect(nav).not.toHaveTextContent("Preferences");
   });
 
   it("renders no tab strip for a single-venue session", async () => {
@@ -577,7 +546,7 @@ describe("BusinessLayout", () => {
   });
 
   it.each(["employee", "supervisor"])(
-    "shows only the Service and Me destinations for a %s",
+    "shows only the Service destinations for a %s",
     async (layer) => {
       mockAccess.value = {
         data: {
@@ -594,9 +563,10 @@ describe("BusinessLayout", () => {
 
       const nav = screen.getByTestId("actor-sidebar");
       expect(nav).toHaveTextContent("Dashboard");
-      expect(nav).toHaveTextContent("Notifications");
+      expect(nav).not.toHaveTextContent("Notifications");
+      expect(nav).not.toHaveTextContent("Preferences");
       const manageLinks = within(nav)
-        .getAllByRole("link")
+        .queryAllByRole("link")
         .filter((link) => link.getAttribute("data-group") === "Manage");
       expect(manageLinks).toHaveLength(0);
       expect(nav).not.toHaveTextContent("Open hours");

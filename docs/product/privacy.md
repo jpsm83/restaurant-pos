@@ -100,7 +100,7 @@ Terms reused rather than redefined here: **User**, **Customer**, **Business**, *
 
 ### 3.7 Customer data export (DSAR)
 
-- A signed-in customer may **Download my data** from the customer account area (and from Business **Me** where account settings are shared). The ordinary case is **self-service** — not a Superadmin ticket.
+- A signed-in customer may **Download my data** from the global account area, which opens from either mode. The ordinary case is **self-service** — not a Superadmin ticket.
 - The package is a **portable machine-readable** download (file format is an implementation detail; the product commits that the person can take the data away in machine-readable form).
 - The package covers **their User-held personal data and history they can already see in product**, including: profile detail, favorites, order / reservation / payment history attributable to them, reviews they wrote, gift-card balances they hold, inbox items addressed to them, manager-to-customer one-shot emails sent to them (while retained), **marketing consent** and **engagement mute** state (and consent change times). Customers have no conversation threads; staff conversation history belongs only to participating staff Users.
 - Soft-deleted-but-still-retained personal rows that still belong to them are **included** while they exist.
@@ -123,7 +123,7 @@ Terms reused rather than redefined here: **User**, **Customer**, **Business**, *
 
 ### 3.10 Where customers manage privacy controls
 
-- **Marketing consent**, **engagement mute**, a link to the **privacy notice**, and **Download my data** live in the **customer account area**, and remain reachable from Business **Me** where navigation already shares account settings (user-navigation).
+- **Marketing consent**, **engagement mute**, a link to the **privacy notice**, and **Download my data** live in the global **account area**, which opens from either Customer or Business mode without changing the stored mode (user-navigation).
 - **Venues cannot grant or revoke** a customer's marketing consent.
 - Changing birth date recalculates eligibility for marketing consent and self-channel alcohol: if the person falls under a floor, marketing consent that is on is turned **off**, and self-channel alcohol checkout stays blocked until they meet the alcohol purchase age.
 
