@@ -283,10 +283,6 @@ export function AppRoutes() {
             <Route path="company" element={<BusinessCompanyPage />} />
             <Route path="notifications" element={<NotificationsInboxPage />} />
             <Route
-              path="preferences"
-              element={<CustomerPreferencesPage />}
-            />
-            <Route
               path="settings/profile"
               element={<BusinessProfileSettingsPage />}
             />

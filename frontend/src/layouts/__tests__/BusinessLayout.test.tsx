@@ -197,7 +197,6 @@ function renderBusinessLayout(
           <Route path="dashboard" element={<div>Business Outlet</div>} />
           <Route path="company" element={<div>Company page</div>} />
           <Route path="notifications" element={<div>Notifications page</div>} />
-          <Route path="preferences" element={<div>Preferences page</div>} />
         </Route>
         <Route path="/dashboard" element={<div>Customer dashboard</div>} />
       </Routes>
@@ -283,23 +282,9 @@ describe("BusinessLayout", () => {
     expect(meLinks[1]).toHaveTextContent("Preferences");
     expect(meLinks[1]).toHaveAttribute(
       "href",
-      "/business/b1/preferences",
+      "/account/preferences",
     );
     expect(meLinks[1]).toHaveAttribute("data-active", "false");
-  });
-
-  it("marks Preferences active on the page", async () => {
-    await renderBusinessLayout("/business/b1/preferences");
-
-    expect(screen.getByText("Preferences page")).toBeInTheDocument();
-    const nav = screen.getByTestId("actor-sidebar");
-    const meLinks = within(nav)
-      .getAllByRole("link")
-      .filter((link) => link.getAttribute("data-group") === "Me");
-
-    expect(meLinks[0]).toHaveAttribute("data-active", "false");
-    expect(meLinks[1]).toHaveTextContent("Preferences");
-    expect(meLinks[1]).toHaveAttribute("data-active", "true");
   });
 
   it("localizes the Me group and Notifications destination", async () => {
@@ -319,7 +304,7 @@ describe("BusinessLayout", () => {
     expect(meLinks[1]).toHaveTextContent("Preferencias");
     expect(meLinks[1]).toHaveAttribute(
       "href",
-      "/business/b1/preferences",
+      "/account/preferences",
     );
   });
 

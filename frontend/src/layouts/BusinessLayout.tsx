@@ -8,9 +8,9 @@
  * **main column** (same flex role as shadcn `SidebarInset`, but a **`div`** so child pages may use `<main>`); **`<Outlet />`** (in **`Suspense`**) renders tenant pages in the main
  * column (`dashboard`, `people`, `company`, `notifications`,
  * `settings/profile`, `settings/address`, `settings/open-hours`,
- * `settings/delivery`, `settings/metrics`, `preferences`). The Me group holds self-only
- * destinations: Notifications and Preferences. The Preferences page is user-scoped and
- * also reachable from the customer account area.
+ * `settings/delivery`, `settings/metrics`). The Me group holds self-only destinations:
+ * Notifications and Preferences. Both link to user-scoped pages; Preferences uses the
+ * shared account URL so it never changes the stored mode.
  * When the accessible-venue list has more than one enterable venue the layout renders
  * horizontal **venue tabs** above the routed content; owned venues also carry **Owner chrome**
  * (**Add venue** and **Company**). The sidebar footer carries the minimal
@@ -61,10 +61,10 @@ import {
   useBusinessAccessSnapshotQuery,
 } from "@/services/employees/employeesService";
 import {
+  canonicalAccountPreferencesPath,
   canonicalBusinessDashboardRoutePath,
   canonicalBusinessNotificationsPath,
   canonicalBusinessPeoplePath,
-  canonicalBusinessPreferencesPath,
   canonicalBusinessSettingsDeliveryPath,
   canonicalBusinessSettingsMetricsPath,
   canonicalBusinessSettingsOpenHoursPath,
@@ -109,7 +109,7 @@ export default function BusinessLayout() {
   const deliveryTo = canonicalBusinessSettingsDeliveryPath(businessId);
   const metricsTo = canonicalBusinessSettingsMetricsPath(businessId);
   const notificationsTo = canonicalBusinessNotificationsPath(businessId);
-  const preferencesTo = canonicalBusinessPreferencesPath(businessId);
+  const preferencesTo = canonicalAccountPreferencesPath();
   // Owner access is admin-equivalent even when the snapshot omits a layer.
   const canManage =
     canManageVenue(accessQuery.data) || canAdministerVenue(accessQuery.data);
