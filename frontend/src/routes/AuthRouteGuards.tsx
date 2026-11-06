@@ -13,7 +13,8 @@
  *   with a localized explanation.
  * - Customer and account areas = `CustomerRouteShell` = `ProtectedRoute` → `CustomerModeGuard`.
  *   These destinations always render; a stored Business mode is reconciled to Customer, with a
- *   localized notice when reconciliation fails.
+ *   localized notice when reconciliation fails. `/account/preferences` is the exception: it is
+ *   user-scoped and wrapped only by `ProtectedRoute`, so it never touches the stored mode.
  * - Retired `/employee/*` URLs are compatibility redirects (`routes/EmployeeRedirects.tsx`).
  *
  * ## Wiring (`appRoutes.tsx`)
@@ -27,7 +28,9 @@
  * - `/mode` → `ProtectedRoute` + mode page.
  * - `/dashboard`, `/favorites` → `CustomerRouteShell` + `CustomerLayout`.
  * - `/account/*` → `CustomerRouteShell` + `CustomerAccountLayout`; `/profile` redirects to
- *   `/account/profile`.
+ *   `/account/profile`. `/account/preferences` is the exception: it is protected but uses
+ *   `CustomerAccountLayout` without the Customer-mode guard, because Business **Me** opens
+ *   it and entering it must leave the stored mode unchanged.
  * - `/employee/*` → `ProtectedRoute` + compatibility redirects (no employee shell).
  * - Legacy `/:userId/...` URLs redirect in `appRoutes.tsx` (ADR-0013).
  *

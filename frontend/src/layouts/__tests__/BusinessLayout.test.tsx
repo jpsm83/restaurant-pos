@@ -110,6 +110,7 @@ vi.mock("@/components/ActorSidebar", () => ({
       key: string;
       label: string;
       to: string;
+      isActive: boolean;
       groupName: string;
     }>;
   }) => (
@@ -123,6 +124,7 @@ vi.mock("@/components/ActorSidebar", () => ({
           href={page.to}
           data-group={page.groupName}
           data-label={page.label}
+          data-active={page.isActive ? "true" : "false"}
         >
           {page.label}
         </a>
@@ -195,6 +197,7 @@ function renderBusinessLayout(
           <Route path="dashboard" element={<div>Business Outlet</div>} />
           <Route path="company" element={<div>Company page</div>} />
           <Route path="notifications" element={<div>Notifications page</div>} />
+          <Route path="preferences" element={<div>Preferences page</div>} />
         </Route>
         <Route path="/dashboard" element={<div>Customer dashboard</div>} />
       </Routes>
@@ -262,7 +265,7 @@ describe("BusinessLayout", () => {
     expect(screen.getByText("Business Outlet")).toBeInTheDocument();
   });
 
-  it("shows a Me group with only the Notifications destination", async () => {
+  it("shows a Me group with Notifications then Preferences", async () => {
     await renderBusinessLayout();
 
     const nav = screen.getByTestId("actor-sidebar");
@@ -270,12 +273,33 @@ describe("BusinessLayout", () => {
       .getAllByRole("link")
       .filter((link) => link.getAttribute("data-group") === "Me");
 
-    expect(meLinks).toHaveLength(1);
+    expect(meLinks).toHaveLength(2);
     expect(meLinks[0]).toHaveTextContent("Notifications");
     expect(meLinks[0]).toHaveAttribute(
       "href",
       "/business/b1/notifications",
     );
+    expect(meLinks[0]).toHaveAttribute("data-active", "false");
+    expect(meLinks[1]).toHaveTextContent("Preferences");
+    expect(meLinks[1]).toHaveAttribute(
+      "href",
+      "/business/b1/preferences",
+    );
+    expect(meLinks[1]).toHaveAttribute("data-active", "false");
+  });
+
+  it("marks Preferences active on the page", async () => {
+    await renderBusinessLayout("/business/b1/preferences");
+
+    expect(screen.getByText("Preferences page")).toBeInTheDocument();
+    const nav = screen.getByTestId("actor-sidebar");
+    const meLinks = within(nav)
+      .getAllByRole("link")
+      .filter((link) => link.getAttribute("data-group") === "Me");
+
+    expect(meLinks[0]).toHaveAttribute("data-active", "false");
+    expect(meLinks[1]).toHaveTextContent("Preferences");
+    expect(meLinks[1]).toHaveAttribute("data-active", "true");
   });
 
   it("localizes the Me group and Notifications destination", async () => {
@@ -286,11 +310,16 @@ describe("BusinessLayout", () => {
       .getAllByRole("link")
       .filter((link) => link.getAttribute("data-group") === "Yo");
 
-    expect(meLinks).toHaveLength(1);
+    expect(meLinks).toHaveLength(2);
     expect(meLinks[0]).toHaveTextContent("Notificaciones");
     expect(meLinks[0]).toHaveAttribute(
       "href",
       "/business/b1/notifications",
+    );
+    expect(meLinks[1]).toHaveTextContent("Preferencias");
+    expect(meLinks[1]).toHaveAttribute(
+      "href",
+      "/business/b1/preferences",
     );
   });
 

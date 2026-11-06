@@ -92,6 +92,11 @@ export function canonicalBusinessNotificationsPath(businessId: string): string {
   return `${canonicalBusinessDashboardPath(businessId)}/notifications`;
 }
 
+/** User-scoped Preferences reached from the Business Me group. */
+export function canonicalBusinessPreferencesPath(businessId: string): string {
+  return `${canonicalBusinessDashboardPath(businessId)}/preferences`;
+}
+
 /** Customer dashboard — the signed-in User's landing page. */
 export function canonicalCustomerDashboardPath(): string {
   return "/dashboard";

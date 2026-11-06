@@ -810,6 +810,55 @@ describe("Customer chrome and Business shell acceptance", () => {
     );
   });
 
+  it("opens Preferences from Business Me and returns to the same venue without changing mode", async () => {
+    server = createServer({
+      mode: "business",
+      venues: [venue({ businessId: "b1", tradeName: "Alpha Bar" })],
+      portfolio: portfolio([{ _id: "b1", tradeName: "Alpha Bar" }]),
+    });
+    const user = userEvent.setup();
+
+    await renderShell("/business/b1/dashboard");
+
+    expect(await findBusinessDashboard()).toBeInTheDocument();
+    await user.click(screen.getByRole("link", { name: "Preferences" }));
+
+    await expectLocation("/business/b1/preferences");
+    expect(
+      await screen.findByRole("heading", { name: "Preferences" }),
+    ).toBeInTheDocument();
+    expect(server.mode).toBe("business");
+
+    await user.click(screen.getByRole("link", { name: "Dashboard" }));
+
+    await expectLocation("/business/b1/dashboard");
+    expect(await findBusinessDashboard()).toBeInTheDocument();
+    expect(server.mode).toBe("business");
+    expect(mockPost).not.toHaveBeenCalledWith(
+      "/api/v1/auth/set-mode",
+      expect.anything(),
+    );
+  });
+
+  it("opens account Preferences in Business mode without reconciling the stored mode", async () => {
+    server = createServer({
+      mode: "business",
+      venues: [venue({ businessId: "b1", tradeName: "Alpha Bar" })],
+      portfolio: portfolio([{ _id: "b1", tradeName: "Alpha Bar" }]),
+    });
+
+    await renderShell("/account/preferences");
+
+    expect(
+      await screen.findByRole("heading", { name: "Preferences" }),
+    ).toBeInTheDocument();
+    expect(server.mode).toBe("business");
+    expect(mockPost).not.toHaveBeenCalledWith(
+      "/api/v1/auth/set-mode",
+      expect.anything(),
+    );
+  });
+
   it("renders the Business Me inbox and navigation in Spanish", async () => {
     server = createServer({
       mode: "business",

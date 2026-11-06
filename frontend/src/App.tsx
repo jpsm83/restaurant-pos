@@ -8,6 +8,7 @@
  * | `/mode` | `ProtectedRoute` — Customer | Business mode selection |
  * | `/dashboard`, `/favorites` | `CustomerRouteShell` + `CustomerLayout` |
  * | `/account`, `/account/profile`, `/account/address`, `/account/notifications` | `CustomerRouteShell` + `CustomerAccountLayout` |
+ * | `/account/preferences` | `ProtectedRoute` + `CustomerAccountLayout` — no Customer-mode guard |
  * | `/profile` | legacy redirect to `/account/profile` |
  * | `/employee/*` | `ProtectedRoute` + compatibility redirects (no employee shell) |
  * | `/:userId/...` | valid ObjectId ids redirect; unknown shapes render 404 (ADR-0013) |

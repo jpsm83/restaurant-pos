@@ -54,6 +54,8 @@ vi.mock("@/pages/notifications/NotificationsInboxPage", () => ({
 
 describe("customer account routing", () => {
   beforeEach(() => {
+    mockAuthMode.mode = "customer";
+    mockAuthMode.setModeAndRefresh.mockReset();
     mockUseAuth.mockReturnValue({
       state: {
         user: { id: "u1", email: "u@test.local", type: "user", role: "Customer" },
@@ -124,5 +126,19 @@ describe("customer account routing", () => {
     expect(screen.getByTestId("location")).toHaveTextContent(
       /^\/account\/preferences$/,
     );
+  });
+
+  it("does not change the stored Business mode when Preferences opens", async () => {
+    mockAuthMode.mode = "business";
+
+    await renderRoutes("/account/preferences");
+
+    expect(
+      await screen.findByTestId("preferences-page-stub"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(
+      /^\/account\/preferences$/,
+    );
+    expect(mockAuthMode.setModeAndRefresh).not.toHaveBeenCalled();
   });
 });

@@ -10,6 +10,7 @@ import {
   canonicalBusinessDashboardRoutePath,
   canonicalBusinessNotificationsPath,
   canonicalBusinessPeoplePath,
+  canonicalBusinessPreferencesPath,
   canonicalBusinessProfilePath,
   canonicalBusinessSettingsAddressPath,
   canonicalBusinessSettingsDeliveryPath,
@@ -42,6 +43,9 @@ describe("canonicalPaths", () => {
     expect(canonicalBusinessPeoplePath("b1")).toBe("/business/b1/people");
     expect(canonicalBusinessNotificationsPath("b1")).toBe(
       "/business/b1/notifications",
+    );
+    expect(canonicalBusinessPreferencesPath("b1")).toBe(
+      "/business/b1/preferences",
     );
     expect(canonicalBusinessProfilePath("b1")).toBe(
       "/business/b1/settings/profile",

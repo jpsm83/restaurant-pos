@@ -283,6 +283,10 @@ export function AppRoutes() {
             <Route path="company" element={<BusinessCompanyPage />} />
             <Route path="notifications" element={<NotificationsInboxPage />} />
             <Route
+              path="preferences"
+              element={<CustomerPreferencesPage />}
+            />
+            <Route
               path="settings/profile"
               element={<BusinessProfileSettingsPage />}
             />
@@ -338,6 +342,19 @@ export function AppRoutes() {
               path="account/notifications"
               element={<NotificationsInboxPage />}
             />
+          </Route>
+
+          {/*
+           * Preferences is user-scoped and not guarded by Customer mode: opening
+           * it must leave the stored mode alone.
+           */}
+          <Route
+            element={
+              <ProtectedRoute>
+                <CustomerAccountLayout />
+              </ProtectedRoute>
+            }
+          >
             <Route
               path="account/preferences"
               element={<CustomerPreferencesPage />}

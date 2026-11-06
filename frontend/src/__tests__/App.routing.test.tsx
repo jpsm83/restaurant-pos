@@ -58,6 +58,12 @@ vi.mock("@/pages/notifications/NotificationsInboxPage", () => ({
   ),
 }));
 
+vi.mock("@/pages/customer/CustomerPreferencesPage", () => ({
+  default: () => (
+    <div data-testid="preferences-page-stub">Preferences page</div>
+  ),
+}));
+
 describe("App public routing (Phase 1.5.1)", () => {
   beforeEach(() => {
     // Routing is the subject here; keep the real env client id from mounting
@@ -74,6 +80,7 @@ describe("App public routing (Phase 1.5.1)", () => {
     mockAuthMode.mode = "customer";
     mockAuthMode.isLoading = false;
     mockAuthMode.isError = false;
+    mockAuthMode.setModeAndRefresh.mockReset();
     mockVenues.data = [];
     mockVenues.isLoading = false;
     mockVenues.isError = false;
@@ -299,6 +306,46 @@ describe("App public routing (Phase 1.5.1)", () => {
     expect(screen.getByTestId("location")).toHaveTextContent(
       /^\/business\/507f1f77bcf86cd799439011\/notifications$/,
     );
+  });
+
+  it("routes `/business/:businessId/preferences` without changing mode", async () => {
+    mockUseAuth.mockReturnValue({
+      state: {
+        user: { id: "u1", email: "manager@example.com", type: "user" },
+        status: "authenticated",
+        error: null,
+      },
+      dispatch: vi.fn(),
+    });
+    mockAuthMode.mode = "business";
+    mockVenues.data = [
+      {
+        businessId: "507f1f77bcf86cd799439011",
+        tradeName: "Alpha Bar",
+        source: "membership",
+        effectiveLayer: "manager",
+        jobRoles: [],
+        capabilities: [],
+        canEnterBusiness: true,
+      },
+    ];
+
+    await renderWithI18n(
+      <MemoryRouter
+        initialEntries={["/business/507f1f77bcf86cd799439011/preferences"]}
+      >
+        <LocationProbe />
+        <AppRoutes />
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByTestId("preferences-page-stub"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(
+      /^\/business\/507f1f77bcf86cd799439011\/preferences$/,
+    );
+    expect(mockAuthMode.setModeAndRefresh).not.toHaveBeenCalled();
   });
 
   const legalPages = [
