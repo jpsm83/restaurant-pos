@@ -21,16 +21,29 @@ import {
   type GoogleVerifier,
 } from "./google.ts";
 
+/** Mapped Google profile details a User or a Google identity may carry. */
+interface GoogleProfileFields {
+  firstName?: string;
+  lastName?: string;
+  imageUrl?: string;
+}
+
 /** The User fields the Google account-resolution lookups read. */
-interface GoogleLinkedUserLookup {
+interface GoogleProfileLookup {
+  languagePreference?: "en" | "es" | null;
+  personalDetails?:
+    | (GoogleProfileFields & { email?: string; username?: string })
+    | null;
+}
+
+interface GoogleLinkedUserLookup extends GoogleProfileLookup {
   _id: Types.ObjectId;
   refreshSessionVersion?: number;
-  languagePreference?: "en" | "es" | null;
-  personalDetails?: {
-    email?: string;
-    username?: string;
-    firstName?: string;
-  } | null;
+}
+
+/** Mapped profile values a Google identity can fill in when the User has none. */
+interface GoogleProfileBackfill extends GoogleProfileFields {
+  languagePreference?: "en" | "es";
 }
 
 interface GoogleEmailUserLookup extends GoogleLinkedUserLookup {
@@ -45,6 +58,9 @@ interface GoogleDeletedUserLookup {
     firstName?: string;
   } | null;
 }
+
+const GOOGLE_USER_LOOKUP_SELECT =
+  "_id googleId refreshSessionVersion languagePreference personalDetails.email personalDetails.username personalDetails.firstName personalDetails.lastName personalDetails.imageUrl";
 
 export type GoogleAuthInput = {
   credential: string;
@@ -87,12 +103,68 @@ function languageFromGoogleLocale(
 
 function greetingNameFor(
   user: GoogleLinkedUserLookup,
+  backfilledFirstName?: string,
 ): string | undefined {
   return (
     user.personalDetails?.username?.trim() ||
+    backfilledFirstName ||
     user.personalDetails?.firstName?.trim() ||
     undefined
   );
+}
+
+function isBlank(value: string | null | undefined): boolean {
+  return !value || value.trim() === "";
+}
+
+/**
+ * The mapped Google profile values that are missing on the User. Populated
+ * values are never returned, so a fully populated profile yields no fields.
+ */
+function profileBackfillFor(
+  identity: GoogleIdentity,
+  user: GoogleProfileLookup,
+): GoogleProfileBackfill {
+  const backfill: GoogleProfileBackfill = {};
+
+  if (isBlank(user.personalDetails?.firstName) && identity.firstName) {
+    backfill.firstName = identity.firstName;
+  }
+  if (isBlank(user.personalDetails?.lastName) && identity.lastName) {
+    backfill.lastName = identity.lastName;
+  }
+  if (isBlank(user.personalDetails?.imageUrl) && identity.imageUrl) {
+    backfill.imageUrl = identity.imageUrl;
+  }
+
+  const language = languageFromGoogleLocale(identity.locale);
+  if (isBlank(user.languagePreference) && language) {
+    backfill.languagePreference = language;
+  }
+
+  return backfill;
+}
+
+/** The `$set` paths for a backfill, empty when there is nothing to fill. */
+function profileBackfillUpdate(
+  backfill: GoogleProfileBackfill,
+): Record<string, string> {
+  const update: Record<string, string> = {};
+
+  if (backfill.firstName) {
+    update["personalDetails.firstName"] = backfill.firstName;
+  }
+  if (backfill.lastName) {
+    update["personalDetails.lastName"] = backfill.lastName;
+  }
+  if (backfill.imageUrl) {
+    update["personalDetails.imageUrl"] = backfill.imageUrl;
+  }
+  if (backfill.languagePreference) {
+    update.languagePreference = backfill.languagePreference;
+  }
+
+  return update;
 }
 
 export async function handleGoogleAuth(
@@ -114,29 +186,34 @@ export async function handleGoogleAuth(
   const linkedUser = await User.findOne(
     withSoftDeleteFilter({ googleId: identity.subject }),
   )
-    .select(
-      "_id refreshSessionVersion languagePreference personalDetails.email personalDetails.username personalDetails.firstName",
-    )
+    .select(GOOGLE_USER_LOOKUP_SELECT)
     .lean<GoogleLinkedUserLookup>();
 
   if (linkedUser) {
+    const backfill = profileBackfillFor(identity, linkedUser);
+    const backfillUpdate = profileBackfillUpdate(backfill);
+    if (Object.keys(backfillUpdate).length > 0) {
+      await User.updateOne(withSoftDeleteFilter({ _id: linkedUser._id }), {
+        $set: backfillUpdate,
+      });
+    }
+
     return {
       kind: "session",
       userId: String(linkedUser._id),
       refreshSessionVersion: linkedUser.refreshSessionVersion ?? 0,
       created: false,
       email: linkedUser.personalDetails?.email ?? email,
-      greetingName: greetingNameFor(linkedUser),
-      languagePreference: linkedUser.languagePreference ?? null,
+      greetingName: greetingNameFor(linkedUser, backfill.firstName),
+      languagePreference:
+        backfill.languagePreference ?? linkedUser.languagePreference ?? null,
     };
   }
 
   const userByEmail = await User.findOne(
     withSoftDeleteFilter({ "personalDetails.email": email }),
   )
-    .select(
-      "_id googleId refreshSessionVersion languagePreference personalDetails.email personalDetails.username personalDetails.firstName",
-    )
+    .select(GOOGLE_USER_LOOKUP_SELECT)
     .lean<GoogleEmailUserLookup>();
 
   if (userByEmail) {
@@ -144,10 +221,12 @@ export async function handleGoogleAuth(
       return { kind: "google_email_conflict" };
     }
 
+    const backfill = profileBackfillFor(identity, userByEmail);
     await User.updateOne(withSoftDeleteFilter({ _id: userByEmail._id }), {
       $set: {
         googleId: identity.subject,
         "personalDetails.emailVerified": true,
+        ...profileBackfillUpdate(backfill),
       },
     });
 
@@ -157,8 +236,9 @@ export async function handleGoogleAuth(
       refreshSessionVersion: userByEmail.refreshSessionVersion ?? 0,
       created: false,
       email: userByEmail.personalDetails?.email ?? email,
-      greetingName: greetingNameFor(userByEmail),
-      languagePreference: userByEmail.languagePreference ?? null,
+      greetingName: greetingNameFor(userByEmail, backfill.firstName),
+      languagePreference:
+        backfill.languagePreference ?? userByEmail.languagePreference ?? null,
     };
   }
 

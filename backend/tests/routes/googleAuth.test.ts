@@ -371,6 +371,204 @@ describe("POST /api/v1/auth/google", () => {
     expect(stored?.privacyAcceptedAt).toBeUndefined();
   });
 
+  describe("Google profile backfill", () => {
+    const googleProfile: GoogleIdentity = {
+      ...defaultIdentity,
+      firstName: "Google",
+      lastName: "User",
+      imageUrl: "https://lh3.googleusercontent.com/a/avatar.png",
+      locale: "es-419",
+    };
+
+    it("links by verified email and backfills only empty fields in the same update", async () => {
+      verifyGoogle.mockResolvedValue(googleProfile);
+      const existing = await User.create({
+        personalDetails: {
+          email: defaultIdentity.email,
+          password: await bcrypt.hash(password, 10),
+          emailVerified: false,
+          firstName: "Existing",
+        },
+      });
+
+      const response = await postGoogle(app, {
+        credential: "google-id-token",
+        intent: "signup",
+        privacyAccepted: true,
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      expect(response.json().user.id).toBe(String(existing._id));
+      expect(response.json().user.languagePreference).toBe("es");
+
+      const stored = await User.findById(existing._id).lean();
+      expect(stored?.googleId).toBe(defaultIdentity.subject);
+      expect(stored?.personalDetails?.emailVerified).toBe(true);
+      expect(stored?.personalDetails?.firstName).toBe("Existing");
+      expect(stored?.personalDetails?.lastName).toBe("User");
+      expect(stored?.personalDetails?.imageUrl).toBe(googleProfile.imageUrl);
+      expect(stored?.languagePreference).toBe("es");
+      expect(await User.countDocuments()).toBe(1);
+    });
+
+    it("never overwrites a populated profile when linking by email", async () => {
+      verifyGoogle.mockResolvedValue(googleProfile);
+      const existing = await User.create({
+        languagePreference: "en",
+        personalDetails: {
+          email: defaultIdentity.email,
+          password: await bcrypt.hash(password, 10),
+          emailVerified: false,
+          firstName: "Ada",
+          lastName: "Lovelace",
+          imageUrl: "https://example.com/ada.png",
+        },
+      });
+
+      const response = await postGoogle(app, {
+        credential: "google-id-token",
+        intent: "signup",
+        privacyAccepted: true,
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      const stored = await User.findById(existing._id).lean();
+      expect(stored?.googleId).toBe(defaultIdentity.subject);
+      expect(stored?.personalDetails?.emailVerified).toBe(true);
+      expect(stored?.personalDetails?.firstName).toBe("Ada");
+      expect(stored?.personalDetails?.lastName).toBe("Lovelace");
+      expect(stored?.personalDetails?.imageUrl).toBe(
+        "https://example.com/ada.png",
+      );
+      expect(stored?.languagePreference).toBe("en");
+    });
+
+    it("fills only missing fields on a returning Google-subject sign-in", async () => {
+      verifyGoogle.mockResolvedValue(googleProfile);
+      const existing = await User.create({
+        googleId: defaultIdentity.subject,
+        languagePreference: "en",
+        personalDetails: {
+          email: defaultIdentity.email,
+          password: await bcrypt.hash(password, 10),
+          emailVerified: true,
+          firstName: "Ada",
+        },
+      });
+
+      const response = await postGoogle(app, {
+        credential: "google-id-token",
+        intent: "signin",
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      const stored = await User.findById(existing._id).lean();
+      expect(stored?.personalDetails?.firstName).toBe("Ada");
+      expect(stored?.personalDetails?.lastName).toBe("User");
+      expect(stored?.personalDetails?.imageUrl).toBe(googleProfile.imageUrl);
+      expect(stored?.languagePreference).toBe("en");
+    });
+
+    it("fills the language preference from the Google locale on a returning sign-in", async () => {
+      verifyGoogle.mockResolvedValue(googleProfile);
+      const existing = await User.create({
+        googleId: defaultIdentity.subject,
+        personalDetails: {
+          email: defaultIdentity.email,
+          password: await bcrypt.hash(password, 10),
+          emailVerified: true,
+          firstName: "Ada",
+          lastName: "Lovelace",
+          imageUrl: "https://example.com/ada.png",
+        },
+      });
+
+      const response = await postGoogle(app, {
+        credential: "google-id-token",
+        intent: "signin",
+        languagePreference: "en",
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      expect(response.json().user.languagePreference).toBe("es");
+      const stored = await User.findById(existing._id).lean();
+      expect(stored?.languagePreference).toBe("es");
+    });
+
+    it("does not write when a returning sign-in has nothing to fill", async () => {
+      verifyGoogle.mockResolvedValue(googleProfile);
+      const existing = await User.create({
+        googleId: defaultIdentity.subject,
+        languagePreference: "en",
+        personalDetails: {
+          email: defaultIdentity.email,
+          password: await bcrypt.hash(password, 10),
+          emailVerified: true,
+          firstName: "Ada",
+          lastName: "Lovelace",
+          imageUrl: "https://example.com/ada.png",
+        },
+      });
+      const before = await User.findById(existing._id).lean();
+
+      const response = await postGoogle(app, {
+        credential: "google-id-token",
+        intent: "signin",
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      const after = await User.findById(existing._id).lean();
+      expect(after?.personalDetails?.firstName).toBe("Ada");
+      expect(after?.personalDetails?.lastName).toBe("Lovelace");
+      expect(after?.personalDetails?.imageUrl).toBe(
+        "https://example.com/ada.png",
+      );
+      expect(after?.languagePreference).toBe("en");
+      expect(after?.updatedAt?.getTime()).toBe(before?.updatedAt?.getTime());
+    });
+
+    it("leaves a soft-deleted account's profile untouched on reactivation", async () => {
+      verifyGoogle.mockResolvedValue(googleProfile);
+      const deleted = await User.create({
+        personalDetails: {
+          email: defaultIdentity.email,
+          password: await bcrypt.hash(password, 10),
+          firstName: "Gone",
+        },
+        deleted: true,
+        deletedAt: new Date(),
+      });
+
+      const response = await postGoogle(app, {
+        credential: "google-id-token",
+        intent: "signin",
+      });
+
+      expect(response.statusCode).toBe(202);
+      const stored = await User.findById(deleted._id)
+        .setOptions({ includeDeleted: true })
+        .lean();
+      expect(stored?.deleted).toBe(true);
+      expect(stored?.googleId).toBeUndefined();
+      expect(stored?.personalDetails?.firstName).toBe("Gone");
+      expect(stored?.personalDetails?.lastName).toBeUndefined();
+      expect(stored?.personalDetails?.imageUrl).toBeUndefined();
+      expect(stored?.languagePreference).toBeUndefined();
+    });
+
+    it("creates nothing for a sign-in with no matching account", async () => {
+      verifyGoogle.mockResolvedValue(googleProfile);
+
+      const response = await postGoogle(app, {
+        credential: "google-id-token",
+        intent: "signin",
+      });
+
+      expect(response.statusCode).toBe(404);
+      expect(await User.countDocuments()).toBe(0);
+    });
+  });
+
   it("resolves by Google subject before verified email", async () => {
     const subjectUser = await User.create({
       googleId: defaultIdentity.subject,
