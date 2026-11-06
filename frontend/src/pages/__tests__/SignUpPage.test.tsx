@@ -100,6 +100,11 @@ function mockEmailSignupSuccess(user = emailSignupUser) {
   });
 }
 
+function stubBrowserLanguage(language: string, languages = [language]) {
+  vi.spyOn(window.navigator, "language", "get").mockReturnValue(language);
+  vi.spyOn(window.navigator, "languages", "get").mockReturnValue(languages);
+}
+
 describe("SignUpPage", () => {
   beforeEach(() => {
     mockDispatch.mockReset();
@@ -119,6 +124,7 @@ describe("SignUpPage", () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
+    vi.restoreAllMocks();
   });
 
   it("shows validation when fields are empty", async () => {
@@ -440,8 +446,9 @@ describe("SignUpPage", () => {
     });
   });
 
-  it("passes the active language to email signup", async () => {
+  it("seeds email signup from a supported browser language", async () => {
     const user = userEvent.setup();
+    stubBrowserLanguage("es-ES");
     mockEmailSignupSuccess({
       ...emailSignupUser,
       email: "nuevo@example.com",
@@ -485,6 +492,150 @@ describe("SignUpPage", () => {
         password: "ValidPass1!",
         privacyAccepted: true,
         languagePreference: "es",
+      });
+    });
+  });
+
+  it("seeds email signup from the browser language when the UI language differs", async () => {
+    const user = userEvent.setup();
+    stubBrowserLanguage("es-MX");
+    mockEmailSignupSuccess({
+      ...emailSignupUser,
+      email: "navegador@example.com",
+    });
+
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/signup"]}>
+        <Routes>
+          <Route path="/signup" element={<SignUpPage />} />
+          <Route path="/dashboard" element={<div>Customer dashboard</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await user.type(
+      screen.getByLabelText(/^email$/i),
+      "navegador@example.com",
+    );
+    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await user.click(
+      screen.getByLabelText(/privacy notice and account terms/i),
+    );
+    await user.click(screen.getByRole("button", { name: /create account$/i }));
+
+    await waitFor(() => {
+      expect(mockSignup).toHaveBeenCalledWith({
+        email: "navegador@example.com",
+        password: "ValidPass1!",
+        privacyAccepted: true,
+        languagePreference: "es",
+      });
+    });
+  });
+
+  it("falls back to English for an unsupported browser language on email signup", async () => {
+    const user = userEvent.setup();
+    stubBrowserLanguage("fr-FR");
+    mockEmailSignupSuccess({
+      ...emailSignupUser,
+      email: "fallback@example.com",
+    });
+
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/signup"]}>
+        <Routes>
+          <Route path="/signup" element={<SignUpPage />} />
+          <Route path="/dashboard" element={<div>Customer dashboard</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await user.type(
+      screen.getByLabelText(/^email$/i),
+      "fallback@example.com",
+    );
+    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await user.click(
+      screen.getByLabelText(/privacy notice and account terms/i),
+    );
+    await user.click(screen.getByRole("button", { name: /create account$/i }));
+
+    await waitFor(() => {
+      expect(mockSignup).toHaveBeenCalledWith({
+        email: "fallback@example.com",
+        password: "ValidPass1!",
+        privacyAccepted: true,
+        languagePreference: "en",
+      });
+    });
+  });
+
+  it("seeds Google signup from the browser language", async () => {
+    const user = userEvent.setup();
+    stubBrowserLanguage("es-419");
+    mockGoogleSignupSuccess();
+
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/signup"]}>
+        <Routes>
+          <Route path="/signup" element={<SignUpPage />} />
+          <Route
+            path="/dashboard"
+            element={<div>Google customer dashboard</div>}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await user.click(
+      screen.getByLabelText(/privacy notice and account terms/i),
+    );
+    await user.click(
+      screen.getByRole("button", { name: /continue with google/i }),
+    );
+
+    await waitFor(() => {
+      expect(mockGoogleAuth).toHaveBeenCalledWith({
+        credential: "google-id-token",
+        intent: "signup",
+        privacyAccepted: true,
+        languagePreference: "es",
+      });
+    });
+  });
+
+  it("falls back to English for an unsupported browser language on Google signup", async () => {
+    const user = userEvent.setup();
+    stubBrowserLanguage("de-DE");
+    mockGoogleSignupSuccess();
+
+    await renderWithI18n(
+      <MemoryRouter initialEntries={["/signup"]}>
+        <Routes>
+          <Route path="/signup" element={<SignUpPage />} />
+          <Route
+            path="/dashboard"
+            element={<div>Google customer dashboard</div>}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await user.click(
+      screen.getByLabelText(/privacy notice and account terms/i),
+    );
+    await user.click(
+      screen.getByRole("button", { name: /continue with google/i }),
+    );
+
+    await waitFor(() => {
+      expect(mockGoogleAuth).toHaveBeenCalledWith({
+        credential: "google-id-token",
+        intent: "signup",
+        privacyAccepted: true,
+        languagePreference: "en",
       });
     });
   });

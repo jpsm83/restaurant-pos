@@ -268,6 +268,30 @@ describe("POST /api/v1/auth/google", () => {
     expect(stored?.languagePreference).toBe("en");
   });
 
+  it("does not backfill an existing account's language from the sign-up form", async () => {
+    await User.create({
+      personalDetails: {
+        email: defaultIdentity.email,
+        emailVerified: true,
+      },
+    });
+
+    const response = await postGoogle(app, {
+      credential: "google-id-token",
+      intent: "signup",
+      languagePreference: "es",
+      privacyAccepted: true,
+    });
+
+    expect(response.statusCode, response.body).toBe(200);
+    expect(response.json().user.languagePreference).toBeUndefined();
+
+    const stored = await User.findOne({
+      "personalDetails.email": defaultIdentity.email,
+    }).lean();
+    expect(stored?.languagePreference).toBeUndefined();
+  });
+
   it.each([
     ["unsupported", "fr-FR"],
     ["missing", undefined],

@@ -31,7 +31,7 @@ import {
 import { markPriorSession } from "@/auth/sessionHint";
 import { useAuth } from "@/auth/store/AuthContext";
 import type { AuthSession, GoogleAuthIntent } from "@/auth/types";
-import { isSupportedLanguage } from "@/i18n/config";
+import { isSupportedLanguage, resolveBrowserLanguage } from "@/i18n/config";
 import type { ErrorFailure } from "@/i18n/errorCopy";
 
 interface GoogleAuthButtonProps {
@@ -82,12 +82,13 @@ function EnabledGoogleAuthButton({
   const canCreateAccount = intent === "signup";
   const requiresAcceptance = canCreateAccount && privacyAccepted !== true;
 
-  const language = (i18n.resolvedLanguage ?? i18n.language ?? "")
+  const activeLanguage = (i18n.resolvedLanguage ?? i18n.language ?? "")
     .split("-")[0]
     .toLowerCase();
-  const languagePreference = isSupportedLanguage(language)
-    ? language
+  const widgetLocale = isSupportedLanguage(activeLanguage)
+    ? activeLanguage
     : undefined;
+  const languagePreference = resolveBrowserLanguage();
 
   if (authConfig?.googleSignInEnabled !== true) return null;
 
@@ -110,7 +111,7 @@ function EnabledGoogleAuthButton({
         ...(canCreateAccount && privacyAccepted === true
           ? { privacyAccepted: true }
           : {}),
-        ...(languagePreference ? { languagePreference } : {}),
+        languagePreference,
       });
 
       if (!result.ok) {
@@ -167,7 +168,7 @@ function EnabledGoogleAuthButton({
         size="large"
         shape="rectangular"
         {...(width ? { width } : {})}
-        {...(languagePreference ? { locale: languagePreference } : {})}
+        {...(widgetLocale ? { locale: widgetLocale } : {})}
         containerProps={{
           "aria-busy": submitting,
           "aria-disabled": submitting || undefined,

@@ -29,19 +29,10 @@ import {
   NAMESPACES,
   SUPPORTED_LANGUAGES,
   isSupportedLanguage,
+  resolveBrowserLanguage,
   type SupportedLanguage,
 } from "./config";
 import { buildLocaleResources } from "./localeResources";
-
-function readBrowserLanguage(): SupportedLanguage {
-  if (typeof navigator === "undefined") return DEFAULT_LANGUAGE;
-  const tags = [navigator.language, ...(navigator.languages ?? [])];
-  for (const tag of tags) {
-    const base = tag?.split("-")[0]?.toLowerCase();
-    if (base && isSupportedLanguage(base)) return base;
-  }
-  return DEFAULT_LANGUAGE;
-}
 
 /** Saved choice wins; otherwise browser (`navigator.languages` / `language`); else English. */
 function readInitialLanguage(): SupportedLanguage {
@@ -53,7 +44,7 @@ function readInitialLanguage(): SupportedLanguage {
       /* private mode / blocked storage */
     }
   }
-  return readBrowserLanguage();
+  return resolveBrowserLanguage();
 }
 
 function persistLanguage(lng: string): void {

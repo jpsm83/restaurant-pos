@@ -9,7 +9,7 @@ import { signup } from "@/auth/api";
 import { markPriorSession } from "@/auth/sessionHint";
 import { GoogleAuthButton } from "@/auth/GoogleAuthButton";
 import { useErrorMessage, type ErrorFailure } from "@/i18n/errorCopy";
-import { isSupportedLanguage } from "@/i18n/config";
+import { resolveBrowserLanguage } from "@/i18n/config";
 import {
   authPathWithReturnTo,
   getPostLoginDestination,
@@ -75,18 +75,13 @@ function buildSignUpSchema(messages: {
 type SignUpFormValues = z.infer<ReturnType<typeof buildSignUpSchema>>;
 
 export default function SignUpPage() {
-  const { t, i18n } = useTranslation("auth");
+  const { t } = useTranslation("auth");
   const navigate = useNavigate();
   const location = useLocation();
   const { dispatch } = useAuth();
   const returnTo = getReturnToParam(location.search);
   const loginHref = authPathWithReturnTo("/login", returnTo);
-  const language = (i18n.resolvedLanguage ?? i18n.language ?? "")
-    .split("-")[0]
-    .toLowerCase();
-  const languagePreference = isSupportedLanguage(language)
-    ? language
-    : undefined;
+  const languagePreference = resolveBrowserLanguage();
   const [submitFailure, setSubmitFailure] = useState<ErrorFailure | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const resolveError = useErrorMessage();
@@ -133,7 +128,7 @@ export default function SignUpPage() {
         email: data.email.trim(),
         password: data.password,
         privacyAccepted: data.privacyAccepted,
-        ...(languagePreference ? { languagePreference } : {}),
+        languagePreference,
       });
 
       if (!result.ok) {

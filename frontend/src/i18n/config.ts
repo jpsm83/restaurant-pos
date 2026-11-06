@@ -40,3 +40,19 @@ export function effectiveLanguage(code: string): SupportedLanguage {
   const base = code.split("-")[0]?.toLowerCase() ?? "";
   return isSupportedLanguage(base) ? base : DEFAULT_LANGUAGE;
 }
+
+/**
+ * The supported language the browser prefers, falling back to English.
+ *
+ * Reads `navigator.languages` in preference order after `navigator.language`;
+ * an unsupported tag is skipped so a later supported preference can win.
+ */
+export function resolveBrowserLanguage(): SupportedLanguage {
+  if (typeof navigator === "undefined") return DEFAULT_LANGUAGE;
+  const tags = [navigator.language, ...(navigator.languages ?? [])];
+  for (const tag of tags) {
+    const base = tag?.split("-")[0]?.toLowerCase();
+    if (base && isSupportedLanguage(base)) return base;
+  }
+  return DEFAULT_LANGUAGE;
+}

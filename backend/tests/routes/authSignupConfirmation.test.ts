@@ -317,6 +317,7 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
         password: "TestPassword123!",
         privacyAccepted: true,
         firstName: "Someone",
+        languagePreference: "es",
       },
     });
 
@@ -328,6 +329,8 @@ describe("POST /api/v1/auth/signup (confirmation email)", () => {
     ).toBeUndefined();
     expect(await RefreshSession.countDocuments()).toBe(0);
     expect(await User.countDocuments({ "personalDetails.email": email })).toBe(1);
+    const stored = await User.findOne({ "personalDetails.email": email }).lean();
+    expect(stored?.languagePreference).toBeUndefined();
 
     await waitForSendMockCalls(1);
     const payload = sendEmailMock.mock.calls[0]?.[0] as {
