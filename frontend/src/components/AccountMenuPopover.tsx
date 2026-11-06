@@ -6,6 +6,7 @@ import { logout, setAccessToken } from "@/auth/api";
 import { clearPriorSession } from "@/auth/sessionHint";
 import { useAuth } from "@/auth/store/AuthContext";
 import { CircularFlag } from "@/components/LanguageFlag";
+import { UserAvatar } from "@/components/UserAvatar";
 import { effectiveLanguage } from "@/i18n/config";
 import type { AuthMode } from "@/services/authMode";
 import {
@@ -20,18 +21,6 @@ import {
   canonicalAccountPreferencesPath,
 } from "@/routes/canonicalPaths";
 
-function initialsFromEmail(email: string): string {
-  const local = email.split("@")[0]?.trim() ?? "";
-  if (!local) return "?";
-  const parts = local.split(/[._-]+/).filter(Boolean);
-  if (parts.length >= 2) {
-    const a = parts[0]?.[0];
-    const b = parts[1]?.[0];
-    if (a && b) return `${a}${b}`.toUpperCase();
-  }
-  return local.slice(0, 2).toUpperCase();
-}
-
 type AccountMenuPopoverProps = {
   session: AuthSession;
   /** The server-backed Customer | Business mode shown in the summary. */
@@ -45,6 +34,9 @@ export function AccountMenuPopover({ session, mode }: AccountMenuPopoverProps) {
   const { dispatch } = useAuth();
   const activeLanguage = effectiveLanguage(i18n.language);
   const languageLabel = tCommon(`languages.${activeLanguage}`);
+  const avatarName =
+    [session.firstName, session.lastName].filter(Boolean).join(" ") ||
+    session.email;
 
   const actorTypeLabel =
     mode === "business"
@@ -67,17 +59,11 @@ export function AccountMenuPopover({ session, mode }: AccountMenuPopoverProps) {
           className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           aria-label={t("account.menuAriaLabel")}
         >
-          <div
-            className="flex h-9 w-9 shrink-0 overflow-hidden rounded-full border border-border bg-background shadow-sm"
-            aria-hidden
-          >
-            <span
-              className="flex h-full w-full items-center justify-center bg-muted text-xs font-semibold uppercase tracking-tight text-muted-foreground"
-              aria-hidden
-            >
-              {initialsFromEmail(session.email)}
-            </span>
-          </div>
+          <UserAvatar
+            imageUrl={session.imageUrl}
+            fallback={avatarName}
+            className="h-9 w-9 shadow-sm"
+          />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent

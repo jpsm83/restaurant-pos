@@ -1,13 +1,17 @@
 import { type ChangeEvent, type FormEvent, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { getUserProfile, updateUserProfile } from "@/auth/api";
+import {
+  deleteUserPhoto,
+  getUserProfile,
+  updateUserProfile,
+} from "@/auth/api";
 import { useAuth } from "@/auth/store/AuthContext";
 import type { ServiceRequestError } from "@/services/serviceErrors";
 import type { UserProfile } from "@/auth/types";
 import { useErrorMessage } from "@/i18n/errorCopy";
 import { genderEnums } from "restaurant-pos-packages/enums";
-import { ChangeEmailDialog } from "@/components/ChangeEmailDialog";
+import { UserAvatar } from "@/components/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +23,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useResendEmailConfirmation } from "@/hooks/useResendEmailConfirmation";
 import { formatCalendarDate, isValidCalendarDate } from "@/lib/calendarDate";
 
 const NO_VALUE = "__none__";
@@ -70,10 +73,7 @@ function formFromProfile(profile: UserProfile): ProfileForm {
 export default function CustomerProfilePage() {
   const { t } = useTranslation("customer");
   const resolveError = useErrorMessage();
-  const { state } = useAuth();
-  const { resend, pending: resendPending } = useResendEmailConfirmation({
-    successMessage: t("profile.emailVerify.resendSuccess"),
-  });
+  const { state, dispatch } = useAuth();
 
   const sessionUser =
     state.status === "authenticated" && state.user?.type === "user"
@@ -94,10 +94,9 @@ export default function CustomerProfilePage() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
-  const [changeEmailOpen, setChangeEmailOpen] = useState(false);
-  const [changeEmailMessage, setChangeEmailMessage] = useState<string | null>(
-    null,
-  );
+  const [removingPhoto, setRemovingPhoto] = useState(false);
+  const [removePhotoFailure, setRemovePhotoFailure] =
+    useState<ServiceRequestError | null>(null);
 
   useEffect(() => {
     if (!userId) return;
@@ -170,46 +169,63 @@ export default function CustomerProfilePage() {
     setProfile(updated);
     setImageFile(null);
     setImagePreviewUrl(null);
+    if (updated && sessionUser) {
+      dispatch({
+        type: "AUTH_SUCCESS",
+        payload: {
+          ...sessionUser,
+          imageUrl:
+            updated.personalDetails.imageUrl ?? sessionUser.imageUrl,
+          firstName:
+            updated.personalDetails.firstName ?? sessionUser.firstName,
+          lastName:
+            updated.personalDetails.lastName ?? sessionUser.lastName,
+        },
+      });
+    }
     setSaveMessage(t("profile.saveSuccess"));
     toast.success(t("profile.saveSuccess"));
   }
 
-  const needsVerification =
-    state.status === "authenticated" && sessionUser?.emailVerified === false;
+  async function onRemovePhoto() {
+    if (!userId) return;
 
-  const imageUrl =
-    imagePreviewUrl ?? profile?.personalDetails.imageUrl ?? null;
+    setRemovePhotoFailure(null);
+    setSaveMessage(null);
+    setRemovingPhoto(true);
+    const result = await deleteUserPhoto(userId);
+    setRemovingPhoto(false);
+
+    if (!result.ok) {
+      setRemovePhotoFailure(result.error);
+      return;
+    }
+
+    setProfile(result.data?.user ?? null);
+    setImageFile(null);
+    setImagePreviewUrl(null);
+    if (sessionUser) {
+      dispatch({
+        type: "AUTH_SUCCESS",
+        payload: { ...sessionUser, imageUrl: undefined },
+      });
+    }
+    setSaveMessage(t("profile.photo.removeSuccess"));
+    toast.success(t("profile.photo.removeSuccess"));
+  }
+
   const email = profile?.personalDetails.email ?? sessionUser?.email ?? "";
+  const storedImageUrl =
+    profile?.personalDetails.imageUrl ?? sessionUser?.imageUrl ?? null;
+  const imageUrl = imagePreviewUrl ?? storedImageUrl;
+  const avatarName =
+    [form.firstName, form.lastName].filter(Boolean).join(" ") || email;
 
   return (
     <main className="flex min-h-0 flex-1 flex-col p-6">
       <h1 className="text-xl font-semibold text-foreground">
         {t("profile.title")}
       </h1>
-
-      {needsVerification ? (
-        <div
-          className="mt-4 max-w-lg rounded-md border border-warning/40 bg-warning/20 px-3 py-3 text-sm text-foreground"
-          role="status"
-        >
-          <p className="font-medium">{t("profile.emailVerify.bannerTitle")}</p>
-          <p className="mt-1">
-            {t("profile.emailVerify.bannerDescription")}
-          </p>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="mt-3"
-            disabled={resendPending}
-            onClick={() => void resend()}
-          >
-            {resendPending
-              ? t("profile.emailVerify.resendSending")
-              : t("profile.emailVerify.resendButton")}
-          </Button>
-        </div>
-      ) : null}
 
       {loadFailure ? (
         <p className="mt-4 text-sm text-destructive" role="alert">
@@ -226,15 +242,13 @@ export default function CustomerProfilePage() {
         <form className="mt-6 max-w-2xl space-y-8" onSubmit={onSubmit}>
           <section className="space-y-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <div className="size-24 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
-                {imageUrl ? (
-                  <img
-                    src={imageUrl}
-                    alt={t("profile.photo.alt")}
-                    className="size-full object-cover"
-                  />
-                ) : null}
-              </div>
+              <UserAvatar
+                imageUrl={imageUrl}
+                fallback={avatarName}
+                alt={t("profile.photo.alt")}
+                className="size-24"
+                fallbackClassName="text-2xl"
+              />
               <div className="space-y-2">
                 <Label htmlFor="profile-photo">
                   {t("profile.photo.label")}
@@ -248,44 +262,25 @@ export default function CustomerProfilePage() {
                 <p className="text-xs text-muted-foreground">
                   {t("profile.photo.hint")}
                 </p>
+                {storedImageUrl ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={removingPhoto}
+                    onClick={() => void onRemovePhoto()}
+                  >
+                    {removingPhoto
+                      ? t("profile.photo.removing")
+                      : t("profile.photo.remove")}
+                  </Button>
+                ) : null}
+                {removePhotoFailure ? (
+                  <p className="text-sm text-destructive" role="alert">
+                    {resolveError(removePhotoFailure)}
+                  </p>
+                ) : null}
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="profile-email">
-                {t("profile.fields.email")}
-              </Label>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Input
-                  id="profile-email"
-                  type="email"
-                  value={email}
-                  readOnly
-                  aria-describedby="profile-email-hint"
-                  className="sm:flex-1"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setChangeEmailMessage(null);
-                    setChangeEmailOpen(true);
-                  }}
-                >
-                  {t("profile.changeEmail.action")}
-                </Button>
-              </div>
-              <p
-                id="profile-email-hint"
-                className="text-xs text-muted-foreground"
-              >
-                {t("profile.fields.emailHint")}
-              </p>
-              {changeEmailMessage ? (
-                <p className="text-sm text-muted-foreground" role="status">
-                  {changeEmailMessage}
-                </p>
-              ) : null}
             </div>
           </section>
 
@@ -399,23 +394,6 @@ export default function CustomerProfilePage() {
           </Button>
         </form>
       )}
-
-      <ChangeEmailDialog
-        open={changeEmailOpen}
-        currentEmail={email}
-        hasGoogleIdentity={sessionUser?.hasGoogleIdentity === true}
-        hasPassword={sessionUser?.hasPassword === true}
-        onOpenChange={setChangeEmailOpen}
-        onRequested={(outcome) => {
-          const message = t(
-            outcome === "throttled"
-              ? "profile.changeEmail.alreadySent"
-              : "profile.changeEmail.success",
-          );
-          setChangeEmailMessage(message);
-          if (outcome === "sent") toast.success(message);
-        }}
-      />
     </main>
   );
 }

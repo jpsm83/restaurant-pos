@@ -27,6 +27,12 @@ export interface AuthUser {
   languagePreference?: "en" | "es";
   /** Stored appearance preference; drives theme hydration when set. */
   themePreference?: "light" | "dark" | "system";
+  /** Stored profile picture URL, from a Google account or an uploaded photo. */
+  imageUrl?: string;
+  /** Stored given name; seeds the avatar initials fallback. */
+  firstName?: string;
+  /** Stored family name; seeds the avatar initials fallback. */
+  lastName?: string;
   /** Whether the User holds a linked Google identity. */
   hasGoogleIdentity?: boolean;
   /** Whether the User holds a password credential. */

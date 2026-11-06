@@ -18,6 +18,12 @@ export interface AuthUser {
   languagePreference?: "en" | "es";
   /** Stored appearance preference; unset until the person chooses one. */
   themePreference?: "light" | "dark" | "system";
+  /** Stored profile picture URL, from a Google account or an uploaded photo. */
+  imageUrl?: string;
+  /** Stored given name; seeds the avatar initials fallback. */
+  firstName?: string;
+  /** Stored family name; seeds the avatar initials fallback. */
+  lastName?: string;
   /** Whether the User holds a linked Google identity (never the subject itself). */
   hasGoogleIdentity?: boolean;
   /** Whether the User holds a password credential (never the hash itself). */
@@ -53,6 +59,9 @@ export interface JwtPayload {
   emailVerified?: boolean;
   languagePreference?: "en" | "es";
   themePreference?: "light" | "dark" | "system";
+  imageUrl?: string;
+  firstName?: string;
+  lastName?: string;
   hasGoogleIdentity?: boolean;
   hasPassword?: boolean;
   mode?: AuthMode;

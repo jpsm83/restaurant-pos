@@ -1,55 +1,28 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithI18n } from "@/test/i18nTestUtils";
 import CustomerProfilePage from "../CustomerProfilePage";
 
 const mockGetUserProfile = vi.fn();
 const mockUpdateUserProfile = vi.fn();
-const mockRequestEmailChange = vi.fn();
-const mockUseAuthConfigQuery = vi.fn();
-const mockResend = vi.fn();
+const mockDeleteUserPhoto = vi.fn();
+const mockDispatch = vi.fn();
 const toastSuccess = vi.fn();
 const toastError = vi.fn();
-
-vi.mock("@react-oauth/google", () => ({
-  GoogleLogin: ({
-    onSuccess,
-    onError,
-  }: {
-    onSuccess: (response: { credential?: string }) => void;
-    onError: () => void;
-  }) => (
-    <div>
-      <button
-        type="button"
-        onClick={() => onSuccess({ credential: "google-id-token" })}
-      >
-        Continue with Google
-      </button>
-      <button type="button" onClick={onError}>
-        Fail Google
-      </button>
-    </div>
-  ),
-}));
 
 vi.mock("@/auth/store/AuthContext", () => ({
   useAuth: () => ({
     state: { status: "authenticated", user: mockUser(), error: null },
+    dispatch: mockDispatch,
   }),
 }));
 
 vi.mock("@/auth/api", () => ({
   getUserProfile: (...args: unknown[]) => mockGetUserProfile(...args),
   updateUserProfile: (...args: unknown[]) => mockUpdateUserProfile(...args),
-  requestEmailChange: (...args: unknown[]) => mockRequestEmailChange(...args),
-  useAuthConfigQuery: (...args: unknown[]) => mockUseAuthConfigQuery(...args),
-}));
-
-vi.mock("@/hooks/useResendEmailConfirmation", () => ({
-  useResendEmailConfirmation: () => ({ resend: mockResend, pending: false }),
+  deleteUserPhoto: (...args: unknown[]) => mockDeleteUserPhoto(...args),
 }));
 
 vi.mock("sonner", () => ({
@@ -116,37 +89,40 @@ describe("CustomerProfilePage", () => {
     passwordPresent = true;
     mockGetUserProfile.mockReset();
     mockUpdateUserProfile.mockReset();
-    mockRequestEmailChange.mockReset();
-    mockUseAuthConfigQuery.mockReset();
-    mockResend.mockReset();
+    mockDeleteUserPhoto.mockReset();
+    mockDispatch.mockReset();
     toastSuccess.mockReset();
     toastError.mockReset();
     mockGetUserProfile.mockResolvedValue({ ok: true, data: profile });
-    mockUseAuthConfigQuery.mockReturnValue({
-      data: { googleSignInEnabled: true },
-    });
-    vi.stubEnv("VITE_GOOGLE_CLIENT_ID", "test-client-id");
   });
 
-  afterEach(() => {
-    vi.unstubAllEnvs();
-  });
-
-  it("loads the self profile with a read-only sign-in email and editable fields", async () => {
+  it("loads the self profile's editable personal details", async () => {
     await renderPage();
 
     expect(
       await screen.findByRole("heading", { level: 1, name: "Profile" }),
     ).toBeInTheDocument();
-    const email = await screen.findByLabelText("Sign-in email");
-    expect(email).toHaveValue("u@test.local");
-    expect(email).toHaveAttribute("readonly");
     expect(screen.getByLabelText("First name")).toHaveValue("Pat");
     expect(screen.getByLabelText("Last name")).toHaveValue("Lee");
     expect(screen.getByLabelText("Phone number")).toHaveValue("5551234");
     expect(screen.getByLabelText("Birth date")).toHaveValue("1990-01-01");
     expect(screen.queryByLabelText("Country")).not.toBeInTheDocument();
     expect(mockGetUserProfile).toHaveBeenCalledWith("u1");
+  });
+
+  it("does not duplicate the sign-in email or verification controls", async () => {
+    unverified = true;
+    await renderPage();
+
+    await screen.findByLabelText("First name");
+    expect(screen.queryByLabelText("Sign-in email")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Change sign-in email" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Confirm your email")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Resend confirmation email" }),
+    ).not.toBeInTheDocument();
   });
 
   it("does not render a language control", async () => {
@@ -176,6 +152,40 @@ describe("CustomerProfilePage", () => {
       "src",
       "https://lh3.googleusercontent.com/a/avatar.png",
     );
+  });
+
+  it("shows initials when the profile has no stored photo", async () => {
+    await renderPage();
+
+    expect(
+      await screen.findByRole("img", { name: "Your profile photo" }),
+    ).toHaveTextContent("PL");
+  });
+
+  it("updates the session avatar when a profile save returns a new photo", async () => {
+    const user = userEvent.setup();
+    const imageUrl = "https://cdn.example.com/new-avatar.png";
+    mockUpdateUserProfile.mockResolvedValue({
+      ok: true,
+      data: {
+        message: "User updated successfully!",
+        user: {
+          ...profile,
+          personalDetails: { ...profile.personalDetails, imageUrl },
+        },
+      },
+    });
+
+    await renderPage();
+    await screen.findByLabelText("First name");
+    await user.click(screen.getByRole("button", { name: "Save profile" }));
+
+    await waitFor(() => {
+      expect(mockDispatch).toHaveBeenCalledWith({
+        type: "AUTH_SUCCESS",
+        payload: expect.objectContaining({ imageUrl }),
+      });
+    });
   });
 
   it("saves edited profile fields as multipart without a language field", async () => {
@@ -214,251 +224,76 @@ describe("CustomerProfilePage", () => {
     });
   });
 
-  it("requests a sign-in email change after password re-authentication", async () => {
+  it("removes the stored photo, clears the session avatar, and shows initials", async () => {
     const user = userEvent.setup();
-    mockRequestEmailChange.mockResolvedValue({
+    const imageUrl = "https://res.cloudinary.com/demo/image/upload/avatar.jpg";
+    mockGetUserProfile.mockResolvedValue({
       ok: true,
-      data: { message: "Sent" },
+      data: {
+        ...profile,
+        personalDetails: { ...profile.personalDetails, imageUrl },
+      },
+    });
+    mockDeleteUserPhoto.mockResolvedValue({
+      ok: true,
+      data: {
+        message: "Profile photo removed successfully!",
+        user: {
+          ...profile,
+          personalDetails: { ...profile.personalDetails, imageUrl: undefined },
+        },
+      },
     });
 
     await renderPage();
-
-    await user.click(
-      await screen.findByRole("button", { name: "Change sign-in email" }),
-    );
-
-    expect(
-      await screen.findByRole("dialog", { name: "Change sign-in email" }),
-    ).toBeInTheDocument();
-
-    await user.type(screen.getByLabelText("New email"), "New@Example.com");
-    await user.type(screen.getByLabelText("Current password"), "Secret123!");
-    await user.click(
-      screen.getByRole("button", { name: "Send confirmation link" }),
-    );
+    await screen.findByRole("img", { name: "Your profile photo" });
+    await user.click(screen.getByRole("button", { name: "Remove photo" }));
 
     await waitFor(() => {
-      expect(mockRequestEmailChange).toHaveBeenCalledWith("new@example.com", {
-        currentPassword: "Secret123!",
+      expect(mockDeleteUserPhoto).toHaveBeenCalledWith("u1");
+    });
+    await waitFor(() => {
+      expect(mockDispatch).toHaveBeenCalledWith({
+        type: "AUTH_SUCCESS",
+        payload: expect.objectContaining({ imageUrl: undefined }),
       });
     });
     expect(
-      await screen.findByText(
-        "Confirmation link sent. Check your new inbox to complete the change.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("dialog", { name: "Change sign-in email" }),
+      screen.queryByRole("button", { name: "Remove photo" }),
     ).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole("img", { name: "Your profile photo" }),
+    ).toHaveTextContent("PL");
+    expect(toastSuccess).toHaveBeenCalledWith(
+      "Your profile photo has been removed.",
+    );
   });
 
-  it("shows check-your-inbox copy when a change link was already sent recently", async () => {
+  it("keeps the stored photo and shows a localized error when removal fails", async () => {
     const user = userEvent.setup();
-    mockRequestEmailChange.mockResolvedValue({
-      ok: false,
-      error: { code: "emailChange.rateLimited", status: 429 },
-    });
-
-    await renderPage();
-
-    await user.click(
-      await screen.findByRole("button", { name: "Change sign-in email" }),
-    );
-    await user.type(screen.getByLabelText("New email"), "new@example.com");
-    await user.type(screen.getByLabelText("Current password"), "Secret123!");
-    await user.click(
-      screen.getByRole("button", { name: "Send confirmation link" }),
-    );
-
-    expect(
-      await screen.findByText(
-        "A confirmation link was already sent recently; check your inbox.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText(
-        "Confirmation link sent. Check your new inbox to complete the change.",
-      ),
-    ).not.toBeInTheDocument();
-    expect(toastSuccess).not.toHaveBeenCalled();
-    expect(
-      screen.queryByRole("dialog", { name: "Change sign-in email" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("shows localized copy when the current password is refused", async () => {
-    const user = userEvent.setup();
-    mockRequestEmailChange.mockResolvedValue({
-      ok: false,
-      error: { code: "emailChange.unauthorized", status: 401 },
-    });
-
-    await renderPage();
-
-    await user.click(
-      await screen.findByRole("button", { name: "Change sign-in email" }),
-    );
-    await user.type(screen.getByLabelText("New email"), "new@example.com");
-    await user.type(screen.getByLabelText("Current password"), "wrong");
-    await user.click(
-      screen.getByRole("button", { name: "Send confirmation link" }),
-    );
-
-    expect(
-      await screen.findByRole("alert"),
-    ).toHaveTextContent("Your current password is incorrect.");
-  });
-
-  it("lets a mixed account re-authenticate with Google and completes the request", async () => {
-    googleLinked = true;
-    const user = userEvent.setup();
-    mockRequestEmailChange.mockResolvedValue({
+    const imageUrl = "https://res.cloudinary.com/demo/image/upload/avatar.jpg";
+    mockGetUserProfile.mockResolvedValue({
       ok: true,
-      data: { message: "Sent" },
+      data: {
+        ...profile,
+        personalDetails: { ...profile.personalDetails, imageUrl },
+      },
     });
-
-    await renderPage();
-
-    await user.click(
-      await screen.findByRole("button", { name: "Change sign-in email" }),
-    );
-    expect(screen.getByLabelText("Current password")).toBeInTheDocument();
-    await user.type(screen.getByLabelText("New email"), "New@Example.com");
-    await user.click(
-      screen.getByRole("button", { name: "Continue with Google" }),
-    );
-
-    await waitFor(() => {
-      expect(mockRequestEmailChange).toHaveBeenCalledWith("new@example.com", {
-        googleCredential: "google-id-token",
-      });
-    });
-    expect(
-      await screen.findByText(
-        "Confirmation link sent. Check your new inbox to complete the change.",
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it("lets a mixed account re-authenticate with its password", async () => {
-    googleLinked = true;
-    const user = userEvent.setup();
-    mockRequestEmailChange.mockResolvedValue({
-      ok: true,
-      data: { message: "Sent" },
-    });
-
-    await renderPage();
-
-    await user.click(
-      await screen.findByRole("button", { name: "Change sign-in email" }),
-    );
-    await user.type(screen.getByLabelText("New email"), "new@example.com");
-    await user.type(screen.getByLabelText("Current password"), "Secret123!");
-    await user.click(
-      screen.getByRole("button", { name: "Send confirmation link" }),
-    );
-
-    await waitFor(() => {
-      expect(mockRequestEmailChange).toHaveBeenCalledWith("new@example.com", {
-        currentPassword: "Secret123!",
-      });
-    });
-  });
-
-  it("shows only Google re-authentication for a Google-only account", async () => {
-    googleLinked = true;
-    passwordPresent = false;
-    const user = userEvent.setup();
-
-    await renderPage();
-
-    await user.click(
-      await screen.findByRole("button", { name: "Change sign-in email" }),
-    );
-
-    expect(
-      screen.getByRole("button", { name: "Continue with Google" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByLabelText("Current password"),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Send confirmation link" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("hides Google re-authentication when the account has no linked identity", async () => {
-    const user = userEvent.setup();
-
-    await renderPage();
-
-    await user.click(
-      await screen.findByRole("button", { name: "Change sign-in email" }),
-    );
-
-    expect(
-      screen.queryByRole("button", { name: "Continue with Google" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText("Or confirm with your current password"),
-    ).not.toBeInTheDocument();
-  });
-
-  it("hides Google re-authentication when the server disables Google sign-in", async () => {
-    googleLinked = true;
-    mockUseAuthConfigQuery.mockReturnValue({
-      data: { googleSignInEnabled: false },
-    });
-    const user = userEvent.setup();
-
-    await renderPage();
-
-    await user.click(
-      await screen.findByRole("button", { name: "Change sign-in email" }),
-    );
-
-    expect(
-      screen.queryByRole("button", { name: "Continue with Google" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("shows localized copy when Google re-authentication is refused", async () => {
-    googleLinked = true;
-    const user = userEvent.setup();
-    mockRequestEmailChange.mockResolvedValue({
+    mockDeleteUserPhoto.mockResolvedValue({
       ok: false,
-      error: { code: "emailChange.unauthorized", status: 401 },
+      error: { code: "profilePhotoDelete.badRequest", status: 400 },
     });
 
     await renderPage();
-
-    await user.click(
-      await screen.findByRole("button", { name: "Change sign-in email" }),
-    );
-    await user.type(screen.getByLabelText("New email"), "new@example.com");
-    await user.click(
-      screen.getByRole("button", { name: "Continue with Google" }),
-    );
+    await screen.findByRole("img", { name: "Your profile photo" });
+    await user.click(screen.getByRole("button", { name: "Remove photo" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "We couldn't verify that Google account. Use the Google account linked to this profile and try again.",
+      "We couldn't remove your profile photo. Try again.",
     );
-  });
-
-  it("resends email confirmation for an unverified signed-in user", async () => {
-    unverified = true;
-    const user = userEvent.setup();
-    mockResend.mockResolvedValue(undefined);
-
-    await renderPage();
-
-    await user.click(
-      await screen.findByRole("button", {
-        name: "Resend confirmation email",
-      }),
-    );
-
-    expect(mockResend).toHaveBeenCalledTimes(1);
+    expect(
+      await screen.findByRole("img", { name: "Your profile photo" }),
+    ).toHaveAttribute("src", imageUrl);
+    expect(mockDispatch).not.toHaveBeenCalled();
   });
 });

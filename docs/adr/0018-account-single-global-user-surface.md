@@ -31,10 +31,12 @@ the surface itself is not built yet.
 - `/account` redirects to `/account/profile`.
 - The account sidebar owns the global destinations: **Profile**, **Address**,
   **Sign-in & security**, **Notifications**, **Preferences**, and **Orders**.
-  **Sign-in & security** owns the read-only credential and account-facts surface:
-  the sign-in email and verified email-change entry, unverified resend, Google
-  linked status, and derived account facts. It never receives tokens, the pending
-  address, the Google subject, or session counters.
+  **Profile** owns the personal details and the photo, including photo removal,
+  and renders no email or verification controls. **Sign-in & security** owns the
+  read-only credential and account-facts surface: the sign-in email and verified
+  email-change entry, unverified resend, Google linked status, and derived account
+  facts. It never receives tokens, the pending address, the Google subject, or
+  session counters.
 - Account destinations are protected by the session but are not wrapped by the
   Customer-mode guard.
 

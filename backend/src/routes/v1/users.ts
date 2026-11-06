@@ -68,6 +68,16 @@ async function uploadImage(
   return response[0];
 }
 
+/** Delete a stored image, refusing the request when the remote delete fails. */
+async function deleteImage(imageUrl: string | undefined): Promise<void> {
+  if (!imageUrl) return;
+
+  const result = await deleteFilesCloudinary(imageUrl);
+  if (result !== true) {
+    throw badRequest(String(result));
+  }
+}
+
 /** The multipart field name the profile image is sent under. */
 const IMAGE_FIELD = "imageUrl";
 
@@ -150,6 +160,44 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
         throw notFound("User not found!");
       }
       return reply.code(200).send(toSelfProfileResponse(user));
+    },
+  );
+
+  // DELETE /users/:userId/image - remove the stored profile photo
+  app.delete<{ Params: UserIdParams }>(
+    "/:userId/image",
+    {
+      preValidation: [createAuthHook(app)],
+      schema: { params: userIdParamsSchema },
+    },
+    async (req, reply) => {
+      const { userId } = req.params;
+      assertSelf(req, userId);
+
+      const userDoc = await User.findOne(
+        withSoftDeleteFilter({ _id: userId }),
+      ).lean();
+      if (!userDoc) {
+        throw notFound("User not found!");
+      }
+
+      await deleteImage(userDoc.personalDetails?.imageUrl);
+
+      const updatedUser = await User.findOneAndUpdate(
+        withSoftDeleteFilter({ _id: userId }),
+        { $unset: { "personalDetails.imageUrl": "" } },
+        {
+          returnDocument: "after",
+          lean: true,
+          projection: CLIENT_PROFILE_PROJECTION,
+        },
+      );
+
+      if (!updatedUser) {
+        throw notFound("User not found!");
+      }
+
+      return reply.code(200).send({ user: updatedUser });
     },
   );
 
@@ -252,13 +300,7 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
       if (imageFile && imageFile.buffer.length > 0) {
         const imageUrl = await uploadImage(`/users/${userId}`, imageFile);
 
-        const deleteFilesCloudinaryResult = await deleteFilesCloudinary(
-          personalDetails.imageUrl || "",
-        );
-
-        if (deleteFilesCloudinaryResult !== true) {
-          throw badRequest(String(deleteFilesCloudinaryResult));
-        }
+        await deleteImage(personalDetails.imageUrl);
 
         update.set["personalDetails.imageUrl"] = imageUrl;
       }

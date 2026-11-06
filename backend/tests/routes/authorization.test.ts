@@ -34,6 +34,7 @@ const AUTHENTICATED_ROUTES: readonly string[] = [
   "DELETE /api/v1/employees/:employeeId",
   "DELETE /api/v1/notifications/inbox/:notificationId",
   "DELETE /api/v1/orders/:orderId",
+  "DELETE /api/v1/users/:userId/image",
   "GET /api/v1/auth/me",
   "GET /api/v1/auth/mode",
   "GET /api/v1/auth/venues",

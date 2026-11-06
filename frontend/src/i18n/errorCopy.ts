@@ -202,6 +202,18 @@ const OVERRIDES: Partial<Record<ServiceErrorCode, ErrorCopyTemplate>> = {
     namespace: "business",
     key: "errors.companyNotFound",
   },
+  "profilePhotoDelete.badRequest": {
+    namespace: "customer",
+    key: "profile.photo.removeError",
+  },
+  "profilePhotoDelete.internal": {
+    namespace: "customer",
+    key: "profile.photo.removeError",
+  },
+  "profilePhotoDelete.transport": {
+    namespace: "customer",
+    key: "profile.photo.removeError",
+  },
   "modeLoad.unauthorized": { namespace: "auth", key: "api.signInRequired" },
   "modeSave.forbidden": { namespace: "mode", key: "errors.notAllowed" },
 };

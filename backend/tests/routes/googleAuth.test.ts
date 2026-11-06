@@ -224,6 +224,11 @@ describe("POST /api/v1/auth/google", () => {
 
     expect(response.statusCode, response.body).toBe(201);
     expect(response.json().user.languagePreference).toBe("es");
+    expect(response.json().user.firstName).toBe("Google");
+    expect(response.json().user.lastName).toBe("User");
+    expect(response.json().user.imageUrl).toBe(
+      "https://lh3.googleusercontent.com/a/avatar.png",
+    );
 
     const stored = await User.findOne({
       "personalDetails.email": defaultIdentity.email,
@@ -242,6 +247,31 @@ describe("POST /api/v1/auth/google", () => {
     });
     expect(profile.statusCode, profile.body).toBe(200);
     expect(profile.json().personalDetails.imageUrl).toBe(
+      "https://lh3.googleusercontent.com/a/avatar.png",
+    );
+
+    const me = await app.inject({
+      method: "GET",
+      url: "/api/v1/auth/me",
+      headers: {
+        authorization: `Bearer ${response.json().accessToken as string}`,
+      },
+    });
+    expect(me.statusCode, me.body).toBe(200);
+    expect(me.json().user.imageUrl).toBe(
+      "https://lh3.googleusercontent.com/a/avatar.png",
+    );
+
+    const refreshCookie = response.cookies.find(
+      (cookie) => cookie.name === "refresh_token",
+    );
+    const refreshed = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/refresh",
+      headers: { cookie: `refresh_token=${refreshCookie!.value}` },
+    });
+    expect(refreshed.statusCode, refreshed.body).toBe(200);
+    expect(refreshed.json().user.imageUrl).toBe(
       "https://lh3.googleusercontent.com/a/avatar.png",
     );
   });
@@ -424,6 +454,9 @@ describe("POST /api/v1/auth/google", () => {
       expect(response.statusCode, response.body).toBe(200);
       expect(response.json().user.id).toBe(String(existing._id));
       expect(response.json().user.languagePreference).toBe("es");
+      expect(response.json().user.firstName).toBe("Existing");
+      expect(response.json().user.lastName).toBe("User");
+      expect(response.json().user.imageUrl).toBe(googleProfile.imageUrl);
 
       const stored = await User.findById(existing._id).lean();
       expect(stored?.googleId).toBe(defaultIdentity.subject);
@@ -486,6 +519,9 @@ describe("POST /api/v1/auth/google", () => {
       });
 
       expect(response.statusCode, response.body).toBe(200);
+      expect(response.json().user.firstName).toBe("Ada");
+      expect(response.json().user.lastName).toBe("User");
+      expect(response.json().user.imageUrl).toBe(googleProfile.imageUrl);
       const stored = await User.findById(existing._id).lean();
       expect(stored?.personalDetails?.firstName).toBe("Ada");
       expect(stored?.personalDetails?.lastName).toBe("User");

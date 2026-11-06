@@ -213,6 +213,9 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (
         emailVerified: createdUser.personalDetails?.emailVerified === true,
         languagePreference: createdUser.languagePreference,
         themePreference: createdUser.themePreference,
+        imageUrl: createdUser.personalDetails?.imageUrl,
+        firstName: createdUser.personalDetails?.firstName,
+        lastName: createdUser.personalDetails?.lastName,
         mode: "customer",
         role: "Customer",
       };

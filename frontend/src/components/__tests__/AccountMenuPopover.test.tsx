@@ -41,13 +41,14 @@ function LocationProbe() {
 async function openAccountMenu(
   mode: AuthMode = "customer",
   language?: SupportedLanguage,
+  session: AuthSession = ownerSession,
 ) {
   const user = userEvent.setup();
 
   await renderWithI18n(
     <MemoryRouter initialEntries={["/dashboard"]}>
       <LocationProbe />
-      <AccountMenuPopover session={ownerSession} mode={mode} />
+      <AccountMenuPopover session={session} mode={mode} />
     </MemoryRouter>,
     { language },
   );
@@ -86,6 +87,37 @@ describe("AccountMenuPopover (single-User handoff surface)", () => {
     expect(screen.queryByRole("menuitem", { name: /^address$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: /credentials/i })).not.toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: /log out/i })).toBeInTheDocument();
+  });
+
+  it("renders the stored profile picture in the chrome avatar", async () => {
+    const imageUrl = "https://lh3.googleusercontent.com/a/avatar.png";
+    await openAccountMenu("customer", undefined, {
+      ...ownerSession,
+      imageUrl,
+    });
+
+    const trigger = screen.getByRole("button", { name: /account menu/i });
+    expect(trigger.querySelector("img")).toHaveAttribute("src", imageUrl);
+  });
+
+  it("falls back to initials when the account has no profile picture", async () => {
+    await openAccountMenu();
+
+    const trigger = screen.getByRole("button", { name: /account menu/i });
+    expect(trigger.querySelector("img")).toBeNull();
+    expect(trigger).toHaveTextContent("OW");
+  });
+
+  it("uses the profile name for initials when no picture is stored", async () => {
+    await openAccountMenu("customer", undefined, {
+      ...ownerSession,
+      firstName: "Pat",
+      lastName: "Lee",
+    });
+
+    const trigger = screen.getByRole("button", { name: /account menu/i });
+    expect(trigger.querySelector("img")).toBeNull();
+    expect(trigger).toHaveTextContent("PL");
   });
 
   it("shows the Business summary instead of an employee actor type", async () => {

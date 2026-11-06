@@ -797,6 +797,102 @@ describe("Users Routes", () => {
       expect(stored?.personalDetails.imageUrl).toBe(
         "https://res.cloudinary.com/demo/image/upload/new.jpg",
       );
+
+      const me = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: { authorization: await tokenFor(user) },
+      });
+      expect(me.statusCode, me.body).toBe(200);
+      expect(me.json().user.imageUrl).toBe(
+        "https://res.cloudinary.com/demo/image/upload/new.jpg",
+      );
+    });
+  });
+
+  describe("DELETE /api/v1/users/:userId/image", () => {
+    it("deletes the stored asset and clears the image URL", async () => {
+      const app = await getTestApp();
+      deleteFilesCloudinaryMock.mockClear();
+      const imageUrl =
+        "https://res.cloudinary.com/demo/image/upload/remove-me.jpg";
+      const user = await createValidUser("removephoto", { imageUrl });
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/users/${user._id}/image`,
+        headers: { authorization: await tokenFor(user) },
+      });
+
+      expect(response.statusCode, response.body).toBe(200);
+      expect(deleteFilesCloudinaryMock).toHaveBeenCalledWith(imageUrl);
+      expect(response.json().user.personalDetails.imageUrl).toBeUndefined();
+
+      const stored = await User.findById(user._id).lean();
+      expect(stored?.personalDetails.imageUrl).toBeUndefined();
+
+      const me = await app.inject({
+        method: "GET",
+        url: "/api/v1/auth/me",
+        headers: { authorization: await tokenFor(user) },
+      });
+      expect(me.statusCode, me.body).toBe(200);
+      expect(me.json().user.imageUrl).toBeUndefined();
+    });
+
+    it("leaves the stored image unchanged when remote deletion fails", async () => {
+      const app = await getTestApp();
+      const imageUrl =
+        "https://res.cloudinary.com/demo/image/upload/still-here.jpg";
+      const user = await createValidUser("removephotofail", { imageUrl });
+      deleteFilesCloudinaryMock.mockResolvedValueOnce(
+        "DeleteCloudinaryImage failed!",
+      );
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/users/${user._id}/image`,
+        headers: { authorization: await tokenFor(user) },
+      });
+
+      expect(response.statusCode, response.body).toBe(400);
+      expect(isProblemDetails(response)).toBe(true);
+
+      const stored = await User.findById(user._id).lean();
+      expect(stored?.personalDetails.imageUrl).toBe(imageUrl);
+    });
+
+    it("returns 401 without authentication", async () => {
+      const app = await getTestApp();
+      const user = await createValidUser("removephotoanonymous");
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/users/${user._id}/image`,
+      });
+
+      expect(response.statusCode).toBe(401);
+    });
+
+    it("returns 403 when the JWT does not match the URL id", async () => {
+      const app = await getTestApp();
+      const actor = await createValidUser("removephotoactor");
+      const target = await createValidUser("removephototarget", {
+        imageUrl: "https://res.cloudinary.com/demo/image/upload/target.jpg",
+      });
+
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/users/${target._id}/image`,
+        headers: { authorization: await tokenFor(actor) },
+      });
+
+      expect(response.statusCode).toBe(403);
+
+      const stored = await User.findById(target._id).lean();
+      expect(stored?.personalDetails.imageUrl).toBe(
+        "https://res.cloudinary.com/demo/image/upload/target.jpg",
+      );
     });
   });
 

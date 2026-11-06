@@ -262,7 +262,7 @@ export async function buildAuthUserSessionFromUserId(
     withSoftDeleteFilter({ _id: userId }),
   )
     .select(
-      "_id googleId personalDetails.email personalDetails.emailVerified personalDetails.password languagePreference themePreference",
+      "_id googleId personalDetails.email personalDetails.emailVerified personalDetails.password personalDetails.imageUrl personalDetails.firstName personalDetails.lastName languagePreference themePreference",
     )
     .lean()) as {
     _id: unknown;
@@ -271,6 +271,9 @@ export async function buildAuthUserSessionFromUserId(
       email?: string;
       emailVerified?: boolean;
       password?: string;
+      imageUrl?: string;
+      firstName?: string;
+      lastName?: string;
     };
     languagePreference?: "en" | "es";
     themePreference?: "light" | "dark" | "system";
@@ -290,6 +293,9 @@ export async function buildAuthUserSessionFromUserId(
     emailVerified: user.personalDetails?.emailVerified === true,
     languagePreference: user.languagePreference,
     themePreference: user.themePreference,
+    imageUrl: user.personalDetails?.imageUrl,
+    firstName: user.personalDetails?.firstName,
+    lastName: user.personalDetails?.lastName,
     hasGoogleIdentity:
       typeof user.googleId === "string" && user.googleId.length > 0,
     hasPassword:

@@ -57,7 +57,11 @@
     "photo": {
       "label": "Profile photo",
       "alt": "Your profile photo",
-      "hint": "Choose a new image to replace the current photo."
+      "hint": "Choose a new image to replace the current photo.",
+      "remove": "Remove photo",
+      "removing": "Removing…",
+      "removeSuccess": "Your profile photo has been removed.",
+      "removeError": "We couldn't remove your profile photo. Try again."
     },
     "sections": {
       "personal": "Personal details"

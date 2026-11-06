@@ -493,6 +493,19 @@ export async function updateUserProfile(userId: string, formData: FormData) {
   );
 }
 
+/**
+ * Authenticated self removal of the stored profile photo. The server deletes
+ * the remote asset before clearing the stored URL, so a failed deletion leaves
+ * the image unchanged.
+ */
+export async function deleteUserPhoto(userId: string) {
+  return authRequest<{ message?: string; user?: UserProfile }>(
+    "profilePhotoDelete",
+    `/api/v1/users/${encodeURIComponent(userId)}/image`,
+    { method: "DELETE" },
+  );
+}
+
 export function getAccessToken() {
   return accessToken;
 }

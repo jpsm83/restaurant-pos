@@ -57,7 +57,11 @@
     "photo": {
       "label": "Foto de perfil",
       "alt": "Tu foto de perfil",
-      "hint": "Elige una imagen nueva para sustituir la foto actual."
+      "hint": "Elige una imagen nueva para sustituir la foto actual.",
+      "remove": "Quitar foto",
+      "removing": "Quitando…",
+      "removeSuccess": "Se ha quitado tu foto de perfil.",
+      "removeError": "No pudimos quitar tu foto de perfil. Inténtalo de nuevo."
     },
     "sections": {
       "personal": "Datos personales"

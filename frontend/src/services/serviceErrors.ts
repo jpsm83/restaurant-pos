@@ -22,6 +22,7 @@ export const SERVICE_OPERATIONS = [
   "logout",
   "profileFetch",
   "profileUpdate",
+  "profilePhotoDelete",
   "businessFetch",
   "businessUpdate",
   "businessContactVerification",
