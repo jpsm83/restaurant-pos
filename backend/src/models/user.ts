@@ -3,7 +3,7 @@ import { personalDetailsSchema } from "./personalDetails.ts";
 import { applyActiveOnlySoftDelete, softDeleteSchemaFields } from "./softDelete.ts";
 import * as enums from "restaurant-pos-packages/enums";
 
-const { languagePreferenceEnums } = enums;
+const { languagePreferenceEnums, themePreferenceEnums } = enums;
 
 const notificationEntrySchema = new Schema(
   {
@@ -30,6 +30,12 @@ const userSchema = new Schema(
     languagePreference: {
       type: String,
       enum: languagePreferenceEnums,
+      default: undefined,
+    },
+    /** Appearance chosen by the person; unset until they choose one. */
+    themePreference: {
+      type: String,
+      enum: themePreferenceEnums,
       default: undefined,
     },
     /** Google subject; server-owned and unique among active users. */

@@ -9,7 +9,10 @@
  */
 import { z } from "zod";
 
-import { languagePreferenceEnums } from "../enums.ts";
+import {
+  languagePreferenceEnums,
+  themePreferenceEnums,
+} from "../enums.ts";
 
 /**
  * The literal tuple `z.enum` needs to carry a `readonly string[]` constant into
@@ -59,6 +62,12 @@ export const emailSchema = z
 export const languagePreferenceSchema = z.enum(
   languagePreferenceEnums as ["en", "es"],
   "Invalid language preference",
+);
+
+/** The appearance modes a User may store as a theme preference. */
+export const themePreferenceSchema = z.enum(
+  themePreferenceEnums as ["light", "dark", "system"],
+  "Invalid theme preference",
 );
 
 /**

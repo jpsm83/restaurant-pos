@@ -25,6 +25,8 @@ export interface AuthUser {
   emailVerified?: boolean;
   /** Stored UI language preference; drives language hydration when set. */
   languagePreference?: "en" | "es";
+  /** Stored appearance preference; drives theme hydration when set. */
+  themePreference?: "light" | "dark" | "system";
   /** Whether the User holds a linked Google identity. */
   hasGoogleIdentity?: boolean;
   /** Whether the User holds a password credential. */
@@ -98,6 +100,7 @@ export interface UserProfile {
   _id: string;
   personalDetails: UserProfilePersonalDetails;
   languagePreference?: "en" | "es";
+  themePreference?: "light" | "dark" | "system";
   createdAt?: string;
   updatedAt?: string;
 }

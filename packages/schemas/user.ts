@@ -18,6 +18,7 @@ import {
   languagePreferenceSchema,
   objectIdSchema,
   sanitizedString,
+  themePreferenceSchema,
   type EnumValues,
 } from "./primitives.ts";
 
@@ -78,6 +79,12 @@ const optionalLanguagePreference = z.preprocess(
   languagePreferenceSchema.nullable().optional(),
 );
 
+/** An optional theme preference; a blank field is sent as `null` to clear it. */
+const optionalThemePreference = z.preprocess(
+  blankToNull,
+  themePreferenceSchema.nullable().optional(),
+);
+
 /**
  * Body for `PATCH /users/:userId` (multipart, authenticated self only). Every
  * personal-detail field is optional so a profile save can send only what
@@ -95,6 +102,7 @@ export const updateUserBodySchema = z.strictObject({
   birthDate: optionalBirthDate,
   address: optionalAddress,
   languagePreference: optionalLanguagePreference,
+  themePreference: optionalThemePreference,
 });
 
 /** Path params for `GET`/`PATCH`/`DELETE /users/:userId`. */

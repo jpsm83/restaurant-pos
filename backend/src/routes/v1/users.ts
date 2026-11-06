@@ -230,6 +230,13 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
         userDoc.languagePreference,
       );
 
+      applyProfileField(
+        update,
+        "themePreference",
+        fields.themePreference,
+        userDoc.themePreference,
+      );
+
       const imageFile = files.find((file) => file.fieldname === IMAGE_FIELD);
       if (imageFile && imageFile.buffer.length > 0) {
         const imageUrl = await uploadImage(`/users/${userId}`, imageFile);

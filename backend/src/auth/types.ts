@@ -16,6 +16,8 @@ export interface AuthUser {
   emailVerified?: boolean;
   /** Stored UI language preference; unset until the person chooses one. */
   languagePreference?: "en" | "es";
+  /** Stored appearance preference; unset until the person chooses one. */
+  themePreference?: "light" | "dark" | "system";
   /** Whether the User holds a linked Google identity (never the subject itself). */
   hasGoogleIdentity?: boolean;
   /** Whether the User holds a password credential (never the hash itself). */
@@ -50,6 +52,7 @@ export interface JwtPayload {
   type: "user";
   emailVerified?: boolean;
   languagePreference?: "en" | "es";
+  themePreference?: "light" | "dark" | "system";
   hasGoogleIdentity?: boolean;
   hasPassword?: boolean;
   mode?: AuthMode;

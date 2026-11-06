@@ -138,6 +138,9 @@ export const genderEnums = ["Man", "Woman", "Other"] as string[];
 /** UI languages a User may store as a language preference. */
 export const languagePreferenceEnums = ["en", "es"] as string[];
 
+/** Appearance modes a User may store as a theme preference. */
+export const themePreferenceEnums = ["light", "dark", "system"] as string[];
+
 /** Active workspace mode stored on a refresh session. */
 export const authModeEnums = ["customer", "business"] as string[];
 

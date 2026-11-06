@@ -26,6 +26,7 @@ const validUpdate = {
   phoneNumber: "9876543210",
   address: JSON.stringify(validAddress),
   languagePreference: "es",
+  themePreference: "dark",
 };
 
 describe("updateUserBodySchema", () => {
@@ -40,6 +41,7 @@ describe("updateUserBodySchema", () => {
     expect(parsed.gender).toBe("Man");
     expect(parsed.birthDate).toEqual(new Date("1990-01-01"));
     expect(parsed.languagePreference).toBe("es");
+    expect(parsed.themePreference).toBe("dark");
   });
 
   it("treats blank fields as explicit clears", () => {
@@ -52,6 +54,7 @@ describe("updateUserBodySchema", () => {
       birthDate: "",
       address: "",
       languagePreference: "",
+      themePreference: "",
     });
     expect(parsed).toEqual({
       username: null,
@@ -62,6 +65,7 @@ describe("updateUserBodySchema", () => {
       birthDate: null,
       address: null,
       languagePreference: null,
+      themePreference: null,
     });
   });
 
@@ -83,6 +87,18 @@ describe("updateUserBodySchema", () => {
     expect(
       updateUserBodySchema.safeParse({ ...validUpdate, address: "{not json" })
         .success,
+    ).toBe(false);
+  });
+
+  it("accepts every theme preference and rejects unknown values", () => {
+    for (const themePreference of ["light", "dark", "system"]) {
+      expect(
+        updateUserBodySchema.safeParse({ themePreference }).success,
+        themePreference,
+      ).toBe(true);
+    }
+    expect(
+      updateUserBodySchema.safeParse({ themePreference: "sepia" }).success,
     ).toBe(false);
   });
 
