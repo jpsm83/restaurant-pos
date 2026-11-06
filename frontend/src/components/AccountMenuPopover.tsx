@@ -6,7 +6,6 @@ import { logout, setAccessToken } from "@/auth/api";
 import { clearPriorSession } from "@/auth/sessionHint";
 import { useAuth } from "@/auth/store/AuthContext";
 import { CircularFlag } from "@/components/LanguageFlag";
-import { useLanguageOptions } from "@/hooks/useLanguageOptions";
 import { effectiveLanguage } from "@/i18n/config";
 import type { AuthMode } from "@/services/authMode";
 import {
@@ -41,13 +40,11 @@ type AccountMenuPopoverProps = {
 
 export function AccountMenuPopover({ session, mode }: AccountMenuPopoverProps) {
   const { t, i18n } = useTranslation("nav");
+  const { t: tCommon } = useTranslation("common");
   const navigate = useNavigate();
   const { dispatch } = useAuth();
-  const languageOptions = useLanguageOptions();
   const activeLanguage = effectiveLanguage(i18n.language);
-  const languageLabel =
-    languageOptions.find((option) => option.value === activeLanguage)?.label ??
-    activeLanguage;
+  const languageLabel = tCommon(`languages.${activeLanguage}`);
 
   const actorTypeLabel =
     mode === "business"
