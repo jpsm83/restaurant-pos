@@ -4,11 +4,7 @@ import { MemoryRouter, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthSession } from "@/auth/types";
 import { AccountMenuPopover } from "@/components/AccountMenuPopover";
-import {
-  createThemeStore,
-  installThemeStore,
-  MODE_STORAGE_KEY,
-} from "@/hooks/useTheme";
+import type { SupportedLanguage } from "@/i18n/config";
 import type { AuthMode } from "@/services/authMode";
 import { renderWithI18n } from "@/test/i18nTestUtils";
 
@@ -42,7 +38,10 @@ function LocationProbe() {
   return <output data-testid="location">{location.pathname}</output>;
 }
 
-async function openAccountMenu(mode: AuthMode = "customer") {
+async function openAccountMenu(
+  mode: AuthMode = "customer",
+  language?: SupportedLanguage,
+) {
   const user = userEvent.setup();
 
   await renderWithI18n(
@@ -50,9 +49,11 @@ async function openAccountMenu(mode: AuthMode = "customer") {
       <LocationProbe />
       <AccountMenuPopover session={ownerSession} mode={mode} />
     </MemoryRouter>,
+    { language },
   );
 
-  await user.click(screen.getByRole("button", { name: /account menu/i }));
+  const menuLabel = language === "es" ? /menú de cuenta/i : /account menu/i;
+  await user.click(screen.getByRole("button", { name: menuLabel }));
 
   return user;
 }
@@ -63,31 +64,23 @@ describe("AccountMenuPopover (single-User handoff surface)", () => {
     mockLogout.mockReset();
     mockSetAccessToken.mockReset();
     localStorage.clear();
-    Object.defineProperty(window, "matchMedia", {
-      writable: true,
-      configurable: true,
-      value: () => ({
-        matches: false,
-        media: "(prefers-color-scheme: dark)",
-        addEventListener: () => undefined,
-        removeEventListener: () => undefined,
-      }),
-    });
-    document.documentElement.removeAttribute("data-theme");
-    document.documentElement.classList.remove("dark");
-    installThemeStore(createThemeStore());
   });
 
-  it("shows the Customer summary, Account, language, and log out", async () => {
+  it("shows the Customer summary, a read-only language indicator, Preferences, and log out", async () => {
     await openAccountMenu();
 
     expect(screen.getByText(/^customer$/i)).toBeInTheDocument();
     expect(screen.getByText("owner@restaurant.com")).toBeInTheDocument();
 
-    // Language flag button (aria-label is in `common` namespace).
-    expect(screen.getByRole("button", { name: /language/i })).toBeInTheDocument();
+    const indicator = screen.getByRole("img", {
+      name: /current language: english/i,
+    });
+    expect(indicator).toHaveTextContent("English");
 
     expect(screen.getByRole("menuitem", { name: /account/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: /preferences/i }),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: /profile/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: /subscriptions/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: /^address$/i })).not.toBeInTheDocument();
@@ -112,24 +105,36 @@ describe("AccountMenuPopover (single-User handoff surface)", () => {
     });
   });
 
-  it("exposes only the current User and sign-out, with no excluded identity flow", async () => {
+  it("opens the canonical Preferences URL from the Preferences entry", async () => {
+    const user = await openAccountMenu("business");
+
+    await user.click(screen.getByRole("menuitem", { name: /preferences/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent(
+        /^\/account\/preferences$/,
+      );
+    });
+  });
+
+  it("exposes only the current User, Preferences, and sign-out, with no excluded identity flow", async () => {
     await openAccountMenu();
 
     const menu = await screen.findByRole("menu");
 
     expect(within(menu).getByText("owner@restaurant.com")).toBeInTheDocument();
     expect(
-      within(menu).getAllByRole("menuitem").map((item) => item.textContent?.trim()),
-    ).toEqual(["Account", "Log out"]);
-    expect(
-      within(menu).getAllByRole("menuitemradio").map((item) => item.textContent?.trim()),
-    ).toEqual(["Light", "Dark", "System"]);
-
-    // The only other control is the language switcher: no user picker, keypad, or lock.
-    expect(within(menu).getAllByRole("button")).toHaveLength(1);
-    expect(
-      within(menu).getByRole("button", { name: /change language/i }),
+      within(menu).getByRole("img", { name: /current language: english/i }),
     ).toBeInTheDocument();
+    expect(within(menu).getByText("English")).toBeInTheDocument();
+    expect(
+      within(menu).getAllByRole("menuitem").map((item) => item.textContent?.trim()),
+    ).toEqual(["Account", "Preferences", "Log out"]);
+
+    // Navigation popover only: no language dropdown and no appearance radio group.
+    expect(within(menu).queryAllByRole("button")).toHaveLength(0);
+    expect(within(menu).queryAllByRole("menuitemradio")).toHaveLength(0);
+    expect(within(menu).queryByText(/light|dark|system/i)).not.toBeInTheDocument();
 
     for (const role of [
       "link",
@@ -151,6 +156,14 @@ describe("AccountMenuPopover (single-User handoff surface)", () => {
     );
   });
 
+  it("localizes the read-only language indicator", async () => {
+    await openAccountMenu("customer", "es");
+
+    expect(
+      screen.getByRole("img", { name: /idioma actual: español/i }),
+    ).toHaveTextContent("Español");
+  });
+
   it("signs out the current User rather than switching the acting person", async () => {
     const user = await openAccountMenu();
 
@@ -159,27 +172,5 @@ describe("AccountMenuPopover (single-User handoff surface)", () => {
     await waitFor(() => expect(mockLogout).toHaveBeenCalledTimes(1));
     expect(mockSetAccessToken).toHaveBeenCalledWith(null);
     expect(mockDispatch).toHaveBeenCalledWith({ type: "AUTH_CLEAR" });
-  });
-
-  it("offers Light, Dark, and System and persists the chosen mode", async () => {
-    const user = await openAccountMenu();
-
-    expect(
-      screen.getByRole("menuitemradio", { name: "Light" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("menuitemradio", { name: "Dark" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("menuitemradio", { name: "System" }),
-    ).toHaveAttribute("aria-checked", "true");
-
-    await user.click(screen.getByRole("menuitemradio", { name: "Dark" }));
-
-    await waitFor(() => {
-      expect(localStorage.getItem(MODE_STORAGE_KEY)).toBe("dark");
-    });
-    expect(document.documentElement).toHaveClass("dark");
-    expect(document.documentElement.dataset.theme).toBe("default");
   });
 });

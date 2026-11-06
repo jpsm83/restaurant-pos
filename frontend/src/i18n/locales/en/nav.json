@@ -31,14 +31,8 @@
     "preferences": "Preferences",
     "customerHome": "Customer home",
     "language": "Language",
+    "currentLanguage": "Current language: {{language}}",
     "logOut": "Log out",
-    "theme": {
-      "label": "Theme",
-      "groupLabel": "Theme mode",
-      "light": "Light",
-      "dark": "Dark",
-      "system": "System"
-    },
     "customerMode": "Customer mode"
   },
   "business": {

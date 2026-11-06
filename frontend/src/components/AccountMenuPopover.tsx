@@ -1,24 +1,25 @@
 import { useTranslation } from "react-i18next";
-import { User } from "lucide-react";
+import { SlidersHorizontal, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { AuthSession } from "@/auth/types";
 import { logout, setAccessToken } from "@/auth/api";
 import { clearPriorSession } from "@/auth/sessionHint";
 import { useAuth } from "@/auth/store/AuthContext";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { isThemeMode, useTheme } from "@/hooks/useTheme";
+import { CircularFlag } from "@/components/LanguageFlag";
+import { useLanguageOptions } from "@/hooks/useLanguageOptions";
+import { effectiveLanguage } from "@/i18n/config";
 import type { AuthMode } from "@/services/authMode";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { canonicalAccountPath } from "@/routes/canonicalPaths";
+import {
+  canonicalAccountPath,
+  canonicalAccountPreferencesPath,
+} from "@/routes/canonicalPaths";
 
 function initialsFromEmail(email: string): string {
   const local = email.split("@")[0]?.trim() ?? "";
@@ -39,19 +40,19 @@ type AccountMenuPopoverProps = {
 };
 
 export function AccountMenuPopover({ session, mode }: AccountMenuPopoverProps) {
-  const { t } = useTranslation("nav");
+  const { t, i18n } = useTranslation("nav");
   const navigate = useNavigate();
   const { dispatch } = useAuth();
-  const { mode: themeMode, setMode } = useTheme();
+  const languageOptions = useLanguageOptions();
+  const activeLanguage = effectiveLanguage(i18n.language);
+  const languageLabel =
+    languageOptions.find((option) => option.value === activeLanguage)?.label ??
+    activeLanguage;
 
   const actorTypeLabel =
     mode === "business"
       ? t("account.actorType.business")
       : t("account.actorType.customer");
-
-  const handleModeChange = (value: string) => {
-    if (isThemeMode(value)) setMode(value);
-  };
 
   const handleLogout = async () => {
     await logout();
@@ -87,10 +88,7 @@ export function AccountMenuPopover({ session, mode }: AccountMenuPopoverProps) {
         sideOffset={8}
         className="min-w-60 max-w-sm p-2"
       >
-        <div
-          className="flex flex-row items-center justify-between gap-2 px-1.5 pb-2 pt-0.5"
-          onPointerDown={(e) => e.preventDefault()}
-        >
+        <div className="flex flex-row items-center justify-between gap-2 px-1.5 pb-2 pt-0.5">
           <div className="min-w-0 flex-1 cursor-default">
             <p className="truncate text-sm font-semibold text-foreground">
               {actorTypeLabel}
@@ -99,9 +97,18 @@ export function AccountMenuPopover({ session, mode }: AccountMenuPopoverProps) {
               {session.email}
             </p>
           </div>
-          <div className="shrink-0" onPointerDown={(e) => e.preventDefault()}>
-            <LanguageSwitcher />
-          </div>
+          <span
+            role="img"
+            aria-label={t("account.currentLanguage", {
+              language: languageLabel,
+            })}
+            className="flex shrink-0 items-center gap-1.5"
+          >
+            <CircularFlag code={activeLanguage} sizeClass="h-4 w-4" />
+            <span aria-hidden className="text-xs text-muted-foreground">
+              {languageLabel}
+            </span>
+          </span>
         </div>
         <DropdownMenuSeparator />
         <DropdownMenuItem
@@ -114,23 +121,16 @@ export function AccountMenuPopover({ session, mode }: AccountMenuPopoverProps) {
           />
           {t("account.account")}
         </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel>{t("account.theme.label")}</DropdownMenuLabel>
-        <DropdownMenuRadioGroup
-          value={themeMode}
-          onValueChange={handleModeChange}
-          aria-label={t("account.theme.groupLabel")}
+        <DropdownMenuItem
+          onSelect={() => navigate(canonicalAccountPreferencesPath())}
+          className="cursor-pointer"
         >
-          <DropdownMenuRadioItem value="light">
-            {t("account.theme.light")}
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="dark">
-            {t("account.theme.dark")}
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="system">
-            {t("account.theme.system")}
-          </DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
+          <SlidersHorizontal
+            className="text-muted-foreground group-focus/dropdown-menu-item:text-accent-foreground"
+            aria-hidden
+          />
+          {t("account.preferences")}
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           variant="destructive"

@@ -34,3 +34,9 @@ export const I18N_STORAGE_KEY = "restaurant_pos_i18n_lng";
 export function isSupportedLanguage(code: string): code is SupportedLanguage {
   return (SUPPORTED_LANGUAGES as readonly string[]).includes(code);
 }
+
+/** Map an i18next locale (for example `es-MX`) onto a supported bundle. */
+export function effectiveLanguage(code: string): SupportedLanguage {
+  const base = code.split("-")[0]?.toLowerCase() ?? "";
+  return isSupportedLanguage(base) ? base : DEFAULT_LANGUAGE;
+}

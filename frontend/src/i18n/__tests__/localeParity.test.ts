@@ -112,21 +112,13 @@ describe("locale parity", () => {
     }
   });
 
-  it("retains the translated nav theme labels", () => {
-    expect(readByPath(locales.en.nav, "account.theme")).toEqual({
-      label: "Theme",
-      groupLabel: "Theme mode",
-      light: "Light",
-      dark: "Dark",
-      system: "System",
-    });
-    expect(readByPath(locales.es.nav, "account.theme")).toEqual({
-      label: "Tema",
-      groupLabel: "Modo de tema",
-      light: "Claro",
-      dark: "Oscuro",
-      system: "Sistema",
-    });
+  it("translates the nav language indicator label", () => {
+    expect(readByPath(locales.en.nav, "account.currentLanguage")).toBe(
+      "Current language: {{language}}",
+    );
+    expect(readByPath(locales.es.nav, "account.currentLanguage")).toBe(
+      "Idioma actual: {{language}}",
+    );
   });
 });
 

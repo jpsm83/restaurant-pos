@@ -13,8 +13,7 @@ import { useTheme, type ThemeMode } from "@/hooks/useTheme";
 import { useLanguageOptions } from "@/hooks/useLanguageOptions";
 import { changeAppLanguage } from "@/i18n/i18n";
 import {
-  DEFAULT_LANGUAGE,
-  isSupportedLanguage,
+  effectiveLanguage,
   type SupportedLanguage,
 } from "@/i18n/config";
 
@@ -29,11 +28,6 @@ const APPEARANCE_OPTIONS: Array<{
   { value: "dark", labelKey: "preferences.appearance.options.dark" },
   { value: "system", labelKey: "preferences.appearance.options.system" },
 ];
-
-function effectiveLanguage(code: string): SupportedLanguage {
-  const base = code.split("-")[0]?.toLowerCase() ?? "";
-  return isSupportedLanguage(base) ? base : DEFAULT_LANGUAGE;
-}
 
 function PreferenceRadioOption<T extends string>({
   name,
